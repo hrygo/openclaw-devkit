@@ -10,7 +10,7 @@
 #   - docker-dev-setup.sh     初始化脚本
 # ==============================================================================
 
-.PHONY: help install up down restart logs shell status \
+.PHONY: help install up down logs shell status \
         build rebuild clean clean-volumes \
         exec cli gateway-health test-proxy \
         backup-config restore-config \
@@ -37,7 +37,7 @@ help: ## 显示帮助信息
 	@echo "用法: make <target>"
 	@echo ""
 	@echo "┌─ 生命周期管理 ─────────────────────────────────────────────┐"
-	@grep -E '^(install|up|down|restart|status):.*## .*$$' $(MAKEFILE_LIST) | \
+	@grep -E '^(install|up|down|status):.*## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "│  \033[36m%-18s\033[0m %s │\n", $$1, $$2}'
 	@echo "├─ 构建与清理 ───────────────────────────────────────────────┤"
 	@grep -E '^(build|rebuild|clean|clean-volumes):.*## .*$$' $(MAKEFILE_LIST) | \
@@ -80,17 +80,6 @@ down: ## 停止服务
 	@echo "==> 停止 OpenClaw 服务..."
 	docker compose -f $(COMPOSE_FILE) down
 	@echo "✓ 服务已停止"
-
-restart: ## 重启服务 (等待容器完全重启)
-	@echo "==> 重启 OpenClaw 服务..."
-	@echo "    停止容器..."
-	@docker compose -f $(COMPOSE_FILE) down --timeout 30
-	@echo "    启动容器..."
-	@docker compose -f $(COMPOSE_FILE) up -d
-	@echo "    等待服务就绪..."
-	@timeout 120 sh -c 'while ! docker inspect --format "{{.State.Health.Status}}" openclaw-gateway 2>/dev/null | grep -q "healthy"; do sleep 2; done' || \
-		(echo "    ✗ Gateway 启动超时"; exit 1)
-	@echo "✓ 服务已重启并就绪"
 
 status: ## 查看服务状态
 	@echo "╔════════════════════════════════════════════════════════════╗"
@@ -248,7 +237,7 @@ endif
 		exit 1; \
 	fi
 	@echo ""
-	@echo "提示: 运行 'make restart' 使配置生效"
+	@echo "提示: 运行 'make up' 使配置生效"
 
 # ============================================================
 # 维护
