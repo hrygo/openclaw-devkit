@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # OpenClaw 源码更新脚本
 # 从 GitHub Releases 下载最新版本源码
+# 支持镜像版本管理 (最多保留 5 个版本)
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_DIR="${SCRIPT_DIR}/.openclaw_src"
 REPO="openclaw/openclaw"
+IMAGE_NAME="openclaw"
+MAX_IMAGES=5
 
 # 临时文件跟踪 (用于 trap 清理)
 TMP_FILE=""
@@ -106,6 +109,65 @@ extract_source() {
   TMP_DIR=""
 }
 
+# 构建镜像 (带版本标签)
+build_image() {
+  local version="$1"
+  local proxy_args=()
+
+  if [[ -n "${HTTP_PROXY:-}" ]]; then
+    proxy_args=("--build-arg" "HTTP_PROXY=${HTTP_PROXY}" "--build-arg" "HTTPS_PROXY=${HTTPS_PROXY:-}")
+  fi
+
+  info "构建镜像 ${IMAGE_NAME}:${version}..."
+  if ! docker build \
+    --no-cache \
+    -t "${IMAGE_NAME}:${version}" \
+    -t "${IMAGE_NAME}:latest" \
+    -f "${SCRIPT_DIR}/Dockerfile.dev" \
+    "${proxy_args[@]}" \
+    "${SRC_DIR}"; then
+    error "构建镜像失败"
+  fi
+  info "✓ 镜像构建完成: ${IMAGE_NAME}:${version}, ${IMAGE_NAME}:latest"
+}
+
+# 清理旧版本镜像 (保留最近 ${MAX_IMAGES} 个)
+prune_old_images() {
+  info "清理旧版本镜像 (保留最近 ${MAX_IMAGES} 个)..."
+
+  # 获取所有版本标签镜像 (排除 latest)
+  local images
+  images=$(docker images "${IMAGE_NAME}" --format "{{.Tag}}" --filter "dangling=false" 2>/dev/null | grep -v "latest" | sort -r)
+
+  if [[ -z "$images" ]]; then
+    info "没有需要清理的旧版本镜像"
+    return
+  fi
+
+  # 计算需要删除的数量
+  local count
+  count=$(echo "$images" | wc -l | tr -d ' ')
+
+  if [[ $count -le $MAX_IMAGES ]]; then
+    info "当前有 ${count} 个版本镜像，无需清理"
+    return
+  fi
+
+  local to_remove=$((count - MAX_IMAGES))
+  info "发现 ${to_remove} 个旧版本镜像需要清理..."
+
+  # 获取要删除的镜像 (最旧的)
+  local old_images
+  old_images=$(echo "$images" | tail -n ${to_remove})
+
+  for img in $old_images; do
+    info "  删除 ${IMAGE_NAME}:${img}"
+    docker rmi "${IMAGE_NAME}:${img}" 2>/dev/null || warn "删除镜像失败: ${IMAGE_NAME}:${img}"
+  done
+
+  info "✓ 已清理 ${to_remove} 个旧版本镜像"
+}
+
 # 主流程
 main() {
   local current_version=""
@@ -150,7 +212,14 @@ main() {
   extract_source "$tar_file" "$latest_version"
 
   info "✓ 源码已更新到 ${latest_version}"
-  info "运行 'make rebuild' 重建镜像"
+
+  # 构建镜像
+  build_image "$latest_version"
+
+  # 清理旧版本镜像
+  prune_old_images
+
+  info "✓ 更新完成！ 运行 'make up' 启动服务"
 }
 
 main "$@"

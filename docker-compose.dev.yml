@@ -166,10 +166,13 @@ services:
       - openclaw-sessions-codex:/home/node/.openclaw/agents/codex/sessions:rw
     stdin_open: true
     tty: true
+    # CLI 是交互式容器，不需要健康检查
+    healthcheck:
+      disable: true
     entrypoint:
       - "sh"
       - "-c"
-      - "mkdir -p /home/node/.openclaw/agents/main/sessions /home/node/.openclaw/agents/codex/sessions && cp -r /home/node/.openclaw-host/* /home/node/.openclaw/ 2>/dev/null || true && chmod -R 777 /home/node/.openclaw 2>/dev/null || true && exec node dist/index.js"
+      - "mkdir -p /home/node/.openclaw/agents/main/sessions /home/node/.openclaw/agents/codex/sessions && cp -r /home/node/.openclaw-host/* /home/node/.openclaw/ 2>/dev/null || true && chmod -R 777 /home/node/.openclaw 2>/dev/null || true && exec tail -f /dev/null"
     labels:
       - "openclaw.service=cli"
       - "openclaw.environment=dev"

@@ -81,10 +81,16 @@ down: ## 停止服务
 	docker compose -f $(COMPOSE_FILE) down
 	@echo "✓ 服务已停止"
 
-restart: ## 重启服务
+restart: ## 重启服务 (等待容器完全重启)
 	@echo "==> 重启 OpenClaw 服务..."
-	docker compose -f $(COMPOSE_FILE) restart
-	@echo "✓ 服务已重启"
+	@echo "    停止容器..."
+	@docker compose -f $(COMPOSE_FILE) down --timeout 30
+	@echo "    启动容器..."
+	@docker compose -f $(COMPOSE_FILE) up -d
+	@echo "    等待服务就绪..."
+	@timeout 120 sh -c 'while ! docker inspect --format "{{.State.Health.Status}}" openclaw-gateway 2>/dev/null | grep -q "healthy"; do sleep 2; done' || \
+		(echo "    ✗ Gateway 启动超时"; exit 1)
+	@echo "✓ 服务已重启并就绪"
 
 status: ## 查看服务状态
 	@echo "╔════════════════════════════════════════════════════════════╗"
