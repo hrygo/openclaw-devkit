@@ -1,9 +1,11 @@
+# syntax=docker/dockerfile:1
+
 # OpenClaw 开发环境定制镜像 (Office 办公/自动化增强版)
 # 专注于文字工作、办公自动化 (Excel/Word/PPT) 与 UI 自动化 (Playwright)
-# 移除了 Go 等开发密集型工具，增加了 OCR 与 PDF 处理能力
 #
 # 与 Dockerfile.dev 的区别:
-# - 移除了 Go 编译器 (节省约 1GB)
+# - 使用 debian:slim 基础镜像减小体积
+# - 使用多阶段构建优化最终镜像大小
 # - 添加了完整的办公自动化 Python 工具链
 # - 添加了 Bun 运行时支持
 # - 添加了中文字体和 OCR 支持
@@ -14,31 +16,72 @@
 # 重建并启动:
 #   make rebuild-office
 
-FROM debian:latest
-
-LABEL org.opencontainers.image.base.name="docker.io/library/debian:latest" \
-    org.opencontainers.image.source="https://github.com/openclaw/openclaw" \
-    org.opencontainers.image.title="OpenClaw Office (2025 Pro Edition)" \
-    org.opencontainers.image.description="OpenClaw gateway for office automation (Node 22 LTS, Python 3.13, OCR, PDF Tools)"
-
 # ============================================================
-# 第一阶段：安装系统依赖和办公/自动化工具
+# 第一阶段：构建依赖 (builder)
 # ============================================================
+FROM debian:stable-slim AS builder
 
-ENV DEBIAN_FRONTEND=noninteractive
+ARG DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=${DEBIAN_FRONTEND}
 
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ENV http_proxy=$HTTP_PROXY
 ENV https_proxy=$HTTPS_PROXY
 
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends -o Acquire::Retries=3 \
-    curl wget jq git ripgrep fd-find bat httpie python3 python3-pip python3-venv build-essential pkg-config \
+# 安装构建依赖
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends -o Acquire::Retries=3 \
+    curl wget jq git ripgrep fd-find build-essential pkg-config ca-certificates && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# 安装 Node.js 22 LTS
+ARG NODE_VERSION=22.22.1
+RUN ARCH=$(dpkg --print-architecture) && \
+    curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${ARCH}.tar.xz" | tar -xJ -C /usr/local --strip-components=1
+
+# 安装 Bun
+ENV BUN_INSTALL=/opt/bun
+ENV PATH="${BUN_INSTALL}/bin:${PATH}"
+RUN curl -fsSL https://bun.sh/install | bash
+
+# pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /build
+
+# 复制依赖文件并安装
+COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY --chown=node:node ui/package.json ./ui/package.json
+COPY --chown=node:node patches ./patches
+COPY --chown=node:node scripts ./scripts
+
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile
+
+# 构建应用
+RUN pnpm build && \
+    pnpm ui:build
+
+# ============================================================
+# 第二阶段：运行依赖 (deps)
+# ============================================================
+FROM debian:stable-slim AS deps
+
+ARG DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=${DEBIAN_FRONTEND}
+
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ENV http_proxy=$HTTP_PROXY
+ENV https_proxy=$HTTPS_PROXY
+
+# 安装运行时依赖
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends -o Acquire::Retries=3 \
+    curl wget jq git ripgrep ca-certificates \
     # Office 处理与 PDF 工具
-    pandoc texlive-latex-base texlive-fonts-recommended \
+    pandoc texlive-latex-base \
     poppler-utils ghostscript imagemagick tesseract-ocr \
     tesseract-ocr-chi-sim tesseract-ocr-chi-tra fonts-wqy-zenhei \
     # 浏览器自动化依赖
@@ -46,65 +89,23 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     libgbm1 libasound2t64 libatspi2.0-0t64 libxshmfence1 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
     libdbus-1-3 libgtk-3-0t64 fonts-liberation fonts-noto-color-emoji \
     # 基础工具
-    unzip file sqlite3 zip || \
-    (apt-get update --fix-missing && DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing --no-install-recommends -o Acquire::Retries=5 \
-    curl wget jq git ripgrep fd-find bat httpie python3 python3-pip python3-venv build-essential pkg-config \
-    pandoc texlive-latex-base texlive-fonts-recommended \
-    poppler-utils ghostscript imagemagick tesseract-ocr \
-    tesseract-ocr-chi-sim tesseract-ocr-chi-tra fonts-wqy-zenhei \
-    xvfb libnss3 libatk-bridge2.0-0t64 libdrm2 libxkbcommon0 \
-    libgbm1 libasound2t64 libatspi2.0-0t64 libxshmfence1 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
-    libdbus-1-3 libgtk-3-0t64 fonts-liberation fonts-noto-color-emoji \
-    unzip file sqlite3 zip)
-
-# ============================================================
-# Node.js 22 LTS 手动安装 (移除 Go 安装)
-# ============================================================
-ARG NODE_VERSION=22.22.1
-RUN ARCH=$(dpkg --print-architecture) && \
-    curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${ARCH}.tar.xz" | tar -xJ -C /usr/local --strip-components=1 && \
-    groupadd --gid 1000 node && \
-    useradd --uid 1000 --gid node --shell /bin/bash --create-home node
-
-# ============================================================
-# Bun 运行时 (用于现代 AI 工具链)
-# ============================================================
-ENV BUN_INSTALL=/opt/bun
-ENV PATH="${BUN_INSTALL}/bin:${PATH}"
-RUN curl -fsSL https://bun.sh/install | bash && \
-    ln -sf "${BUN_INSTALL}/bin/bun" /usr/local/bin/bun
-
-# ============================================================
-# GitHub CLI
-# ============================================================
-RUN ARCH=$(dpkg --print-architecture) && \
-    GH_VERSION=$(curl -fsSL https://api.github.com/repos/cli/cli/releases/latest | jq -r '.tag_name' | sed 's/^v//') && \
-    curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_${ARCH}.deb" -o /tmp/gh.deb && \
-    apt-get update && apt-get install -y /tmp/gh.deb && \
-    rm /tmp/gh.deb && \
+    unzip file sqlite3 zip python3 python3-pip python3-venv && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# ============================================================
-# 第二阶段：语言运行时与包管理器
-# ============================================================
+# 安装 Node.js (仅运行时)
+ARG NODE_VERSION=22.22.1
+RUN ARCH=$(dpkg --print-architecture) && \
+    curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${ARCH}.tar.xz" | tar -xJ -C /usr/local --strip-components=1
 
-# pnpm (Node 包管理器)
+# 安装 Bun 运行时
+ENV BUN_INSTALL=/opt/bun
+ENV PATH="${BUN_INSTALL}/bin:${PATH}"
+RUN curl -fsSL https://bun.sh/install | bash
+
+# 安装 pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Playwright CLI
-RUN npm install -g @playwright/test@latest
-
-# Claude Code CLI
-RUN npm install -g @anthropic-ai/claude-code@latest
-
-# OpenCode
-RUN npm install -g opencode-ai
-
-# Pi-Mono (Pi Coding Agent)
-RUN npm install -g @mariozechner/pi-coding-agent
-
-# Python 办公自动化增强包
-# 注意: paddlepaddle/paddleocr 体积较大(约2GB)，如不需要可注释掉
+# 安装 Python 办公自动化包
 ARG PYTHON_PACKAGES="\
     python-pptx \
     openpyxl \
@@ -112,83 +113,116 @@ ARG PYTHON_PACKAGES="\
     beautifulsoup4 \
     lxml \
     pyyaml \
-    pandoc \
     pytesseract \
     pdf2image \
     pillow \
-    # 数据处理
     pandas \
     numpy \
     requests \
     aiohttp \
-    # Excel 高级功能
     xlwings \
-    # PDF 处理
     pypdf \
     pymupdf \
     reportlab \
-    # Word 高级功能
     docx2txt \
-    # OCR 与图像识别 (可选，体积较大)
-    # paddlepaddle \
-    # paddleocr \
-    # 办公协作
     python-dateutil \
     pytz \
-    # 网络爬虫
     selenium \
     webdriver-manager"
-RUN pip3 install --break-system-packages $PYTHON_PACKAGES
+RUN pip3 install --break-system-packages --no-cache-dir $PYTHON_PACKAGES
 
 # ============================================================
-# 第三阶段：安装 OpenClaw 核心组件
+# 第三阶段：最终镜像 (runtime)
 # ============================================================
+FROM debian:stable-slim AS runtime
 
-WORKDIR /app
-RUN chown node:node /app
+ARG DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=${DEBIAN_FRONTEND}
 
-# 复制依赖声明
-COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
-COPY --chown=node:node ui/package.json ./ui/package.json
-COPY --chown=node:node patches ./patches
-COPY --chown=node:node scripts ./scripts
+LABEL org.opencontainers.image.base.name="docker.io/library/debian:stable-slim" \
+    org.opencontainers.image.source="https://github.com/openclaw/openclaw" \
+    org.opencontainers.image.title="OpenClaw Office (2025 Pro Edition)" \
+    org.opencontainers.image.description="OpenClaw gateway for office automation (Node 22 LTS, Python, OCR, PDF Tools)"
 
-USER node
-RUN --mount=type=cache,target=/home/node/.local/share/pnpm/store,uid=1000,gid=1000 \
-    NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ENV http_proxy=$HTTP_PROXY
+ENV https_proxy=$HTTPS_PROXY
+
+# 安装运行时最小依赖
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends -o Acquire::Retries=3 \
+    curl tini \
+    # 浏览器自动化依赖
+    xvfb libnss3 libatk-bridge2.0-0t64 libdrm2 libxkbcommon0 \
+    libgbm1 libasound2t64 libatspi2.0-0t64 libxshmfence1 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
+    libdbus-1-3 libgtk-3-0t64 fonts-liberation fonts-noto-color-emoji && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# 创建非 root 用户
+RUN groupadd --gid 1000 node && \
+    useradd --uid 1000 --gid node --shell /bin/bash --create-home node
+
+# 复制构建产物
+COPY --from=builder --chown=node:node /usr/local/bin/node /usr/local/bin/node
+COPY --from=builder --chown=node:node /usr/local/bin/npm /usr/local/bin/npm
+COPY --from=builder --chown=node:node /usr/local/bin/corepack /usr/local/bin/corepack
+COPY --from=builder --chown=node:node /opt/bun /opt/bun
+COPY --from=builder --chown=node:node /root/.local/share/pnpm /home/node/.local/share/pnpm
+COPY --from=builder --chown=node:node /build/node_modules /build/node_modules
+COPY --from=builder --chown=node:node /build/dist /build/dist
+COPY --from=builder --chown=node:node /build/openclaw.mjs /build/openclaw.mjs
+COPY --from=builder --chown=node:node /build/ui/dist /build/ui/dist
+COPY --from=builder --chown=node:node /build/package.json /build/package.json
 
 # 安装 Chromium for Playwright
 ARG INSTALL_BROWSER=1
-USER root
 RUN if [ "${INSTALL_BROWSER}" = "1" ]; then \
     mkdir -p /home/node/.cache/ms-playwright && \
-    PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright \
-    node /app/node_modules/playwright-core/cli.js install --with-deps chromium && \
-    chown -R node:node /home/node/.cache/ms-playwright; \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libnss3 libatk-bridge2.0-0t64 libdrm2 libxkbcommon0 \
+    libgbm1 libasound2t64 libatspi2.0-0t64 libxshmfence1 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 && \
+    curl -fsSL "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb" -o /tmp/chrome.deb && \
+    apt-get install -y /tmp/chrome.deb && \
+    rm /tmp/chrome.deb && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*; \
     fi
+
+# 复制 GitHub CLI
+COPY --from=builder --chown=node:node /usr/local/bin/gh /usr/local/bin/gh
+
+# 复制 Python 依赖
+COPY --from=deps --chown=node:node /usr/lib/python3 /usr/lib/python3
+COPY --from=deps --chown=node:node /usr/local/lib/python3.13 /usr/local/lib/python3.13
+COPY --from=deps --chown=node:node /usr/local/bin/python3 /usr/local/bin/python3
+COPY --from=deps --chown=node:node /usr/local/bin/pip3 /usr/local/bin/pip3
+
+# 复制字体
+COPY --from=deps --chown=node:node /usr/share/fonts /usr/share/fonts
+COPY --from=deps --chown=node:node /usr/share/texlive /usr/share/texlive
+
+# 设置环境变量
+ENV NODE_ENV=production \
+    PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright \
+    OPENCLAW_PREFER_PNPM=1 \
+    PATH="/opt/bun/bin:/usr/local/bin:/usr/local/go/bin:/home/node/go/bin:${PATH}" \
+    BUN_INSTALL=/opt/bun \
+    GOPATH=/home/node/go
+
+WORKDIR /build
+RUN ln -sf /build/openclaw.mjs /usr/local/bin/openclaw
+
+# 使用非 root 用户
 USER node
 
-# 复制源代码并构建
-COPY --chown=node:node . .
-RUN pnpm build
-ENV OPENCLAW_PREFER_PNPM=1
-RUN pnpm ui:build
-
-# 暴露 CLI
-USER root
-RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw \
-    && chmod 755 /app/openclaw.mjs
-
-# ============================================================
-# 第四阶段：环境配置
-# ============================================================
-
-ENV NODE_ENV=production
-ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
-
-USER node
-
+# 健康检查
 HEALTHCHECK --interval=3m --timeout=10s --start-period=15s --retries=3 \
     CMD node -e "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
-CMD ["node", "openclaw.mjs", "gateway", "--allow-unconfigured"]
+# 暴露端口
+EXPOSE 18789 18790
+
+# 使用 tini 作为 init 进程
+ENTRYPOINT ["/usr/bin/tini", "--", "node", "openclaw.mjs"]
+CMD ["gateway", "--allow-unconfigured"]
