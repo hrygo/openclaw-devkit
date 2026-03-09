@@ -26,7 +26,7 @@
         java office dev
 
 # 默认目标
-.DEFAULT_GOAL := help
+.DEFAULT_GOAL := help-full
 
 # 环境配置
 -include .env
