@@ -32,7 +32,7 @@ ENV https_proxy=$HTTPS_PROXY
 # 安装构建依赖
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    curl wget jq git ripgrep fd-find build-essential pkg-config ca-certificates && \
+    curl wget jq git ripgrep fd-find build-essential pkg-config ca-certificates unzip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # 安装 Bun (官方推荐方式)
