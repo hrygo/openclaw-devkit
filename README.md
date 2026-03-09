@@ -75,14 +75,18 @@ make install java
 | 数据分析       |         ❌         |           ❌            |     Pandas, Numpy     |
 | 工程工具       |     pnpm, Bun     |     Gradle, Maven      |       pnpm, Bun       |
 | 环境特点       |   轻量、聚焦 AI   |    深度集成审计工具    |  零门槛、全集成办公   |
-| 镜像大小       |      ~6.4GB       |         ~8.1GB         |     ~5.8GB (Slim)     |
+| 镜像大小       |       6.4GB       |         8.08GB         |         4.7GB         |
 
 ---
 
-> [!TIP]
-> **手动切换镜像**:
-> 1. 修改 `.env` 文件: `OPENCLAW_IMAGE=openclaw:pro` (或 `openclaw:dev-java`)
-> 2. 运行 `make up`
+## 🌍 全平台支持与分发 (Multi-Arch)
+
+本项目通过 GitHub Actions 实现了全平台镜像自动构建：
+- **支持架构**: `linux/amd64` (Intel/AMD), `linux/arm64` (Apple Silicon M1/M2/M3).
+- **分发渠道**: [GitHub Packages (GHCR)](https://github.com/orgs/openclaw/packages).
+
+> [!NOTE]
+> **本地编译限制**: 直接在 MacBook 上运行 `make build` 产生的镜像仅限 ARM 架构。若需分发给不同平台的服务器，请参考 GitHub Actions 配置或使用 `buildx` 进行交叉编译。
 
 ---
 

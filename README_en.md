@@ -92,7 +92,7 @@ make test-proxy
 | Data Analysis        |           ❌            |           ❌           |      Pandas, Numpy       |
 | Build Tools          |       pnpm, Bun        |     Gradle, Maven     |        pnpm, Bun         |
 | Key Advantage        | Lightweight, AI-Native | Policy & Audit Ready  |  Zero-Config Automation  |
-| Image Size           |         ~6.4GB         |        ~8.1GB         |      ~5.8GB (Slim)       |
+| Image Size           |         6.4GB          |        8.08GB         |          4.7GB           |
 
 ---
 

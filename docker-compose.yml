@@ -20,7 +20,7 @@
 x-openclaw-common: &openclaw-common
   build:
     context: .openclaw_src
-    dockerfile: ../Dockerfile.dev
+    dockerfile: ../Dockerfile
     args:
       HTTP_PROXY: ${HTTP_PROXY:-}
       HTTPS_PROXY: ${HTTPS_PROXY:-}
