@@ -91,15 +91,13 @@ RUN apt-get update && \
     python3 python3-pip python3-venv unzip file sqlite3 zip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 安装 Node.js 运行时
-COPY --from=builder /usr/local/bin/node /usr/local/bin/
-COPY --from=builder /usr/local/bin/npm /usr/local/bin/
+# base 镜像自带 node/npm，不需要从 builder 复制
 
-# 安装 pnpm (直接安装，比 corepack 更稳定)
-RUN npm install -g pnpm
+# 安装 pnpm (使用 corepack)
+RUN corepack enable && corepack prepare pnpm@* --activate
 
-# 复制 pnpm store
-COPY --from=builder /root/.local/share/pnpm /root/.local/share/pnpm
+# 复制 pnpm store (如果存在)
+COPY --from=builder /root/.local/share/pnpm /root/.local/share/pnpm 2>/dev/null || true
 
 # 安装 Bun 运行时
 COPY --from=builder /root/.bun /root/.bun
