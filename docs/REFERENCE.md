@@ -71,9 +71,8 @@
 ## 🔁 核心协作逻辑 (Core Collaboration)
 
 1. **Makefile (入口)** -> **docker-dev-setup.sh (初始化)** -> **Dockerfile (环境构建)**。
-2. **源码持久化**: 宿主机的 `.openclaw_src` 与容器内 `/app` 实时同步，代码修改即时生效。
-3. **缓存优化**: `node_modules` 与 Go 缓存通过 `Named Volumes` 管理，即使删除容器，二次构建依然极速。
-4. **权限安全**: 镜像内部使用 `node` 用户 (UID 1000) 运行，所有卷权限在启动前由 setup 脚本通过 root 容器自动修正。
+2. **缓存优化**: `node_modules` 与 Go 缓存通过 `Named Volumes` 管理，即使删除容器，二次构建依然极速。
+3. **权限安全**: 镜像内部使用 `node` 用户 (UID 1000)运行，所有卷权限在启动前由 setup 脚本通过 root 容器自动修正。
 
 ---
 <p align="center">

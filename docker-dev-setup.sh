@@ -264,8 +264,8 @@ OpenClaw 开发环境 Docker 部署脚本
   # 挂载额外目录
   OPENCLAW_EXTRA_MOUNTS="$HOME/projects:/home/node/projects:rw" ./docker-dev-setup.sh
 
-  # 使用命名卷持久化 home
-  OPENCLAW_HOME_VOLUME=openclaw-home ./docker-dev-setup.sh
+  # 使用 Java 增强版进行安装
+  make install java
 HELP
       exit 0
       ;;
@@ -367,9 +367,15 @@ if [[ ! -f "$ROOT_DIR/.openclaw_src/package.json" ]]; then
   exit 1
 fi
 
+# 选择 Dockerfile
+DOCKERFILE_PATH="$ROOT_DIR/Dockerfile.dev"
+if [[ "$IMAGE_NAME" == *"-java"* ]]; then
+  DOCKERFILE_PATH="$ROOT_DIR/Dockerfile.java"
+fi
+
 docker build \
   -t "$IMAGE_NAME" \
-  -f "$ROOT_DIR/Dockerfile.dev" \
+  -f "$DOCKERFILE_PATH" \
   --build-arg "INSTALL_BROWSER=${INSTALL_BROWSER}" \
   --build-arg "HTTP_PROXY=${HTTP_PROXY:-}" \
   --build-arg "HTTPS_PROXY=${HTTPS_PROXY:-}" \

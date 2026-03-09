@@ -70,10 +70,18 @@ help: ## 显示帮助信息
 # 生命周期管理
 # ============================================================
 
-install: ## 首次安装/初始化环境
+install: ## 首次安装/初始化环境 (支持: make install java)
 	@echo "==> 初始化 OpenClaw 开发环境..."
 	@chmod +x $(SETUP_SCRIPT)
-	./$(SETUP_SCRIPT)
+	@if [ "$(filter java,$(MAKECMDGOALS))" = "java" ]; then \
+		OPENCLAW_IMAGE=openclaw:dev-java ./$(SETUP_SCRIPT); \
+	else \
+		./$(SETUP_SCRIPT); \
+	fi
+
+# 伪目标，用于支持 make install java 这种写法
+java:
+	@:
 
 up: ## 启动服务
 	@echo "==> 启动 OpenClaw 服务..."

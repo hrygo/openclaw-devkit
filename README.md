@@ -1,216 +1,137 @@
-# OpenClaw 开发工具箱套件 (OpenClaw DevKit)
-
-[English](./README_en.md) | 简体中文
+# 🛠️ OpenClaw 开发工具箱 (OpenClaw DevKit)
 
 <p align="center">
-  <a href="https://github.com/openclaw/openclaw"><img src="https://img.shields.io/badge/Powered%20By-OpenClaw-blue" alt="OpenClaw"></a>
-  <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Environment-Docker-blue?logo=docker" alt="Docker"></a>
-  <a href="https://claude.ai/code"><img src="https://img.shields.io/badge/Built%20With-Claude%20Code-purple" alt="Claude Code"></a>
+  <a href="./README_en.md">English</a> | <b>简体中文</b>
 </p>
 
-**OpenClaw 开发工具箱套件** 为 [OpenClaw](https://github.com/openclaw/openclaw) 多通道 AI 生产力工具提供完整的容器化开发、调试与运行环境。
+<p align="center">
+  <img src="https://img.shields.io/badge/Maintained%3F-yes-green.svg" alt="Maintained">
+  <a href="https://github.com/openclaw/openclaw"><img src="https://img.shields.io/badge/Powered%20By-OpenClaw-blue?style=flat-square" alt="OpenClaw"></a>
+  <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Env-Docker-blue?logo=docker&style=flat-square" alt="Docker"></a>
+  <a href="https://claude.ai/code"><img src="https://img.shields.io/badge/With-Claude%20Code-purple?style=flat-square" alt="Claude Code"></a>
+  <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square" alt="PRs Welcome">
+  <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="License">
+</p>
 
-集成了一套开箱即用的工具链，旨在帮助开发者快速构建基于 OpenClaw 的 AI 工作流，支持自动源码更新、一键环境搭建及内置的地理位置代理优化。
+---
+
+**OpenClaw 开发工具箱 (DevKit)** 是为 [OpenClaw](https://github.com/openclaw/openclaw) 量身定制的容器化全栈开发环境。它不仅解决了「环境一致性」的难题，更通过深度定制的工具链，为 AI 辅助编程、自动化网页操作和跨平台服务调度提供了「开箱即用」的顶级体验。
 
 ---
 
 ## ✨ 核心特性
 
-- 🚀 **一键式环境搭建**：基于 Docker Compose，秒级启动完整的开发运行环境。
-- 🛠️ **双重镜像版本选择**：
-    - **标准版 (Dockerfile.dev)**：集成 Go 1.26, Node 22 LTS, Python 3.13, pnpm, Bun, Playwright 等。
-    - **Java 增强版 (Dockerfile.java)**：在标准版基础上，深度集成 **JDK 25 (LTS)**、Google Java Format、Checkstyle、架构检查等企业级工具。
-- 🤖 **AI 编码助手集成**：原生支持 **Claude Code**, **OpenCode** 及 **Pi-Mono (Pi)** CLI，提供极致的 AI 辅助编程体验。
-- 🌐 **网络优化**：内置针对 Google API 和 Claude API 的代理转发逻辑，确保跨境访问稳定性。
-- 🎥 **自动化能力**：预装 Playwright 及所有浏览器依赖，支持复杂的网页自动化任务。
-- 📝 **文档处理**：集成 Pandoc 和 LaTeX，支持高质量的文档格式转换与生成。
-- 💾 **数据持久化**：精心设计的 Named Volumes，确保 node_modules、Go 缓存及会话数据在容器重启后依然存在。
+- 📦 **一键就绪**：基于 Docker Compose，屏蔽繁琐的底层依赖安装，秒级进入开发状态。
+- 🔧 **双重马力**：
+    - **Standard (标准版)**：极致轻量，集成 Go、Node、Python 及主流 AI 编码工具。
+    - **Java Enhanced (Java 增强版)**：专为企业级应用设计，深度集成 JDK 25 及整套质量审计工具链。
+- 🧠 **AI 原生集成**：内置 **Claude Code**, **OpenCode** 与 **Pi-Mono**，让 AI 直接在容器内为您编写和运行代码。
+- 🌐 **跨境加速**：智能代理转发机制，针对 Google/Claude API 进行了专门优化。
+- 💾 **数据持久化**：采用 **Named Volumes**，实现极速构建缓存与会话持久化。
+
+---
+
+## 📊 版本能力对比
+
+| 特性             |       Standard (标准版)        |     Java Enhanced (增强版)      |
+| :--------------- | :----------------------------: | :-----------------------------: |
+| **基础语言**     | Node 22, Go 1.26, Python 3.13  |             ✅ 同左              |
+| **包管理器**     |         pnpm, Bun, pip         |             ✅ 同左              |
+| **AI 助手**      | Claude Code, OpenCode, Pi-Mono |             ✅ 同左              |
+| **浏览器自动化** |     Playwright + Chromium      |             ✅ 同左              |
+| **文档处理**     |         Pandoc + LaTeX         |             ✅ 同左              |
+| **Java 核心**    |               ❌                |        **JDK 25 (LTS)**         |
+| **工程工具**     |               ❌                |    Gradle, Maven, Spring CLI    |
+| **静态分析**     |               ❌                |    PMD, Checkstyle, SpotBugs    |
+| **架构治理**     |               ❌                | ArchUnit (通过 Java 工具链支持) |
 
 ---
 
 ## 🚥 快速开始
 
-如果您是首次克隆本项目，请按照以下步骤确保环境完整：
+### 1. 准备环境
+确保已安装 **Docker (V2)** 和 **Make**。
+> [!TIP]
+> 💡 为了最佳连通性，建议在 `hosts` 中解析 `127.0.0.1 host.docker.internal` 以共享宿主机代理。
 
-### 1. 准备工作
-确保宿主机已安装：
-- **Docker & Docker Compose (V2)**
-- **Make** (大多数类 Unix 系统自带)
-- **网络代理** (推荐，用于访问 Claude/Google API)
-    > [!TIP]
-    > 💡 **小技巧**: 建议在宿主机 `hosts` 文件中添加 `127.0.0.1 host.docker.internal`。这样可以让本地直连、容器内开发共用同一套代理配置字符串 (`http://host.docker.internal:port`)，提升环境一致性。
-
-### 2. 初始化环境
+### 2. 初始化项目
 ```bash
-# 1. 准备环境变量文件
-cp .env.example .env
+cp .env.example .env    # 配置环境变量
+make update             # 同步核心源码 (首次必做)
+```
 
-# 2. 拉取 OpenClaw 核心源码 (首次必做，否则镜像构建会失败)
-# 脚本会自动从 GitHub Release 拉取最新代码并解压到 .openclaw_src/
-make update
-
-# 3. 初始化 Docker 开发镜像
-# 此步骤会执行权限修复、依赖预检及镜像构建
+### 3. 一键部署
+```bash
+# 构建并启动标准版 (推荐)
 make install
+
+# 或者构建 Java 增强版
+make install java
 ```
 
-### 3. 启动与验证
-```bash
-# 1. 启动服务
-make up
-
-# 2. 验证代理 (可选)
-# 检查容器内对 Google/Claude API 的连通性
-make test-proxy
-```
-
-### 4. 访问界面
-- **Web 控制台**: [http://127.0.0.1:18789](http://127.0.0.1:18789)
-- **调试日志**: `make logs`
-
-### 💡 如何切换到 Java 增强版
-如果你需要进行 Java 开发，可以一键切换环境：
-```bash
-# 自动构建 Java 镜像并重启服务
-make rebuild-java
-```
-或者手动通过环境变量切换：
-1. 修改 `.env` 文件：`OPENCLAW_IMAGE=openclaw:dev-java`
-2. 运行 `make up`
+### 4. 验证与访问
+- **Web UI**: [http://127.0.0.1:18789](http://127.0.0.1:18789)
+- **连通性测试**: `make test-proxy`
+- **实时日志**: `make logs`
 
 ---
 
-## 🏗️ 项目架构
+## 🏗️ 架构与工作流
 
-![项目架构图](docs/assets/architecture.svg)
-
----
-
-## 🔁 核心工作流与文件协作
-
-为了实现「开箱即用」的体验，本项目内部建立了自洽的文件协作体系：
-
-1. **入口层 (`Makefile`)**：作为用户执行操作的唯一终端界面，它封装了复杂的 Docker 指令，隐藏了环境交互的复杂性。
-2. **初始化层 (`docker-dev-setup.sh`)**：由 `make install` 触发。它负责读取 `.env` 配置、预创建宿主机目录树、处理权限修复，并调用 `Dockerfile.dev` 构建定制化的开发镜像。
-3. **编排层 (`docker-compose.dev.yml`)**：核心调度中心。它定义了容器间的网络抽象、环境变量注入、以及如何利用 Named Volumes 实现高效的 `node_modules` 缓存。
-4. **运行层 (`Dockerfile.dev`)**：环境的物理定义。它将 Node.js, Go, Python 和 Playwright 整合进一个统一的容器，消除了「在我的机器上能运行」的经典悖论。
-5. **维护层 (`update-source.sh`)**：自动化更新机制。它通过 GitHub API 监控版本变化，实现一键式的源码热更新与旧镜像清理。
-
+### 项目架构图
+![架构图](docs/assets/architecture.svg)
 
 ---
 
-## 🤖 Slack 集成指引
+## 🤖 Slack 集成
 
-为了启用 Slack 交互功能，请按照以下步骤配置您的 Slack App：
-
-### 1. 快速配置 (推荐使用 Manifest)
-1. 访问 [Slack API 控制台](https://api.slack.com/apps)，点击 **"Create New App"**。
-2. 选择 **"From an app manifest"**，选择目标工作区。
-3. 复制项目根目录下的 [`slack-manifest.json`](./slack-manifest.json) 内容并粘贴。
-4. 在 **"Settings" -> "Socket Mode"** 界面生成一个包含 `connections:write` 权限的 **App-level Token** (`xapp-...`)。
-5. 将 App 安装到您的工作区，获取 **Bot User OAuth Token** (`xoxb-...`)。
-
-### 2. 环境变量设置与配对
-1. 将获取的令牌填入项目根目录的 `.env` 文件中。**一旦检测到这些变量，OpenClaw 将在启动时自动启用 Slack 频道。**
-2. **执行配对**: 运行 `make pairing CMD="list slack"` 查看待处理的配对请求（验证码）。
-3. **完成配对**: 在 Slack 中向机器人发送验证码，或运行 `make pairing CMD="approve slack 验证码"`。
-
-```bash
-SLACK_BOT_TOKEN=xoxb-your-bot-token
-# ...
-```
-
-### 3. 最佳实践与默认行为
-- **自动启用**: 只要 `.env` 中存在有效令牌，无需额外在 `openclaw.json` 中配置 `enabled: true`。
-- **隐私保护 (默认为 Allowlist)**: 为了安全，频道消息默认处于 `allowlist` 模式（仅响应允许的频道）。私聊 (DM) 默认处于 `pairing` 模式（需要运行 `make pairing` 进行配对）。
-- **使用 Socket Mode**: 这是 DevKit 的默认模式，允许在本地开发环境直接接收 Slack 事件，无需配置公网 IP 或内网穿透（如 ngrok）。
-- **安全性隔离**: 在生产环境下，务必设置 `SLACK_PRIMARY_OWNER` 以限制高权限管理指令的调用者。
+快速将 OpenClaw 引入 Slack 工作流：
+1.  **导入配置**：在 Slack App 设置中导入 [`slack-manifest.json`](./slack-manifest.json)。
+2.  **配置令牌**：在 `.env` 中填写 `SLACK_BOT_TOKEN` 和 `SLACK_APP_TOKEN`。
+3.  **配对设备**：运行 `make pairing` 并按照终端提示操作。
 
 ---
 
-## ⚙️ 配置详细说明
+## 🛠️ 常用指令速查
 
-编辑项目根目录下的 `.env` 文件进行个性化配置：
+| 指令                 | 描述                          |
+| :------------------- | :---------------------------- |
+| `make up` / `down`   | 启动 / 停止服务               |
+| `make status`        | 查看环境运行健康详情          |
+| `make rebuild-java`  | 一键切换/重建到 Java 增强环境 |
+| `make shell`         | 进入容器内部交互环境          |
+| `make backup-config` | 备份 Agent 配置到宿主机       |
+| `make clean`         | 深度清理残留镜像与容器        |
 
-| 变量名                  | 说明                            | 示例值                             |
-| :---------------------- | :------------------------------ | :--------------------------------- |
-| `OPENCLAW_CONFIG_DIR`   | 宿主机配置存储路径              | `~/.openclaw`                      |
-| `OPENCLAW_IMAGE`        | 镜像版本 (dev / dev-java)       | `openclaw:dev`                     |
-| `SLACK_BOT_TOKEN`       | Slack Bot 令牌 (xoxb)           | `xoxb-xxxx...`                     |
-| `SLACK_APP_TOKEN`       | Slack App 令牌 (xapp)           | `xapp-xxxx...`                     |
-| `SLACK_PRIMARY_OWNER`   | Slack 主要管理员 ID             | `U01234567`                        |
-| `OPENCLAW_GATEWAY_PORT` | Gateway 访问端口                | `18789`                            |
-| `HTTP_PROXY`            | 容器访问外网用的代理            | `http://host.docker.internal:7897` |
-| `GITHUB_TOKEN`          | 用于 `make update` 自动拉取源码 | `your_github_token`                |
-
----
-
-## 🛠️ 运维命令手册
-
-| 命令分类     | 命令                  | 说明                                              |
-| :----------- | :-------------------- | :------------------------------------------------ |
-| **生命周期** | `make up / down`      | 启动 / 停止服务                                   |
-|              | `make restart`        | 重启所有服务                                      |
-|              | `make status`         | 查看容器状态及访问地址                            |
-| **构建更新** | `make build`          | 构建标准版镜像 (Dockerfile.dev)                   |
-|              | `make build-java`     | 构建 Java 增强版镜像 (Dockerfile.java)            |
-|              | `make rebuild`        | 重建标准镜像并重启服务                            |
-|              | `make rebuild-java`   | 重建 Java 镜像并重启服务                          |
-|              | `make update`         | 从 GitHub Release 获取最新 OpenClaw 源码          |
-| **调试诊断** | `make logs`           | 追踪 Gateway 主服务日志                           |
-|              | `make shell`          | 进入容器内部交互环境 (bash)                       |
-|              | `make pairing`        | **频道配对** (如 `make pairing CMD="list slack"`) |
-|              | `make test-proxy`     | **一键测试** Google/Claude API 连通性             |
-|              | `make gateway-health` | 检查网关响应状态                                  |
-| **备份恢复** | `make backup-config`  | 备份所有 Agent 及全局配置到 `~/.openclaw-backups` |
-|              | `make restore-config` | 交互式恢复指定的配置文件                          |
-| **清理**     | `make clean`          | 清理孤儿容器与悬空镜像                            |
-|              | `make clean-volumes`  | **危险**：清空所有缓存与持久化数据卷              |
+### 📖 更多细节
+想要了解更完整的指令说明与配置细节，请查阅：**[详细参考手册 (REFERENCE.md)](./docs/REFERENCE.md)**。
 
 ---
 
-## 📂 目录结构
+## 📂 核心文件解析
 
-| 路径                         | 分类         | 详细用途说明                                                                                                              |
-| :--------------------------- | :----------- | :------------------------------------------------------------------------------------------------------------------------ |
-| **`Makefile`**               | 🔧 运维入口   | **核心指令集**：统一管理容器生命周期、源码更新、健康检查及配置备份。开发者只需通过 `make <cmd>` 即可完成 90% 的日常操作。 |
-| **`docker-compose.dev.yml`** | 🐳 服务编排   | **开发环境定义**：声明了 Gateway、CLI 以及网络代理服务，配置了复杂的 Named Volumes 实现数据持久化与跨容器共享。           |
-| **`Dockerfile.dev`**         | 🏗️ 镜像构建   | **标准开发版**：集成 Go 1.26, Node 22 LTS, Python 3.13, Playwright, Claude Code, OpenCode, Pi-Mono 等核心工具。           |
-| **`Dockerfile.java`**        | ☕ 镜像构建   | **Java 增强版**：在标准版基础上，额外集成 JDK 25 LTS, Gradle, Maven, Spring Boot CLI 及 Java 质量审计工具。               |
-| **`.openclaw_src/`**         | 📦 核心源码   | **OpenClaw 主程序**：存放自动化引擎的源代码。支持通过 `make update` 自动同步远程 Release 或手动进行本地开发调试。         |
-| **`docker-dev-setup.sh`**    | 🚀 初始化脚本 | **一键启动逻辑**：处理复杂的宿主机权限修复、网络环境预检、.env 自动生成以及镜像的并行构建流程。                           |
-| **`update-source.sh`**       | 🔄 同步工具   | **源码热拉取**：由 Makefile 调用，通过 GitHub API 自动对比版本并拉取最新的 OpenClaw 发布包，无需手动下载。                |
-| **`.env` (.example)**        | 🔑 配置中心   | **环境秘钥**：存储代理地址、API Token、宿主机路径映射等敏感配置。项目内置了 `.env.example` 作为模板。                     |
-| **`docs/`**                  | 📚 资源文档   | **项目资产**：存放架构图 (architecture.svg)、设计手稿以及相关的技术规范文档。                                             |
-| **`CLAUDE.md`**              | 🤖 AI 上下文  | **智能体指南**：为 AI 助手（如 Claude）提供针对该项目的开发规范、指令解析及架构上下文建议。                               |
-| **`~/.openclaw`**            | 📂 宿主机挂载 | **持久化配置**：(默认路径) 存储容器输出的日志、下载的文件、Agent 配置以及用户定义的自动化工作流。                         |
-| **`slack-manifest.json`**    | 💬 Slack 配置 | **应用清单格式**：用于快速在 Slack API 官网导入 App 配置，包含必要的权限 (Scopes) 与事件订阅设置。                        |
-| **`.gitignore`**             | 🙈 忽略列表   | **版本控制过滤**：防止 `.env`、`node_modules` 及本地缓存被提交到远程仓库。                                                |
-
----
-
-## 🔄 开发流程
-
-1. **修改代码**：直接编辑宿主机上的 `.openclaw_src/` 源码。
-2. **应用更改**：由于启用了**源码联名挂载**，代码会自动同步到容器内。运行 `make exec CMD="pnpm build"` 即可在容器内实现秒级的增量编译。
-3. **查看效果**：访问 Web UI 或查看 `make logs`（大部分更改无需重启服务即可生效）。
-4. **运行测试**：`make exec CMD="pnpm test"`。
+- **`Makefile`**: 项目的总指挥部，封装了所有复杂运维逻辑。
+- **`docker-compose.dev.yml`**: 编排中心，负责网络隔离与数据持久化。
+- **`Dockerfile.*`**: 环境的基因组，定义了两个不同侧重的开发空间。
+- **`.openclaw_src/`**: 自动化引擎的核心阵地。
+- **`.env`**: 您的个性化中心，掌控代理、端口与安全令牌。
 
 ---
 
 ## ❓ 常见问题 (FAQ)
 
-**Q: 容器内无法访问外网或 Claude API？**
-A: 请确保宿主机上的代理服务 (如 Clash/V2Ray) 已开启「允许局域网连接」，且端口与 `.env` 中一致。使用 `make test-proxy` 可进行连通性测试。
+<details>
+<summary><b>Q: 容器内网络连不通？</b></summary>
+A: 检查宿主机代理是否开启「允许局域网」。使用 <code>make test-proxy</code> 诊断。
+</details>
 
-**Q: 如何更新到 OpenClaw 的最新正式版？**
-A: 运行 `make update` 即可，脚本会自动处理解压与目录替换。
-
-**Q: 更改了镜像配置但没生效？**
-A: 使用 `make build` 而不是 `make up`，或者直接 `make rebuild`。
+<details>
+<summary><b>Q: 如何手动更新 OpenClaw？</b></summary>
+A: 运行 <code>make update</code>。它会调用 GitHub API 自动对比并同步最新代码。
+</details>
 
 ---
 
 ## 📄 许可证
 
-基于 [OpenClaw](https://github.com/openclaw/openclaw) 的原始许可协议。建议详细阅读核心源码中的 LICENSE 文件。
+本项目基于 [OpenClaw](https://github.com/openclaw/openclaw) 的原始许可。

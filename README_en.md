@@ -20,11 +20,11 @@ It integrates an out-of-the-box toolchain designed to help developers quickly bu
 - 🛠️ **Dual Image Version Selection**:
     - **Standard Edition (Dockerfile.dev)**: Integrated with Go 1.26, Node 22 LTS, Python 3.13, pnpm, Bun, Playwright, etc.
     - **Java Enhanced Edition (Dockerfile.java)**: Deeply integrated with **JDK 25 (LTS)**, Google Java Format, Checkstyle, architectural checks, and other enterprise-grade tools on top of the standard edition.
-- 🤖 **AI Coding Assistant Integration**: Native support for **Claude Code**, **OpenCode**, and **Pi-Mono (Pi)** CLI, providing a premium AI-assisted programming experience.
-- 🌐 **Network Optimization**: Built-in proxy forwarding logic for Google and Claude APIs to ensure stability in various network environments.
+- 🧠 **AI-Native Integration**: Built-in **Claude Code**, **OpenCode**, and **Pi-Mono**, allowing AI to write and run code directly within the container for you.
+- 🌐 **Global Acceleration**: Intelligent proxy forwarding mechanism specifically optimized for Google and Claude APIs.
 - 🎥 **Automation Capabilities**: Pre-installed Playwright and all browser dependencies, supporting complex web automation tasks.
 - 📝 **Document Processing**: Integrated Pandoc and LaTeX, supporting high-quality document format conversion and generation.
-- 💾 **Data Persistence**: Sophisticated Named Volumes ensure that `node_modules`, Go cache, and session data persist across container restarts.
+- 💾 **Persistence**: Utilizes **Named Volumes** for extreme build speed and persistent session data.
 
 ---
 
@@ -80,9 +80,8 @@ Or switch manually via environment variables:
 
 ---
 
-## 🏗️ Project Architecture
-
-![Project Architecture Diagram](docs/assets/architecture.svg)
+### Project Architecture
+![Architecture Diagram](docs/assets/architecture.svg)
 
 ---
 
@@ -161,10 +160,16 @@ Edit the `.env` file in the project root for personalized configuration:
 |                  | `make pairing`        | **Channel Pairing** (e.g., `make pairing CMD="list slack"`) |
 |                  | `make test-proxy`     | **One-click test** for Google/Claude API.                   |
 |                  | `make gateway-health` | Check gateway response status                               |
-| **Backup**       | `make backup-config`  | Backup agents and config to `~/.openclaw-backups`           |
-|                  | `make restore-config` | Interactively restore specific config files                 |
-| **Cleanup**      | `make clean`          | Clean up orphan containers and dangling images              |
-|                  | `make clean-volumes`  | **WARNING**: Wipe all cache and persistent volumes          |
+
+### 📖 More Details
+For complete command descriptions and configuration details, please refer to: **[Detailed Reference Manual (REFERENCE.md)](./docs/REFERENCE_en.md)**.
+
+| Category    | Command               | Description                                        |
+| :---------- | :-------------------- | :------------------------------------------------- |
+| **Backup**  | `make backup-config`  | Backup Agent configurations to host                |
+|             | `make restore-config` | Interactively restore specific config files        |
+| **Cleanup** | `make clean`          | Clean up orphan containers and dangling images     |
+|             | `make clean-volumes`  | **WARNING**: Wipe all cache and persistent volumes |
 
 ---
 
@@ -185,15 +190,6 @@ Edit the `.env` file in the project root for personalized configuration:
 | **`~/.openclaw`**            | 📂 Host Mount  | **Persistent State**: Stores logs, downloads, Agent configs, and user-defined workflows.                                   |
 | **`slack-manifest.json`**    | 💬 Slack       | **App Manifest**: Format for importing App configurations into the Slack API dashboard.                                    |
 | **`.gitignore`**             | 🙈 Git Ignore  | **VC Filter**: Prevents `.env`, `node_modules`, and local caches from being committed.                                     |
-
----
-
-## 🔄 Development Process
-
-1. **Modify Code**: Edit code directly on the host under the `.openclaw_src/` directory.
-2. **Apply Changes**: Since **Source Mounting** is enabled, changes are instantly synced. Run `make exec CMD="pnpm build"` for near-instant incremental builds inside the container.
-3. **Verify Results**: Access the Web UI or check `make logs` (most changes take effect without a restart).
-4. **Run Tests**: Use `make exec CMD="pnpm test"`.
 
 ---
 

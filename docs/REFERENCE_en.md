@@ -71,9 +71,8 @@ Defined in the `.env` file at the project root:
 ## 🔁 Core Collaboration Logic
 
 1. **Makefile (Entry)** -> **docker-dev-setup.sh (Init)** -> **Dockerfile (Runtime)**.
-2. **Source Persistence**: Host's `.openclaw_src` is synced with container `/app` for instant changes.
-3. **Cache Optimization**: `node_modules` and Go caches use `Named Volumes` for extreme build speed.
-4. **Security**: Runs as the `node` user (UID 1000). Permissions are auto-corrected by the setup script during startup using a root container.
+2. **Cache Optimization**: `node_modules` and Go caches use `Named Volumes` for extreme build speed.
+3. **Security**: Runs as the `node` user (UID 1000). Permissions are auto-corrected by the setup script during startup using a root container.
 
 ---
 <p align="center">
