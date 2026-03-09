@@ -190,9 +190,9 @@ Edit the `.env` file in the project root for personalized configuration:
 
 ## 🔄 Development Process
 
-1. **Modify Code**: Edit code directly under the `.openclaw_src/` directory.
-2. **Apply Changes**: Run `make rebuild`. Build speed is very fast due to `node_modules` caching in Named Volumes.
-3. **Verify Results**: Access the Web UI or check `make logs`.
+1. **Modify Code**: Edit code directly on the host under the `.openclaw_src/` directory.
+2. **Apply Changes**: Since **Source Mounting** is enabled, changes are instantly synced. Run `make exec CMD="pnpm build"` for near-instant incremental builds inside the container.
+3. **Verify Results**: Access the Web UI or check `make logs` (most changes take effect without a restart).
 4. **Run Tests**: Use `make exec CMD="pnpm test"`.
 
 ---

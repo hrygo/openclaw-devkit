@@ -191,9 +191,9 @@ SLACK_BOT_TOKEN=xoxb-your-bot-token
 
 ## 🔄 开发流程
 
-1. **修改代码**：直接编辑 `.openclaw_src/` 目录下的代码。
-2. **应用更改**：运行 `make rebuild`。由于使用了 Named Volumes 存储 `node_modules`，构建速度非常快。
-3. **查看效果**：访问 Web UI 或查看 `make logs`。
+1. **修改代码**：直接编辑宿主机上的 `.openclaw_src/` 源码。
+2. **应用更改**：由于启用了**源码联名挂载**，代码会自动同步到容器内。运行 `make exec CMD="pnpm build"` 即可在容器内实现秒级的增量编译。
+3. **查看效果**：访问 Web UI 或查看 `make logs`（大部分更改无需重启服务即可生效）。
 4. **运行测试**：`make exec CMD="pnpm test"`。
 
 ---

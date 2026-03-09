@@ -104,6 +104,8 @@ services:
       - openclaw-state:/home/node/.openclaw:rw
       # Workspace (project files)
       - ${HOME}/.openclaw/workspace:/home/node/.openclaw/workspace:rw
+      # Source Code (Live Edit)
+      - ./.openclaw_src:/app:rw
       # Claude Code session state (shared with host)
       - ${HOME}/.claude:/home/node/.claude:rw
       # Git configuration
@@ -151,6 +153,8 @@ services:
       - openclaw-state:/home/node/.openclaw:rw
       # Workspace (project files)
       - ${HOME}/.openclaw/workspace:/home/node/.openclaw/workspace:rw
+      # Source Code (Live Edit)
+      - ./.openclaw_src:/app:rw
       # Claude Code session state (shared with host)
       - ${HOME}/.claude:/home/node/.claude:rw
       # Git configuration
