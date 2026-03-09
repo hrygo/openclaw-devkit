@@ -79,11 +79,9 @@ volumes:
     name: openclaw-playwright-cache
   openclaw-playwright-bin:
     name: openclaw-playwright-bin
-  # Isolated session storage (avoid host path conflicts)
-  openclaw-sessions-main:
-    name: openclaw-sessions-main
-  openclaw-sessions-codex:
-    name: openclaw-sessions-codex
+  # Unified state storage for sessions, identities, and logs
+  openclaw-state:
+    name: openclaw-state
 
 services:
   # ============================================================================
@@ -91,19 +89,19 @@ services:
   # ============================================================================
   openclaw-gateway:
     <<: *openclaw-common
-    user: "0:0"  # Run as root to fix permissions
+    user: "0:0" # Run as root to fix permissions
     container_name: openclaw-gateway
     ports:
       - "127.0.0.1:18789:18789"
       - "127.0.0.1:18790:18790"
     env_file:
       - .env
+    init: true
     volumes:
-      # OpenClaw config directory (mount entire dir to avoid single-file permission issues)
-      - ${HOME}/.openclaw:/home/node/.openclaw-host:ro
-      # Agent configs (read-only)
-      - ${HOME}/.openclaw/agents/main/agent:/home/node/.openclaw-host/agents/main/agent:ro
-      - ${HOME}/.openclaw/agents/codex/agent:/home/node/.openclaw-host/agents/codex/agent:ro
+      # OpenClaw config seed (mount host dir to separate path)
+      - ${HOME}/.openclaw:/home/node/.openclaw-seed:ro
+      # Unified state volume for persistent container data
+      - openclaw-state:/home/node/.openclaw:rw
       # Workspace (project files)
       - ${HOME}/.openclaw/workspace:/home/node/.openclaw/workspace:rw
       # Claude Code session state (shared with host)
@@ -114,15 +112,12 @@ services:
       - openclaw-node-modules:/app/node_modules:rw
       - openclaw-go-mod:/home/node/go/pkg/mod:rw
       - openclaw-playwright-cache:/home/node/.cache/ms-playwright:rw
-      # Named volumes for isolated session storage (avoid host path conflicts)
-      - openclaw-sessions-main:/home/node/.openclaw/agents/main/sessions:rw
-      - openclaw-sessions-codex:/home/node/.openclaw/agents/codex/sessions:rw
     command:
       - "sh"
       - "-c"
-      - "mkdir -p /home/node/.openclaw/agents/main/sessions /home/node/.openclaw/agents/codex/sessions && cp -r /home/node/.openclaw-host/* /home/node/.openclaw/ 2>/dev/null || true && cp -r /home/node/.openclaw-host/agents/main/agent /home/node/.openclaw/agents/main/ 2>/dev/null || true && cp -r /home/node/.openclaw-host/agents/codex/agent /home/node/.openclaw/agents/codex/ 2>/dev/null || true && chown -R node:node /home/node/.openclaw && node dist/index.js config set gateway.controlUi.allowedOrigins '[\"http://127.0.0.1:18789\"]' --strict-json && node dist/index.js gateway --bind lan --port 18789"
+      - "cp -rn /home/node/.openclaw-seed/* /home/node/.openclaw/ 2>/dev/null || true && chown -R node:node /home/node/.openclaw && node dist/index.js config set gateway.controlUi.allowedOrigins '[\"http://127.0.0.1:18789\"]' --strict-json && node dist/index.js gateway --bind lan --port 18789"
     healthcheck: &common-healthcheck
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: [ "CMD", "node", "-e", "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -148,9 +143,12 @@ services:
     environment:
       <<: *common-env
       BROWSER: echo
+    init: true
     volumes:
-      # OpenClaw config directory (mount entire dir to avoid single-file permission issues)
-      - ${HOME}/.openclaw:/home/node/.openclaw-host:ro
+      # OpenClaw config seed (mount host dir to separate path)
+      - ${HOME}/.openclaw:/home/node/.openclaw-seed:ro
+      # Unified state volume for persistent container data
+      - openclaw-state:/home/node/.openclaw:rw
       # Workspace (project files)
       - ${HOME}/.openclaw/workspace:/home/node/.openclaw/workspace:rw
       # Claude Code session state (shared with host)
@@ -161,9 +159,6 @@ services:
       - openclaw-node-modules:/app/node_modules:rw
       - openclaw-go-mod:/home/node/go/pkg/mod:rw
       - openclaw-playwright-cache:/home/node/.cache/ms-playwright:rw
-      # Named volumes for isolated session storage (avoid host path conflicts)
-      - openclaw-sessions-main:/home/node/.openclaw/agents/main/sessions:rw
-      - openclaw-sessions-codex:/home/node/.openclaw/agents/codex/sessions:rw
     stdin_open: true
     tty: true
     # CLI 是交互式容器，不需要健康检查
@@ -172,7 +167,7 @@ services:
     entrypoint:
       - "sh"
       - "-c"
-      - "mkdir -p /home/node/.openclaw/agents/main/sessions /home/node/.openclaw/agents/codex/sessions && cp -r /home/node/.openclaw-host/* /home/node/.openclaw/ 2>/dev/null || true && chmod -R 777 /home/node/.openclaw 2>/dev/null || true && exec tail -f /dev/null"
+      - "cp -rn /home/node/.openclaw-seed/* /home/node/.openclaw/ 2>/dev/null || true && chown -R node:node /home/node/.openclaw && exec tail -f /dev/null"
     labels:
       - "openclaw.service=cli"
       - "openclaw.environment=dev"

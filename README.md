@@ -67,8 +67,8 @@ graph TD
 | :--------------------------- | :----------- | :------------------------------------------------------------------------------------------------------------------------ |
 | **`Makefile`**               | 🔧 运维入口   | **核心指令集**：统一管理容器生命周期、源码更新、健康检查及配置备份。开发者只需通过 `make <cmd>` 即可完成 90% 的日常操作。 |
 | **`docker-compose.dev.yml`** | 🐳 服务编排   | **开发环境定义**：声明了 Gateway、CLI 以及网络代理服务，配置了复杂的 Named Volumes 实现数据持久化与跨容器共享。           |
-| **`Dockerfile.dev`**         | 🏗️ 镜像构建   | **标准开发版**：集成 Go 1.26, Node 22 LTS, Python 3.13, Playwright 等核心工具，是 DevKit 的默认运行基石。 |
-| **`Dockerfile.java`**        | ☕ 镜像构建   | **Java 增强版**：在标准版基础上，额外集成 JDK 25 LTS, Gradle, Maven, Spring Boot CLI 及 Java 质量审计工具。 |
+| **`Dockerfile.dev`**         | 🏗️ 镜像构建   | **标准开发版**：集成 Go 1.26, Node 22 LTS, Python 3.13, Playwright 等核心工具，是 DevKit 的默认运行基石。                 |
+| **`Dockerfile.java`**        | ☕ 镜像构建   | **Java 增强版**：在标准版基础上，额外集成 JDK 25 LTS, Gradle, Maven, Spring Boot CLI 及 Java 质量审计工具。               |
 | **`.openclaw_src/`**         | 📦 核心源码   | **OpenClaw 主程序**：存放自动化引擎的源代码。支持通过 `make update` 自动同步远程 Release 或手动进行本地开发调试。         |
 | **`docker-dev-setup.sh`**    | 🚀 初始化脚本 | **一键启动逻辑**：处理复杂的宿主机权限修复、网络环境预检、.env 自动生成以及镜像的并行构建流程。                           |
 | **`update-source.sh`**       | 🔄 同步工具   | **源码热拉取**：由 Makefile 调用，通过 GitHub API 自动对比版本并拉取最新的 OpenClaw 发布包，无需手动下载。                |
@@ -76,6 +76,7 @@ graph TD
 | **`docs/`**                  | 📚 资源文档   | **项目资产**：存放架构图 (architecture.svg)、设计手稿以及相关的技术规范文档。                                             |
 | **`CLAUDE.md`**              | 🤖 AI 上下文  | **智能体指南**：为 AI 助手（如 Claude）提供针对该项目的开发规范、指令解析及架构上下文建议。                               |
 | **`~/.openclaw`**            | 📂 宿主机挂载 | **持久化配置**：(默认路径) 存储容器输出的日志、下载的文件、Agent 配置以及用户定义的自动化工作流。                         |
+| **`slack-manifest.json`**    | 💬 Slack 配置 | **应用清单格式**：用于快速在 Slack API 官网导入 App 配置，包含必要的权限 (Scopes) 与事件订阅设置。                        |
 | **`.gitignore`**             | 🙈 忽略列表   | **版本控制过滤**：防止 `.env`、`node_modules` 及本地缓存被提交到远程仓库。                                                |
 
 ---
@@ -129,6 +130,21 @@ make test-proxy
 ### 4. 访问界面
 - **Web 控制台**: [http://127.0.0.1:18789](http://127.0.0.1:18789)
 - **调试日志**: `make logs`
+
+---
+
+## 💬 Slack App 配置
+
+为了启用 Slack 交互功能，请按照以下步骤配置您的 Slack App：
+
+1. **创建 App**: 访问 [Slack API 控制台](https://api.slack.com/apps)，点击 **"Create New App"**。
+2. **使用清单 (Manifest) 导入**: 选择 **"From an app manifest"**，选择目标工作区。
+3. **复制内容**: 将项目根目录下的 `slack-manifest.json` 内容复制到输入框中（确保版本选择 YAML/JSON 对应）。
+4. **启用 Socket Mode**: 清单已默认配置 `socket_mode_enabled: true`。在 App 配置界面确认 **Socket Mode** 已开启并生成 **App-level Token** (需要 `connections:write` 权限)。
+5. **安装 App**: 将 App 安装到您的工作区，并获取 **Bot User OAuth Token**。
+
+> [!IMPORTANT]
+> 确保将获取到的 `SLACK_APP_TOKEN` (xapp-...) 和 `SLACK_BOT_TOKEN` (xoxb-...) 填入您的 `.env` 文件中。
 
 ---
 

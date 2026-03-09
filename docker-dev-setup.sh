@@ -429,7 +429,7 @@ echo "已更新: $ENV_FILE"
 # ============================================================
 
 echo ""
-echo "==> 修复数据目录权限"
+# 修复数据目录权限
 # Use -xdev to restrict chown to the config-dir mount only
 # 使用 root 用户修复权限，但限制在 .openclaw 目录内
 docker compose -f "$DEV_COMPOSE_FILE" run --rm --user root --entrypoint sh openclaw-cli -c \
