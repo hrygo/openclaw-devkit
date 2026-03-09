@@ -94,14 +94,12 @@ RUN apt-get update && \
 # 安装 Node.js 运行时
 COPY --from=builder /usr/local/bin/node /usr/local/bin/
 COPY --from=builder /usr/local/bin/npm /usr/local/bin/
-COPY --from=builder /usr/local/bin/corepack /usr/local/bin/
+
+# 安装 pnpm (直接安装，比 corepack 更稳定)
+RUN npm install -g pnpm
 
 # 复制 pnpm store
 COPY --from=builder /root/.local/share/pnpm /root/.local/share/pnpm
-
-# 激活 corepack (官方推荐)
-RUN corepack enable && \
-    corepack prepare "pnpm@*" --activate
 
 # 安装 Bun 运行时
 COPY --from=builder /root/.bun /root/.bun
