@@ -19,7 +19,7 @@
 ## ✨ 核心特性
 
 - 📦 **一键就绪**：基于 Docker Compose，屏蔽繁琐的底层依赖安装，秒级进入开发状态。
-- 🔧 **双重马力**：
+- 🔧 **三重马力**：
     - **Standard (标准版)**：极致轻量，集成 Go、Node、Python 及主流 AI 编码工具。
     - **Office (Pro 办公版)**：专为**文字工作者**设计，强化 OCR、PDF 处理与 UI 自动化，移除开发密集型工具。
     - **Java Enhanced (Java 增强版)**：专为企业级应用设计，深度集成 JDK 21 及整套质量审计工具链。
@@ -59,7 +59,7 @@ make up
 ```
 
 > [!TIP]
-> 使用预构建镜像可跳过本地构建 (约 10-15 分钟)，快速体验完整功能。
+> 使用预构建镜像可跳过本地构建 (约 20 分钟)，快速体验完整功能。
 
 ---
 
@@ -156,12 +156,109 @@ make install java
 
 ---
 
+## 🔌 高级挂载配置
+
+> ⚠️ **注意**：下方「宿主机路径」列中的某些路径（如 `~/.gitconfig-hotplex`）仅为示例。你需要根据**自己的实际情况**修改 `docker-compose.yml` 中的对应路径。
+
+默认情况下，OpenClaw 容器会自动挂载以下目录，使容器内可以访问宿主机资源。
+
+### 必需挂载（确保基本功能）
+
+> ⚠️ 这些挂载使用 `.env` 中定义的变量 (`OPENCLAW_CONFIG_DIR`, `OPENCLAW_WORKSPACE_DIR`)，无需手动修改
+
+| 宿主机路径 (.env 变量)          | 容器内路径                       | 用途说明                           |
+| :------------------------------ | :------------------------------- | :--------------------------------- |
+| `${OPENCLAW_CONFIG_DIR}`        | `/home/node/.openclaw-seed:ro`   | 配置文件种子（只读，首次启动需要） |
+| `${OPENCLAW_WORKSPACE_DIR}`     | `/home/node/.openclaw/workspace` | 工作区文件（AI 工作目录，必需）    |
+| `openclaw-state` (Named Volume) | `/home/node/.openclaw`           | 持久化状态（会话、凭证、日志等）   |
+
+### 可选挂载（根据需求选择）
+
+| 宿主机路径                           | 容器内路径                        | 用途说明                                              |
+| :----------------------------------- | :-------------------------------- | :---------------------------------------------------- |
+| `~/.claude`                          | `/home/node/.claude`              | Claude Code 会话状态（需要共享会话时挂载）            |
+| `~/.gitconfig-xxx` (需调整)          | `/home/node/.gitconfig:ro`        | **独立 Git 身份**（给 AI 一个专属身份，与你主体区分） |
+| `openclaw-node-modules` (Volume)     | `/app/node_modules`               | Node.js 依赖缓存（加快二次启动）                      |
+| `openclaw-go-mod` (Volume)           | `/home/node/go/pkg/mod`           | Go 模块缓存（使用 Go 时挂载）                         |
+| `openclaw-playwright-cache` (Volume) | `/home/node/.cache/ms-playwright` | Playwright 浏览器缓存（使用浏览器自动化时挂载）       |
+ 
+### 💾 存储持久化：具名卷 (Named Volumes) vs 绑定挂载 (Bind Mounts)
+
+本项目混合使用了两种挂载方式以平衡性能与易用性：
+
+1. **具名卷 (Named Volumes)**：如 `openclaw-state`。
+   - **优势**：由 Docker 完全管理，在 macOS/Windows 上性能极高，且完全持久化（即使删除容器，数据依然存在）。
+   - **缺点**：在宿主机文件系统中「不可见」（通常存储在 Docker 内部路径），不方便直接用物理机工具编辑。
+2. **绑定挂载 (Bind Mounts)**：如 `${OPENCLAW_WORKSPACE_DIR}`。
+   - **优势**：直接映射宿主机目录，方便你直接用 VS Code 或 Finder 访问和编辑。
+   - **缺点**：在 macOS/Windows 上由于文件系统同步开销，性能略低于具名卷；且受宿主机文件权限影响。
+
+> [!IMPORTANT]
+> **反直觉问题**：具名卷具有「初始化保护」特性。如果容器镜像内部路径已有内容，首次挂载具名卷时内容会同步到卷中；但之后镜像更新内容，具名卷**不会**自动覆盖，除非手动清理卷。更多细节请参考 [详细参考手册 (REFERENCE.md)](./docs/REFERENCE.md#💾-存储与持久化-storage--persistence)。
+
+### 为什么使用 `~/.gitconfig-xxx` 而非 `~/.gitconfig`？
+
+**核心原因**：给 OpenClaw 一个**独立的 Git 身份标识**，与你的主体开发环境区分开来。
+
+| 对比       | 你的主体环境      | OpenClaw 环境          |
+| :--------- | :---------------- | :--------------------- |
+| 配置文件   | `~/.gitconfig`    | `~/.gitconfig-hotplex` |
+| Git 用户名 | `YourName`        | `HotPlexBot01`         |
+| Git 邮箱   | `you@example.com` | `noreply@hotplex.dev`  |
+| 用途       | 日常开发          | AI 自动操作            |
+
+**优势**：
+1. **清晰可辨**：GitHub/GitLab 提交记录可以一眼区分是"人"还是"AI"操作的
+2. **权限隔离**：可以给 OpenClaw 的 Git 账号配置不同的 SSH key 或 PAT
+3. **避免冲突**：避免 AI 意外修改你的人类提交历史
+
+> 💡 **提示**：将 `xxx` 替换为你的标识，如 `~/.gitconfig-openclaw`、`~/.gitconfig-bot` 等。
+
+### 添加自定义挂载
+
+如需让 OpenClaw 访问更多宿主机目录，请直接修改 `docker-compose.yml`：
+
+#### 修改 docker-compose.yml（推荐）
+
+在 `openclaw-gateway` 服务的 `volumes` 区域添加新的挂载条目：
+
+```yaml
+services:
+  openclaw-gateway:
+    volumes:
+      # ... 现有挂载 ...
+
+      # 添加自定义挂载
+      - /你的/项目路径:/home/node/你的容器内路径:rw
+```
+
+> ⚠️ **注意**：当前版本 **暂不支持** 通过 `.env` 文件的 `OPENCLAW_EXTRA_MOUNTS` 变量配置。如需此功能，请在 [`docker-compose.yml`](./docker-compose.yml) 中直接添加挂载条目。
+
+### 常见扩展场景
+
+| 场景               | 挂载示例                                        |
+| :----------------- | :---------------------------------------------- |
+| 访问宿主机代码仓库 | `- ~/projects:/home/node/projects:rw`           |
+| 访问下载文件       | `- ~/Downloads:/home/node/Downloads:rw`         |
+| 访问敏感配置       | `- ~/.aws:/home/node/.aws:ro`（只读）           |
+| 共享团队配置       | `/shared/team-config:/home/node/team-config:rw` |
+
+### ⚠️ 注意事项
+
+1. **权限问题**：容器默认以 root 用户运行 (`user: "0:0"`)，写入的文件在宿主机可能显示为 root 所有权
+2. **路径格式**：Windows 路径需要使用 Docker 风格（如 `//c/Users/...`）或 WSL 路径
+3. **只读挂载**：对不需要写入的目录使用 `:ro` 后缀，更安全
+4. **重启生效**：修改挂载配置后需要 `make down && make up` 重新启动
+
+---
+
 ## 📂 核心文件解析
 
 - **`Makefile`**: 项目的总指挥部，封装了所有复杂运维逻辑。
 - **`docker-compose.yml`**: 编排中心，负责网络隔离与数据持久化。
 - **`Dockerfile*`**: 环境的基因组，定义了不同侧重的开发空间。
 - **`.openclaw_src/`**: 自动化引擎的核心阵地。
+- **`roles/`**: (可选) 智能体角色配置，建议通过软链接关联至 OpenClaw Workspace 以实现统一管理。
 - **`.env`**: 您的个性化中心，掌控代理、端口与安全令牌。
 
 ---
@@ -171,6 +268,15 @@ make install java
 <details>
 <summary><b>Q: 容器内网络连不通？</b></summary>
 A: 检查宿主机代理是否开启「允许局域网」。使用 <code>make test-proxy</code> 诊断。
+</details>
+
+<details>
+<summary><b>Q: 启动时报错 "Cannot find module '@mariozechner/pi-ai/oauth"？</b></summary>
+A: 这是因为预构建镜像中的依赖版本与源码不匹配。执行以下命令清理后重试：
+
+<pre><code>make down && docker volume rm openclaw-node-modules && make up</code></pre>
+
+<b>原因</b>：named volume 会持久化 <code>node_modules</code>，当源码更新后，依赖版本可能发生变化，但 volume 仍保留旧版本，导致模块找不到。
 </details>
 
 <details>

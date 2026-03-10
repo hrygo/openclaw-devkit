@@ -70,7 +70,26 @@
 | `slack-manifest.json` | Slack App 快速导入配置单                         |
 
 ---
-## 🤖 高级多智能体配置 (Advanced Multi-Agent Patterns)
+
+## 🤖 Roles 目录与软链接管理 (Roles & Symlinks)
+
+`roles/` 目录用于存放各智能体角色的具体配置（如 `IDENTITY.md`, `TOOLS.md` 等）。为了平衡「便捷开发」与「隐私安全」，本项目建议采用**软链接 (Symbolic Link)** 模式进行管理。
+
+### 1. 为什么使用软链接？
+*   **统一管理**：直接将此目录软链接至你宿主机上的 OpenClaw 配置目录（通常是 `~/.openclaw/workspace`），只需在宿主机修改一次，DevKit 内部立即生效。
+*   **隐私安全**：智能体角色配置往往包含私有的 Prompts 或业务逻辑。使用软链接可以让你在 Git 中保持该目录「干净」，避免意外将个人配置推送到公共仓库。
+*   **开发者自主**：这并非强制。你可以选择建立软链接，也可以直接在 `roles/` 目录下存放物理文件。
+
+### 2. 如何建立软链接？
+在项目根目录下执行类似下方的命令（请根据你的实际路径调整）：
+```bash
+# 示例：将 roles 目录链接到 OpenClaw 的本地配置路径
+ln -s ~/.openclaw/workspace/roles roles
+```
+
+---
+ 
+ ## 🤖 高级多智能体配置 (Advanced Multi-Agent Patterns)
 
 OpenClaw 支持基于 **Commander-Worker (指挥官-执行者)** 模型的高级协作模式，适用于复杂的软件研发全生命周期。
 
@@ -96,10 +115,54 @@ OpenClaw 支持基于 **Commander-Worker (指挥官-执行者)** 模型的高级
 
 ### 4. 长期记忆系统 (Memory System)
 通过在 `identity.rules` 中注入指令，让 Agent 定期更新工作区下的 `memory.md`，确保长周期任务的上下文连续性。
-
+ 
 ---
 
-## 🔁 核心协作逻辑 (Core Collaboration)
+## 💾 存储与持久化 (Storage & Persistence)
+
+OpenClaw DevKit 采用混合存储策略，以适应不同的开发与运行需求。
+
+### 1. 具名卷 (Named Volumes)
+这些卷由 Docker 引擎直接管理（例如 `openclaw-state`，`openclaw-node-modules`）。
+*   **性能优异**：在 macOS/Windows 环境下，由于绕过了 Docker Desktop 的 gRPC-FUSE/Virtio-FS 同步层，读写性能远超绑定挂载。
+*   **持久性**：数据独立于容器生命周期。运行 `make down` 不会删除卷，只有运行 `make clean-volumes` 才会销毁。
+*   **初始化行为 (Gotcha)**：如果是**首次**创建并挂载卷，Docker 会将镜像内对应路径的内容拷贝到卷中。**但一旦卷已存在，镜像更新不会覆盖卷中已有的内容**。这在更新依赖 (node_modules) 时可能导致「代码是新的，依赖是旧的」反直觉问题，此时需手动删除旧卷。
+
+### 2. 绑定挂载 (Bind Mounts)
+这些挂载将宿主机的绝对路径直接映射到容器内（例如 `workspace`，`.env`）。
+*   **实时可见**：你在宿主机上用 VS Code 做的修改会立即反应在容器内，反之亦然。
+*   **权限难题**：在 Linux 宿主机上，可能会遇到 UID/GID 不匹配导致的权限错误。DevKit 的 `docker-setup.sh` 脚本已针对常见场景做了自动修复。
+
+### 3. 注意事项与最佳实践
+*   **不要在绑定挂载中进行高频 IO**：如 `node_modules` 或 `git index` 操作，这在 Mac 上会非常缓慢。
+*   **数据迁移**：具名卷的数据通常藏在 Docker 的虚拟磁盘镜像中，导出数据建议先 `make shell` 进入容器后再进行拷贝。
+
+*   **数据迁移**：具名卷的数据通常藏在 Docker 的虚拟磁盘镜像中，导出数据建议先 `make shell` 进入容器后再进行拷贝。
+ 
++---
++
++## ⚡ 内置技能 (Pre-installed Skills)
++
++OpenClaw DevKit 镜像中预置了大量常用技能，旨在提供「开箱即用」的 AI 能力。
++
++### 1. 技能列表 (部分)
++镜像中集成了 50 多个官方内置技能（位于 `/app/skills`），包括但不限于：
++*   **基础工具**: `summarize`, `weather`, `skill-creator`, `model-usage`
++*   **GitHub 增强**: `gh-issues`, `github`, `gh-activity`
++*   **知识与文档**: `nano-pdf`, `office-agent`, `obsidian`, `notion`
++*   **自动化与系统**: `tmux`, `terminal`, `browser-automation`
++*   **社交集成**: `slack`, `discord`, `imsg`
++
++### 2. 加载机制
++在默认配置下 (`openclaw.json`)，`nativeSkills` 设置为 `auto`。这意味着 OpenClaw 启动时会自动扫描并加载内置技能目录中的所有可用技能。
++
++### 3. 注意事项
++*   **版本同步**: 内置技能会随着底层 OpenClaw 源码的更新而更新。如果你运行了 `make update` 并重新构建了镜像，内置技能也将同步到最新状态。
++*   **自定义技能**: 如果你想添加自己的技能，建议将其放在 `workspace/skills` 目录下，该目录会被挂载到容器内，并由 OpenClaw 的 `nativeSkills` 机制一并发现。
++
+ ---
+ 
+ ## 🔁 核心协作逻辑 (Core Collaboration)
 
 1. **Makefile (入口)** -> **docker-dev-setup.sh (初始化)** -> **Dockerfile (环境构建)**。
 2. **缓存优化**: `node_modules` 与 Go 缓存通过 `Named Volumes` 管理，即使删除容器，二次构建依然极速。

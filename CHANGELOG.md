@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.1.0] - 2026-03-10
+
+### Added
+- **Volume Strategy Documentation**: Comprehensive guide on Named Volumes vs. Bind Mounts, including real-time visibility, permission handling, and performance best practices. Added to `README.md` and `REFERENCE.md`.
+- **Environment Configuration**: Added `OPENCLAW_CONFIG_DIR` to `.env.example` for configurable CLI seed paths.
+
+### Changed
+- **CLI Service Simplification**: Refactored `openclaw-cli-viking` in `docker-compose.yml` to minimize redundant mounts and utilize unified state volumes.
+
 ## [v1.0.7] - 2026-03-09
 
 ### Fixed

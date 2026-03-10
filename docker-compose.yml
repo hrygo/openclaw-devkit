@@ -98,20 +98,40 @@ services:
       - .env
     init: true
     volumes:
+      # === 必需挂载 (Required) ===
+      # 使用 .env 中定义的变量 (OPENCLAW_CONFIG_DIR, OPENCLAW_WORKSPACE_DIR)
       # OpenClaw config seed (mount host dir to separate path)
-      - ${HOME}/.openclaw:/home/node/.openclaw-seed:ro
+      - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw-seed:ro
+      # Workspace (AI working directory - required!)
+      - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace:rw
       # Unified state volume for persistent container data
       - openclaw-state:/home/node/.openclaw:rw
-      # Workspace (project files)
-      - ${HOME}/.openclaw/workspace:/home/node/.openclaw/workspace:rw
+
+      # === 可选挂载 (Optional) - 根据需求选择 ===
       # Claude Code session state (shared with host)
       - ${HOME}/.claude:/home/node/.claude:rw
-      # Git configuration
+      # Git configuration (NOTE: use a separate config for OpenClaw's dedicated Git identity)
+      # Reason: Gives AI its own identity (e.g., HotPlexBot01), separate from your main Git identity
+      # Example: ~/.gitconfig-openclaw, ~/.gitconfig-bot, etc.
       - ${HOME}/.gitconfig-hotplex:/home/node/.gitconfig:ro
-      # Named volumes for caches
+      # Named volumes for caches (optional, speeds up restarts)
       - openclaw-node-modules:/app/node_modules:rw
       - openclaw-go-mod:/home/node/go/pkg/mod:rw
       - openclaw-playwright-cache:/home/node/.cache/ms-playwright:rw
+      # -------------------------------------------------------------------------
+      # 🔌 添加额外挂载点 (Extend with custom mounts)
+      # -------------------------------------------------------------------------
+      # 示例 (Examples):
+      #   - /your/project/path:/home/node/projects:rw
+      #   - /Users/yourname/Downloads:/home/node/Downloads:rw
+      #   - /shared/team-config:/home/node/team-config:ro
+      #
+      # 格式: 宿主机路径:容器内路径:访问模式 (rw=读写, ro=只读)
+      # Format: host_path:container_path:access_mode (rw=read-write, ro=read-only)
+      #
+      # 修改后执行: make down && make up
+      # After modifying: make down && make up
+      # -------------------------------------------------------------------------
     command:
       - "sh"
       - "-c"
@@ -145,20 +165,12 @@ services:
       BROWSER: echo
     init: true
     volumes:
+      # === CLI 容器只需最基本的挂载 ===
+      # 使用 .env 中定义的变量 (OPENCLAW_CONFIG_DIR)
       # OpenClaw config seed (mount host dir to separate path)
-      - ${HOME}/.openclaw:/home/node/.openclaw-seed:ro
+      - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw-seed:ro
       # Unified state volume for persistent container data
       - openclaw-state:/home/node/.openclaw:rw
-      # Workspace (project files)
-      - ${HOME}/.openclaw/workspace:/home/node/.openclaw/workspace:rw
-      # Claude Code session state (shared with host)
-      - ${HOME}/.claude:/home/node/.claude:rw
-      # Git configuration
-      - ${HOME}/.gitconfig-hotplex:/home/node/.gitconfig:ro
-      # Named volumes for caches
-      - openclaw-node-modules:/app/node_modules:rw
-      - openclaw-go-mod:/home/node/go/pkg/mod:rw
-      - openclaw-playwright-cache:/home/node/.cache/ms-playwright:rw
     stdin_open: true
     tty: true
     # CLI 是交互式容器，不需要健康检查
