@@ -31,30 +31,64 @@
 
 ## 🚥 快速开始
 
-### 1. 准备环境
-确保已安装 **Docker (V2)** 和 **Make**。
-> [!TIP]
-> 💡 为了最佳连通性，建议在 `hosts` 中解析 `127.0.0.1 host.docker.internal` 以共享宿主机代理。
+### 方式一：使用预构建镜像 ⭐（推荐）
 
-### 2. 初始化项目
+跳过本地构建，最快体验：
+
 ```bash
-cp .env.example .env    # 配置环境变量
-make update             # 同步核心源码 (首次必做)
+# 1. 克隆项目
+git clone https://github.com/hrygo/openclaw-devkit.git
+
+# 2. 拉取预构建镜像
+# Office 办公版 (推荐)
+docker pull ghcr.io/hrygo/openclaw-devkit:latest-office
+
+# 标准版
+# docker pull ghcr.io/hrygo/openclaw-devkit:latest
+
+# Java 增强版
+# docker pull ghcr.io/hrygo/openclaw-devkit:latest-java
+
+# 3. 配置环境变量
+cp .env.example .env
+# 重点：配置 OPENCLAW_IMAGE 为你选择的版本
+# OPENCLAW_IMAGE=ghcr.io/hrygo/openclaw-devkit:latest-office
+
+# 4. 启动服务
+make up
 ```
 
-### 3. 一键部署
+> [!TIP]
+> 使用预构建镜像可跳过本地构建 (约 10-15 分钟)，快速体验完整功能。
+
+---
+
+### 方式二：本地构建
+
+需要更多时间，但可完全定制。**确保已安装 Docker (V2) 和 Make**。
+
 ```bash
-# 构建并启动标准版 (推荐)
+# 1. 初始化项目
+cp .env.example .env
+make update             # 同步核心源码 (首次必做)
+
+# 2. 选择版本并启动
+# 标准版 (推荐)
 make install
 
-# 构建 Office 办公/自动化版
+# Office 办公/自动化版
 make install office
 
-# 或者构建 Java 增强版
+# Java 增强版
 make install java
 ```
 
-### 4. 验证与访问
+> [!TIP]
+> 💡 为了最佳连通性，建议在 `hosts` 中解析 `127.0.0.1 host.docker.internal` 以共享宿主机代理。
+
+---
+
+### 验证与访问
 - **Web UI**: [http://127.0.0.1:18789](http://127.0.0.1:18789)
 - **连通性测试**: `make test-proxy`
 - **实时日志**: `make logs`
