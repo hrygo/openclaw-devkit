@@ -19,8 +19,6 @@ It integrates an out-of-the-box toolchain designed to help developers quickly bu
 - 🚀 **One-Click Environment Setup**: Based on Docker Compose, start a complete development environment in seconds.
 - 🧠 **AI-Native Integration**: Built-in **Claude Code**, **OpenCode**, and **Pi-Mono**, allowing AI to write and run code directly within the container for you.
 - 🌐 **Global Acceleration**: Intelligent proxy forwarding mechanism specifically optimized for Google and Claude APIs.
-- 🎥 **Automation Capabilities**: Pre-installed Playwright and all browser dependencies, supporting complex web automation tasks.
-- 📝 **Document Processing**: Integrated Pandoc and LaTeX, supporting high-quality document format conversion and generation.
 - 💾 **Persistence**: Utilizes **Named Volumes** for extreme build speed and persistent session data.
 
 ---
