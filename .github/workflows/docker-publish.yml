@@ -21,6 +21,10 @@ jobs:
         id: version
         run: |
           VERSION=$(curl -fsSL "https://api.github.com/repos/openclaw/openclaw/releases/latest" | jq -r '.tag_name')
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo "Failed to fetch version, using fallback"
+            VERSION="v0.0.0"
+          fi
           echo "OpenClaw version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
