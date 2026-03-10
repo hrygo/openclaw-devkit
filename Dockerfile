@@ -166,6 +166,10 @@ FROM debian:stable-slim AS base
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# 安装基础工具 (curl, xz for Node.js tarballs)
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl xz
+
 # 安装 Node.js (用于运行 pnpm/npm)
 ARG NODE_VERSION=22.22.1
 RUN ARCH=$(dpkg --print-architecture) && \
@@ -174,7 +178,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
 # 安装运行时依赖
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends -o Acquire::Retries=3 \
-    curl git openssl \
+    git openssl \
     # 文档处理
     pandoc texlive-latex-base texlive-fonts-recommended \
     # 浏览器自动化依赖
