@@ -34,13 +34,13 @@ jobs:
           cp Dockerfile.java .openclaw_src/Dockerfile.java
           cp Dockerfile.office .openclaw_src/Dockerfile.office
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" > version.txt
 
-      # 上传源码作为 artifact 供并行任务使用
-      - name: Upload source
+      - name: Upload version
         uses: actions/upload-artifact@v4
         with:
-          name: openclaw-source
-          path: .openclaw_src
+          name: openclaw-version
+          path: version.txt
           retention-days: 1
 
   # 并行构建三个 Docker 镜像
@@ -53,23 +53,41 @@ jobs:
         variant:
           - name: standard
             dockerfile: Dockerfile
-            tags: ''
+            suffix: ''
           - name: java
             dockerfile: Dockerfile.java
-            tags: '-java'
+            suffix: '-java'
           - name: office
             dockerfile: Dockerfile.office
-            tags: '-office'
+            suffix: '-office'
     permissions:
       contents: read
       packages: write
 
     steps:
-      - name: Download source
+      - name: Download version
         uses: actions/download-artifact@v4
         with:
-          name: openclaw-source
-          path: .openclaw_src
+          name: openclaw-version
+
+      - name: Read version
+        id: version
+        run: echo "version=$(cat version.txt)" >> $GITHUB_OUTPUT
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch OpenClaw Source
+        run: |
+          REPO="openclaw/openclaw"
+          VERSION=$(cat version.txt)
+          echo "Building version: $VERSION"
+          URL="https://github.com/${REPO}/archive/refs/tags/${VERSION}.tar.gz"
+          mkdir -p .openclaw_src
+          curl -fsSL "$URL" | tar -xzC .openclaw_src --strip-components=1
+          cp Dockerfile .openclaw_src/Dockerfile
+          cp Dockerfile.java .openclaw_src/Dockerfile.java
+          cp Dockerfile.office .openclaw_src/Dockerfile.office
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -105,7 +123,8 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           platforms: linux/amd64,linux/arm64
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.variant.tags }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.version }}${{ matrix.variant.suffix }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest${{ matrix.variant.suffix }}
             ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
