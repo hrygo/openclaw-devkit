@@ -20,7 +20,10 @@
 
 - 📦 **One-Click Ready**: Based on Docker Compose, no more messy dependency installation
 - 🧠 **AI-Native Integration**: Built-in Claude Code, OpenCode, Pi-Mono
-- 🌐 **Global Acceleration**: Built-in proxy optimization, direct access to Google/Claude API
+- 🔧 **Out-of-the-Box**: Pre-configured development environment, no manual setup needed
+- 🚀 **Rapid Startup**: One-click deployment, start the full development stack in seconds
+- 🔒 **Secure Isolation**: Containerized execution, secure and controllable environment isolation
+- 📱 **Multi-Platform**: Support for macOS, Windows, and Linux
 - 💾 **Data Persistence**: Sessions and configs auto-saved, survive restarts
 
 ---
@@ -34,12 +37,12 @@
 
 ### Windows-Specific Requirements
 
-| Component | Requirement | Notes |
-| :--- | :--- | :--- |
-| **OS** | Windows 10 21H2+ or Windows 11 | |
-| **WSL2** | Required | [Installation Guide](https://docs.microsoft.com/en-us/windows/wsl/install) |
-| **Memory** | 8GB+ recommended | Docker Desktop minimum 4GB |
-| **Virtualization** | Must enable in BIOS/UEFI | Intel VT-x / AMD-V |
+| Component          | Requirement                    | Notes                                                                      |
+| :----------------- | :----------------------------- | :------------------------------------------------------------------------- |
+| **OS**             | Windows 10 21H2+ or Windows 11 |                                                                            |
+| **WSL2**           | Required                       | [Installation Guide](https://docs.microsoft.com/en-us/windows/wsl/install) |
+| **Memory**         | 8GB+ recommended               | Docker Desktop minimum 4GB                                                 |
+| **Virtualization** | Must enable in BIOS/UEFI       | Intel VT-x / AMD-V                                                         |
 
 > [!TIP]
 > Windows users should use **Docker Desktop** (includes WSL2 integration). After installation, enable WSL2:
@@ -75,34 +78,34 @@ make onboard
 ```
 
 **Prebuilt Image Versions** (modify `OPENCLAW_IMAGE` in `.env`):
-| Edition | Image Tag |
-| :--- | :--- |
-| Standard | `ghcr.io/hrygo/openclaw-devkit:latest` |
-| Office | `ghcr.io/hrygo/openclaw-devkit:latest-office` |
-| Java | `ghcr.io/hrygo/openclaw-devkit:latest-java` |
+| Edition  | Image Tag                                     |
+| :------- | :-------------------------------------------- |
+| Standard | `ghcr.io/hrygo/openclaw-devkit:latest`        |
+| Office   | `ghcr.io/hrygo/openclaw-devkit:latest-office` |
+| Java     | `ghcr.io/hrygo/openclaw-devkit:latest-java`   |
 
 ---
 
 ### After Startup
 
-| Step | Command | Description |
-| :--- | :--- | :--- |
-| 1️⃣ Start | `make up` | Start container services |
-| 2️⃣ Configure | `make onboard` | Interactive setup for LLM, Feishu, channels |
-| 3️⃣ Access | [http://127.0.0.1:18789](http://127.0.0.1:18789) | Web console |
+| Step        | Command                                          | Description                                 |
+| :---------- | :----------------------------------------------- | :------------------------------------------ |
+| 1️⃣ Start     | `make up`                                        | Start container services                    |
+| 2️⃣ Configure | `make onboard`                                   | Interactive setup for LLM, Feishu, channels |
+| 3️⃣ Access    | [http://127.0.0.1:18789](http://127.0.0.1:18789) | Web console                                 |
 
 ---
 
 ## 🛠️ Common Commands
 
-| Command | Description |
-| :--- | :--- |
-| `make up` / `down` | Start / Stop services |
-| `make onboard` | Interactive setup wizard |
-| `make status` | View runtime status |
-| `make logs` | View real-time logs |
-| `make shell` | Enter container shell |
-| `make update` | Update OpenClaw source |
+| Command            | Description              |
+| :----------------- | :----------------------- |
+| `make up` / `down` | Start / Stop services    |
+| `make onboard`     | Interactive setup wizard |
+| `make status`      | View runtime status      |
+| `make logs`        | View real-time logs      |
+| `make shell`       | Enter container shell    |
+| `make update`      | Update OpenClaw source   |
 
 > 📖 Complete command reference → [Detailed Reference Manual](./docs/REFERENCE.md)
 

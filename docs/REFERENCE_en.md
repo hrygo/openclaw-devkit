@@ -4,6 +4,26 @@ This manual provides in-depth technical details of the OpenClaw DevKit, suppleme
 
 ---
 
+## Guide to Version Selection
+
+### Comparison of the Three Versions
+
+| Feature         |        Standard         |    Java Enhanced     |      Office Pro       |
+| :-------------- | :---------------------: | :------------------: | :-------------------: |
+| Target Audience |     Full-stack Devs     | Java Enterprise Devs |   Office Automation   |
+| Core Env        |    Node, Go, Python     |    Same + JDK 25     |    Node 22, Python    |
+| AI Coding Asst  |     ✅ Full Built-in     |   ✅ Full Built-in    |    Pi-Coding-Agent    |
+| Web Automation  |       Playwright        |      Playwright      | Playwright + Selenium |
+| Doc Conversion  |      Pandoc, LaTeX      |    Pandoc, LaTeX     | Pandoc, LaTeX (Full)  |
+| OCR Recognition |            ❌            |          ❌           | Tesseract-OCR (CN/EN) |
+| Image/PDF Proc  |         Pandoc          |        Pandoc        | ImageMagick, Poppler  |
+| Data Analysis   |            ❌            |          ❌           |     Pandas, Numpy     |
+| Build Tools     |        pnpm, Bun        |    Gradle, Maven     |       pnpm, Bun       |
+| Key Highlight   | Lightweight, AI-focused | Security/Audit Tools |   All-in-one Office   |
+| Image Size      |          6.4GB          |        8.08GB        |         4.7GB         |
+
+---
+
 ## 🛠️ Maintenance Command Manual
 
 | Category            | Command               | Description                                                    |
@@ -136,11 +156,20 @@ By default, the `nativeSkills` setting in `openclaw.json` is set to `auto`. Upon
 
 ---
  
-## 🔁 Core Collaboration Logic
+## 🔁 Core Logic & Workflow
 
 1. **Makefile (Entry)** -> **docker-dev-setup.sh (Init)** -> **Dockerfile (Runtime)**.
 2. **Cache Optimization**: `node_modules` and Go caches use `Named Volumes` for extreme build speed.
-3. **Security**: Runs as the `node` user (UID 1000). Permissions are auto-corrected by the setup script during startup using a root container.
+3. **Security**: Runs as the `node` user (UID 1000). Permissions are automatically managed by the entrypoint and setup scripts.
+
+### Important Considerations
+
+1. **Permission Control**: The container runs as the `node` user (UID 1000) by default.
+   - **macOS/Windows**: Docker Desktop handles permission mapping automatically (usually transparent).
+   - **Linux**: Files written will typically be owned by UID 1000. If you encounter permission issues, refer to the auto-fix logic in `docker-entrypoint.sh`.
+2. **Path Format**: Windows paths should use Docker style (e.g., `//c/Users/...`) or WSL paths.
+3. **Read-Only Mounts**: Use the `:ro` suffix for directories that don't need write access for better security.
+4. **Restart Required**: Modifications to mount configurations require `make down && make up` to take effect.
 
 ---
 <p align="center">

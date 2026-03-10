@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.2.1] - 2026-03-10
+
+### Added
+- **Official Onboarding Wizard**: Added `make onboard` command for interactive configuration of LLM, Feishu, and channels.
+- **Zero-Config Bootstrap**: The container automatically initializes if configuration is missing on first run.
+- **Domestic Mirror Support**: Support for APT (USTC), NPM (Alibaba), and Python (Tsinghua) mirrors via `.env`.
+- **Docker Hub Mirroring**: Introduced `DOCKER_MIRROR` variable to handle Docker Hub pull issues in China.
+- **Build Quality**: Added Apt retries and fixed Dockerfile multi-stage `ARG` inheritance.
+
+### Fixed
+- **Permission Management**: Fixed outdated documentation regarding root permissions; container now runs safely as `node` user (UID 1000).
+- **Documentation Parity**: Synchronized technical details and comparison tables between Chinese and English manuals (`README`, `REFERENCE`).
+
+### Changed
+- **Feature Highlights**: Updated README with more concise "Out-of-the-Box" and "Secure Isolation" features.
+
 ## [v1.1.0] - 2026-03-10
 
 ### Added
