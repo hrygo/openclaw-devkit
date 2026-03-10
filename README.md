@@ -22,7 +22,7 @@
 - 🔧 **双重马力**：
     - **Standard (标准版)**：极致轻量，集成 Go、Node、Python 及主流 AI 编码工具。
     - **Office (Pro 办公版)**：专为**文字工作者**设计，强化 OCR、PDF 处理与 UI 自动化，移除开发密集型工具。
-    - **Java Enhanced (Java 增强版)**：专为企业级应用设计，深度集成 JDK 25 及整套质量审计工具链。
+    - **Java Enhanced (Java 增强版)**：专为企业级应用设计，深度集成 JDK 21 及整套质量审计工具链。
 - 🧠 **AI 原生集成**：内置 **Claude Code**, **OpenCode** 与 **Pi-Mono**，让 AI 直接在容器内为您编写和运行代码。
 - 🌐 **跨境加速**：智能代理转发机制，针对 Google/Claude API 进行了专门优化。
 - 💾 **数据持久化**：采用 **Named Volumes**，实现极速构建缓存与会话持久化。
@@ -66,7 +66,7 @@ make install java
 | 特性           | Standard (标准版) | Java Enhanced (增强版) |  Office (Pro 办公版)  |
 | :------------- | :---------------: | :--------------------: | :-------------------: |
 | 适用人群       |     全栈开发      |    Java 企业级开发     |   文案与办公自动化    |
-| 核心环境       | Node, Go, Python  |     同左 + JDK 25      |    Node 22, Python    |
+| 核心环境       | Node, Go, Python  |     同左 + JDK 21      |    Node 22, Python    |
 | AI Coding 助手 |    ✅ 完整内置     |       ✅ 完整内置       |    Pi-Coding-Agent    |
 | 网页自动化     |    Playwright     |       Playwright       | Playwright + Selenium |
 | 文档转换       |   Pandoc, LaTeX   |     Pandoc, LaTeX      | Pandoc, LaTeX (Full)  |

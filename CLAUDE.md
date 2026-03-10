@@ -129,6 +129,15 @@ docker build --check -f Dockerfile.dev .  # Validate without full build
 - Node.js: 22.x LTS (24.x not yet released)
 - Go: 1.26.x (1.27.x not yet released)
 - golangci-lint: 1.64.x
+- Java: 21 LTS (via Eclipse Temurin)
+
+### Installation Methods
+- **Node.js**: Use NodeSource APT repository (not direct nodejs.org download)
+  - More reliable for multi-architecture builds (amd64 + arm64)
+- **Java**: Use Eclipse Temurin APT repository (not SDKMAN)
+  - SDKMAN has reliability issues in Docker builds
+  - `apt-get install temurin-21-jdk`
+- **Gradle/Maven**: Download binaries directly, not via SDKMAN
 
 ### Download Source Alternatives
 - Spring Boot CLI: Use `repo1.maven.org` (repo.spring.io requires auth)
@@ -138,3 +147,6 @@ docker build --check -f Dockerfile.dev .  # Validate without full build
 - Duplicate ARG/ENV declarations (causes warnings)
 - Duplicate ENV variable settings (GOPATH set twice)
 - Using non-existent version numbers
+- **ARG scope in multi-stage builds**: ARG must be redeclared in each stage that uses it
+- **Package naming**: Use standard Debian Bookworm packages (no `t64` suffix - that's for Trixie/testing)
+- **Architecture in URLs**: Always use dynamic `$(dpkg --print-architecture)` for downloads, never hardcode `x64`

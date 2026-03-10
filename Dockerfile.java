@@ -9,10 +9,6 @@ ARG GOLANGCI_LINT_VERSION=1.64.8
 ARG PYTHON_PACKAGES="python-pptx openpyxl python-docx beautifulsoup4 lxml pyyaml pandoc"
 ARG INSTALL_BROWSER=1
 # Java 开发参数
-ARG JDK_VERSION=25
-ARG JDK_VENDOR=tem
-ARG GRADLE_VERSION=8.14
-ARG MAVEN_VERSION=3.9.9
 ARG SPRING_BOOT_VERSION=3.5.3
 ARG GOOGLE_JAVA_FORMAT_VERSION=1.27.0
 ARG CHECKSTYLE_VERSION=10.23.1
@@ -22,8 +18,8 @@ ARG SPOTBUGS_VERSION=4.9.3
 # OpenClaw 开发环境定制镜像 (Java 增强版)
 # 基于 debian:stable-slim，集成多语言开发栈
 #
-# 包含工具链: Node.js 22, Go 1.26, Java 25, Python 3, Bun, pnpm
-# 额外集成: JDK 25, Gradle 8.14, Maven 3.9.9, Spring Boot CLI
+# 包含工具链: Node.js 22, Go 1.26, Java 21, Python 3, Bun, pnpm
+# 额外集成: JDK 21, Gradle 8.14, Maven 3.9.9, Spring Boot CLI
 # 开发工具: Playwright, Claude Code, OpenCode, golangci-lint
 #
 # 构建命令:
@@ -46,7 +42,7 @@ ARG INSTALL_BROWSER=1
 LABEL org.opencontainers.image.base.name="docker.io/library/debian:stable-slim" \
   org.opencontainers.image.source="https://github.com/openclaw/openclaw" \
   org.opencontainers.image.title="OpenClaw Dev (2025 Java Enhanced)" \
-  org.opencontainers.image.description="OpenClaw gateway with 2025 toolchain (Node 22 LTS, Go 1.26, Python 3.13, Java 25)"
+  org.opencontainers.image.description="OpenClaw gateway with 2025 toolchain (Node 22 LTS, Go 1.26, Python 3.13, Java 21)"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -159,23 +155,37 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     done
 
 # ============================================================
-# Java 开发工具链 (JDK 25 LTS, Gradle, Maven)
+# Java 开发工具链 (JDK 21 LTS, Gradle, Maven)
 # ============================================================
 
-# SDKMAN 安装
-ENV SDKMAN_DIR=/root/.sdkman
-RUN curl -fsSL "https://get.sdkman.io" | bash
+# 安装 OpenJDK 21 via Eclipse Temurin
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends -o Acquire::Retries=3 \
+    wget apt-transport-https && \
+    mkdir -p /etc/apt/keyrings && \
+    wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor -o /etc/apt/keyrings/adoptium.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb $(cat /etc/os-release | grep VERSION_CODENAME | cut -d= -f2) main" > /etc/apt/sources.list.d/adoptium.list && \
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends temurin-21-jdk && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# JDK 25 LTS, Gradle, Maven 安装
-RUN --mount=type=cache,target=/root/.sdkman/archives \
-    bash -c "source ${SDKMAN_DIR}/bin/sdkman-init.sh && \
-    sdk install java ${JDK_VERSION}-${JDK_VENDOR} && \
-    sdk install gradle ${GRADLE_VERSION} && \
-    sdk install maven ${MAVEN_VERSION}"
-
-ENV JAVA_HOME=${SDKMAN_DIR}/candidates/java/current
-ENV PATH="${JAVA_HOME}/bin:${SDKMAN_DIR}/candidates/gradle/current/bin:${SDKMAN_DIR}/candidates/maven/current/bin:${PATH}"
+ENV JAVA_HOME=/usr/lib/jvm/temurin-21-jdk-amd64
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8"
+
+# 安装 Gradle 8.14
+RUN wget -q https://services.gradle.org/distributions/gradle-8.14-bin.zip -O /tmp/gradle.zip && \
+    unzip -q /tmp/gradle.zip -d /opt && \
+    ln -sf /opt/gradle-8.14/bin/gradle /usr/local/bin/gradle && \
+    rm /tmp/gradle.zip
+
+# 安装 Maven 3.9.9
+RUN wget -q https://archive.apache.org/dist/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz -O /tmp/maven.tar.gz && \
+    tar -xzf /tmp/maven.tar.gz -C /opt && \
+    ln -sf /opt/apache-maven-3.9.9/bin/mvn /usr/local/bin/mvn && \
+    rm /tmp/maven.tar.gz
+
+ENV PATH="/usr/local/bin:${PATH}"
 
 # ============================================================
 # Java 开发工具 (Spring Boot, Formatter, Linter)

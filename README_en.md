@@ -20,7 +20,7 @@ It integrates an out-of-the-box toolchain designed to help developers quickly bu
 - 🛠️ **Dual Image Version Selection**:
     - **Standard Edition (Dockerfile)**: Integrated with Go 1.26, Node 22 LTS, Python 3.13, pnpm, Bun, Playwright, etc.
     - **Office Edition (Pro)**: Specialized for **non-developers**. Includes enhanced OCR, PDF tools, and UI automation.
-    - **Java Enhanced Edition (Dockerfile.java)**: Deeply integrated with **JDK 25 (LTS)** and enterprise-grade tools.
+    - **Java Enhanced Edition (Dockerfile.java)**: Deeply integrated with **JDK 21 (LTS)** and enterprise-grade tools.
 - 🧠 **AI-Native Integration**: Built-in **Claude Code**, **OpenCode**, and **Pi-Mono**, allowing AI to write and run code directly within the container for you.
 - 🌐 **Global Acceleration**: Intelligent proxy forwarding mechanism specifically optimized for Google and Claude APIs.
 - 🎥 **Automation Capabilities**: Pre-installed Playwright and all browser dependencies, supporting complex web automation tasks.
@@ -83,7 +83,7 @@ make test-proxy
 | Feature              |    Standard Edition    | Java Enhanced Edition |   Office (Pro Edition)   |
 | :------------------- | :--------------------: | :-------------------: | :----------------------: |
 | Target Audience      |      General Devs      |    Java Enterprise    | Automation & Copywriting |
-| Environment          |    Node, Go, Python    |     Same + JDK 25     |     Node 22, Python      |
+| Environment          |    Node, Go, Python    |     Same + JDK 21     |     Node 22, Python      |
 | AI Coding Assistants |       ✅ Included       |      ✅ Included       |     Pi-Coding-Agent      |
 | Automation           |       Playwright       |      Playwright       |  Playwright + Selenium   |
 | Doc Conversion       |     Pandoc, LaTeX      |     Pandoc, LaTeX     |    Pandoc, Full LaTeX    |
