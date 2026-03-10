@@ -7,15 +7,17 @@
 ## 📖 目录
 
 - [快速开始](#快速开始详细说明)
-- [运维命令](#运维命令手册)
 - [版本选择](#版本选择指南)
+- [运维命令](#运维命令手册)
 - [环境变量](#环境变量详细说明)
+- [目录结构](#目录结构详解)
+- [Roles 配置](#roles-目录与软链接管理)
 - [挂载配置](#挂载配置详解)
-- [存储持久化](#存储与持久化)
 - [Slack 集成](#slack-集成)
 - [架构设计](#架构与工作流)
 - [安全警告](#安全警告)
-- [常见问题](#常见问题)
+- [多平台分发](#全平台支持与分发)
+- [常见问题](#常见问题-faq)
 
 ---
 
@@ -385,36 +387,6 @@ A: 运行 <code>make backup-config</code> 备份到宿主机 <code>~/.openclaw-b
 
 ---
 
-<p align="center">
-  <a href="../README.md">← 返回主 README</a>
-</p>
-
-OpenClaw DevKit 镜像中预置了大量常用技能，旨在提供「开箱即用」的 AI 能力。
-
-### 1. 技能列表 (部分)
-镜像中集成了 50 多个官方内置技能（位于 `/app/skills`），包括但不限于：
-*   **基础工具**: `summarize`, `weather`, `skill-creator`, `model-usage`
-*   **GitHub 增强**: `gh-issues`, `github`, `gh-activity`
-*   **知识与文档**: `nano-pdf`, `office-agent`, `obsidian`, `notion`
-*   **自动化与系统**: `tmux`, `terminal`, `browser-automation`
-*   **社交集成**: `slack`, `discord`, `imsg`
-
-### 2. 加载机制
-在默认配置下 (`openclaw.json`)，`nativeSkills` 设置为 `auto`。这意味着 OpenClaw 启动时会自动扫描并加载内置技能目录中的所有可用技能。
-
-### 3. 注意事项
-*   **版本同步**: 内置技能会随着底层 OpenClaw 源码的更新而更新。如果你运行了 `make update` 并重新构建了镜像，内置技能也将同步到最新状态。
-*   **自定义技能**: 如果你想添加自己的技能，建议将其放在 `workspace/skills` 目录下，该目录会被挂载到容器内，并由 OpenClaw 的 `nativeSkills` 机制一并发现。
-
----
-
-## 🔁 核心协作逻辑 (Core Collaboration)
-
-1. **Makefile (入口)** -> **docker-dev-setup.sh (初始化)** -> **Dockerfile (环境构建)**。
-2. **缓存优化**: `node_modules` 与 Go 缓存通过 `Named Volumes` 管理，即使删除容器，二次构建依然极速。
-3. **权限安全**: 镜像内部使用 `node` 用户 (UID 1000)运行，所有卷权限在启动前由 setup 脚本通过 root 容器自动修正。
-
----
 <p align="center">
   <a href="../README.md">← 返回主 README</a>
 </p>
