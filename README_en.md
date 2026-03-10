@@ -16,7 +16,7 @@ It integrates an out-of-the-box toolchain designed to help developers quickly bu
 
 ## ✨ Key Features
 
-- 🔐 **Security Isolation**: Containerized config separation, network exposed only to localhost
+- 🔐 **Security Isolation**: Containerized runtime + isolated Git identity + least privilege, network exposed to localhost only
 - 🚀 **One-Click Environment Setup**: Based on Docker Compose, start a complete development environment in seconds.
 - 🛠️ **Triple Image Version Selection**:
     - **Standard Edition (Dockerfile)**: Integrated with Go 1.26, Node 22 LTS, Python 3.13, pnpm, Bun, Playwright, etc.

@@ -18,7 +18,7 @@
 
 ## ✨ 核心特性
 
-- 🔐 **安全隔离**：容器与宿主机配置分离，网络仅暴露本地localhost
+- 🔐 **安全隔离**：容器运行 + 独立 Git 身份 + 最小权限原则，网络仅暴露本地
 - 📦 **一键就绪**：基于 Docker Compose，屏蔽繁琐依赖
 - 🧠 **AI 原生集成**：内置 Claude Code、OpenCode、Pi-Mono
 - 🌐 **跨境加速**：内置代理优化，直连 Google/Claude API
