@@ -191,16 +191,16 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 WORKDIR /app
 
 # 复制依赖声明文件（利用 Docker 层缓存）
-COPY .openclaw_src/package.json .openclaw_src/pnpm-lock.yaml .openclaw_src/pnpm-workspace.yaml .openclaw_src/.npmrc ./
-COPY .openclaw_src/ui/package.json ./ui/package.json
-COPY .openclaw_src/patches ./patches
-COPY .openclaw_src/scripts ./scripts
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY ui/package.json ./ui/package.json
+COPY patches ./patches
+COPY scripts ./scripts
 
 # 安装依赖
 RUN NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile
 
 # 复制源代码并构建
-COPY .openclaw_src .
+COPY . .
 
 # 构建应用
 RUN pnpm build
