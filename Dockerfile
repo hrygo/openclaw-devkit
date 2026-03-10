@@ -3,7 +3,7 @@
 # ============================================================
 # 全局构建参数 (跨所有阶段)
 # ============================================================
-ARG BUN_VERSION=1.2.19
+ARG BUN_VERSION=1.3.10
 ARG GO_VERSION=1.26.1
 ARG GOLANGCI_LINT_VERSION=1.64.8
 ARG PYTHON_PACKAGES="python-pptx openpyxl python-docx beautifulsoup4 lxml pyyaml pandoc"
