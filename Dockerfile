@@ -111,8 +111,8 @@ ENV PATH="/root/.bun/bin:${PATH}"
 # pnpm (Node 包管理器)
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Playwright CLI (浏览器自动化命令行工具)
-RUN npm install -g @playwright/test@latest
+# Playwright (浏览器自动化测试框架 + CLI)
+RUN npm install -g @playwright/test@latest @playwright/cli@latest
 
 # Claude Code CLI (Anthropic 官方 CLI 工具)
 RUN npm install -g @anthropic-ai/claude-code@latest
@@ -264,6 +264,25 @@ RUN for dir in /app/extensions /app/.agent /app/.agents; do \
     find "$dir" -type f -exec chmod 644 {} +; \
     fi; \
     done
+
+# 安装 Playwright CLI skills (让 Claude Code 可以调用 Playwright)
+RUN mkdir -p /home/node/.claude/skills/playwright-cli/references && \
+    curl -fsSL -o /home/node/.claude/skills/playwright-cli/SKILL.md \
+    https://raw.githubusercontent.com/microsoft/playwright-cli/main/skills/playwright-cli/SKILL.md && \
+    curl -fsSL -o /home/node/.claude/skills/playwright-cli/references/request-mocking.md \
+    https://raw.githubusercontent.com/microsoft/playwright-cli/main/skills/playwright-cli/references/request-mocking.md && \
+    curl -fsSL -o /home/node/.claude/skills/playwright-cli/references/running-code.md \
+    https://raw.githubusercontent.com/microsoft/playwright-cli/main/skills/playwright-cli/references/running-code.md && \
+    curl -fsSL -o /home/node/.claude/skills/playwright-cli/references/session-management.md \
+    https://raw.githubusercontent.com/microsoft/playwright-cli/main/skills/playwright-cli/references/session-management.md && \
+    curl -fsSL -o /home/node/.claude/skills/playwright-cli/references/storage-state.md \
+    https://raw.githubusercontent.com/microsoft/playwright-cli/main/skills/playwright-cli/references/storage-state.md && \
+    curl -fsSL -o /home/node/.claude/skills/playwright-cli/references/test-generation.md \
+    https://raw.githubusercontent.com/microsoft/playwright-cli/main/skills/playwright-cli/references/test-generation.md && \
+    curl -fsSL -o /home/node/.claude/skills/playwright-cli/references/tracing.md \
+    https://raw.githubusercontent.com/microsoft/playwright-cli/main/skills/playwright-cli/references/tracing.md && \
+    curl -fsSL -o /home/node/.claude/skills/playwright-cli/references/video-recording.md \
+    https://raw.githubusercontent.com/microsoft/playwright-cli/main/skills/playwright-cli/references/video-recording.md
 
 # 暴露 CLI
 RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw \

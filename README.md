@@ -38,6 +38,7 @@
 ```bash
 # 1. 克隆项目
 git clone https://github.com/hrygo/openclaw-devkit.git
+cd openclaw-devkit
 
 # 2. 拉取预构建镜像
 # Office 办公版 (推荐)

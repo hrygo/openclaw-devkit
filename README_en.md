@@ -44,8 +44,11 @@ Ensure the host machine has:
 
 ### 2. Initialize Environment
 ```bash
+# 0. Enter the directory
+cd openclaw-devkit
+
 # 1. Prepare environment variable file
-cp .env.example
+cp .env.example .env
 
 # 2. Pull OpenClaw core source (Must do for the first time, or image build will fail)
 # The script automatically pulls the latest code from GitHub Releases and extracts it to .openclaw_src/
