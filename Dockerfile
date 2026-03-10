@@ -170,6 +170,7 @@ RUN pnpm ui:build
 FROM debian:stable-slim AS base
 
 ARG BUN_VERSION=1.3.10
+ARG PYTHON_PACKAGES="python-pptx openpyxl python-docx beautifulsoup4 lxml pyyaml pandoc"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
