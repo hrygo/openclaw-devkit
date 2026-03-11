@@ -15,12 +15,13 @@ This manual is the definitive technical specification and operational guide for 
 - [4. One-Click Flavor Switching](#4-one-click-version-switching) - Standard vs. Java vs. Office technical specs.
 - [5. Data Persistence Deep Dive](#5-deep-dive-data-mounting--persistence) - Understanding Host Binds vs. Named Volumes.
 - [6. Roles & Dev flow Optimization](#6-roles--dev-flow-optimization) - Git workflow best practices with symlinks.
+- [7. Advanced Usage: Custom Images & Composability](#7-advanced-usage-custom-images--composability) - Deep insights on seamless architectural extensibility.
 - [Appx: Slack Setup Beginner Guide](SLACK_SETUP_BEGINNER_en.md) | [Feishu (Lark) Guide](#)
 
 ### 🔴 Architect Tier: Core Logic & Security Foundation
-- [7. Layered Orchestration Analysis](#7-architecture-layered-orchestration) - The mechanics of `docker-compose.build.yml` dynamic injection.
-- [8. Initialization Lifecycle](#8-initialization-deep-trace) - 5 phases of permission fixing and seed populating.
-- [9. Security Sandbox & Network Borders](#9-security-whitepaper-sandbox--network-binding) - Capabilities, isolation, and LAN binding.
+- [8. Layered Orchestration Analysis](#8-core-logic-layered-orchestration) - The mechanics of `docker-compose.build.yml` dynamic injection.
+- [9. Initialization Lifecycle](#9-initialization-lifecycle-deep-trace) - 5 phases of permission fixing and seed populating.
+- [10. Security Sandbox & Network Borders](#10-security-whitepaper-sandbox--network-binding) - Capabilities, isolation, and LAN binding.
 - [Appendix: Orchestration Logic Flow (ORCHESTRATION.md)](ORCHESTRATION.md) - Deep dive into the installation lifecycle.
 
 ---
@@ -104,6 +105,25 @@ For team collaboration or Git management, we recommend the **"Symlink Isolation 
 1. Set the `roles` directory as a symbolic link to your project: `ln -s ./my-private-roles ./roles`.
 2. Add the actual path or the link to [`.gitignore`](.gitignore) to keep architectures public and credentials hidden.
 
+### 7. Advanced Usage: Custom Images & Composability
+When the pre-built toolchains cannot meet specific business requirements, DevKit provides exceptionally flexible extension capabilities. The best practice is **absolutely not** to modify the official `Dockerfile` or `docker-compose.yml` directly, but to seamlessly leverage its designed extensibility.
+
+**Best Practice A: Securely Tailoring Business Images (Custom Image)**
+If you need to install specific system packages (like `ffmpeg`) or inject corporate internal certificates:
+1. **Inheritance Model**: Create a brand new `Dockerfile.custom` and utilize the official image as the Base Image.
+   ```dockerfile
+   FROM ghcr.io/hrygo/openclaw-devkit:latest
+   USER root
+   RUN apt-get update && apt-get install -y ffmpeg
+   USER node
+   ```
+2. **Seamless Integration**: Once your bespoke image is built, simply declare `OPENCLAW_IMAGE=my-custom-openclaw:latest` in your `.env`. You can securely switch environments without dismantling any official startup scripts, guaranteeing you effortlessly receive future framework updates.
+
+**Best Practice B: Non-Intrusive Orchestration Enhancement (Compose Override)**
+When you need to hook specialized business persistence directories to the gateway container, or inject a sidecar service locally (such as an ephemeral Redis Server):
+1. **Establish an Override File**: Scaffold a `docker-compose.override.yml` inside the root directory. The Docker Compose engine natively honors this file to merge, augment, and override the primary configuration (`docker-compose.yml`) securely. This completely evades Git conflict hazards.
+2. **Inject Volumes Elegantly**: Decouple logic cleanly by defining your custom Volumes and extra parameters natively inside the override file, enabling true segregation of configuration overrides from your core tracked codebase.
+
 ---
 
 ## ⚡ Extension: Third-party Communication Platforms
@@ -119,13 +139,13 @@ OpenClaw supports connecting to various office platforms via Socket Mode.
 
 ## 🔴 Architect Tier: Deep Architectural Insights
 
-### 7. Core Logic: Layered Orchestration
+### 8. Core Logic: Layered Orchestration
 The DevKit `Makefile` is a precision engine that dynamically reassembles Compose files based on environment variables:
 - **Static Layer** (`docker-compose.yml`): Defines the topology.
 - **Enhancement Layer** (`docker-compose.build.yml`): Activated when `OPENCLAW_SKIP_BUILD=false`, injecting Dockerfile paths and build-time proxies.
 - **Dynamic Overrides**: `docker-setup.sh` generates `docker-compose.dev.extra.yml` at runtime to handle custom user mounts (`OPENCLAW_EXTRA_MOUNTS`).
 
-### 8. Initialization Lifecycle (Deep Trace)
+### 9. Initialization Lifecycle (Deep Trace)
 When you start a container, `docker-entrypoint.sh` takes over for the first 5 seconds:
 1. **UID Adaptation**: Detects the host User ID and performs `chown` to fix permissions on mounted volumes, eliminating `EACCES` errors.
 2. **Seed Injection**: If the workspace is empty, it automatically populates it from the internal `/home/node/.openclaw-seed`.
@@ -133,7 +153,7 @@ When you start a container, `docker-entrypoint.sh` takes over for the first 5 se
 
 **Visual Architecture Reference**: For precision details on every decision step, refer to [ORCHESTRATION.md](ORCHESTRATION.md).
 
-### 9. Security Whitepaper: Sandbox & Network Binding
+### 10. Security Whitepaper: Sandbox & Network Binding
 > [!IMPORTANT]
 > **Least Privilege Principle**:
 > - Containers have `NET_RAW` and `NET_ADMIN` capabilities dropped to prevent AI agents from probing host LANs.
