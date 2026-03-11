@@ -26,14 +26,14 @@ EXTRA_COMPOSE_FILE="$ROOT_DIR/docker-compose.dev.extra.yml"
 # Visual Styling (Whitepaper Grade)
 # ============================================================
 
-# ANSI Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-NC='\033[0m' # No Color
+# ANSI Colors (Calculated for portability)
+RED=$(printf '\033[0;31m')
+GREEN=$(printf '\033[0;32m')
+YELLOW=$(printf '\033[1;33m')
+BLUE=$(printf '\033[0;34m')
+CYAN=$(printf '\033[0;36m')
+BOLD=$(printf '\033[1m')
+NC=$(printf '\033[0m') # No Color
 
 # Output Prefixes
 INFO="${BLUE}${BOLD}==>${NC}"
@@ -42,12 +42,12 @@ WARN="${YELLOW}${BOLD}⚠${NC}"
 ERROR="${RED}${BOLD}✖${NC}"
 
 fail() {
-  echo -e "${ERROR}${RED}错误: $*${NC}" >&2
+  echo "${ERROR}${RED}错误: $*${NC}" >&2
   exit 1
 }
 
 warn() {
-  echo -e "${WARN}${YELLOW}警告: $*${NC}" >&2
+  echo "${WARN}${YELLOW}警告: $*${NC}" >&2
 }
 
 success() {
