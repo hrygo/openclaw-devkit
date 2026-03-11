@@ -46,7 +46,7 @@ fi
 if [ -f "$CONFIG_FILE" ]; then
     run_as_node openclaw config set gateway.mode local --strict-json >/dev/null 2>&1 || true
     run_as_node openclaw config set gateway.bind lan --strict-json >/dev/null 2>&1 || true
-    run_as_node openclaw config set gateway.controlUi.allowedOrigins '["http://127.0.0.1:18789"]' --strict-json >/dev/null 2>&1 || true
+    run_as_node openclaw config set gateway.controlUi.allowedOrigins "${OPENCLAW_ALLOWED_ORIGINS:-[\"http://127.0.0.1:18789\"]}" --strict-json >/dev/null 2>&1 || true
 fi
 
 # 4. Execute CMD
