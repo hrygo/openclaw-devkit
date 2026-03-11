@@ -107,7 +107,9 @@ FEISHU_EVENT_MODE=websocket
 ```
 
 > [!IMPORTANT]
-> Variable names can evolve across OpenClaw versions. If you configure through `make onboard`, treat values in `~/.openclaw/openclaw.json` as source of truth. The `.env` snippet here provides a practical mapping reference.
+> The `FEISHU_*` variable names shown above are **illustrative examples only**. They are **not** guaranteed to appear in `.env.example` or be read directly by OpenClaw.
+> For real deployments, `make onboard` and the generated config in `~/.openclaw/openclaw.json` are the **authoritative configuration path**.
+> Use this `.env` snippet only as a **conceptual mapping** between your Feishu app credentials and potential environment variables, or if your own deployment tooling is explicitly wired to expect these names.
 
 ---
 
