@@ -256,6 +256,9 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: |
             BASE_IMAGE=${{ env.REGISTRY }}/${{ needs.prepare.outputs.image_name }}:${{ needs.prepare.outputs.version }}
+            GH_VERSION=${{ needs.prepare.outputs.gh_version }}
+            YQ_VERSION=${{ needs.prepare.outputs.yq_version }}
+            LG_VERSION=${{ needs.prepare.outputs.lg_version }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
