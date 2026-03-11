@@ -59,7 +59,7 @@ If Feishu shows this message when you save long-connection settings:
 "No app connection detected. Please make sure the long connection is established before saving.",
 handle it in this order:
 
-1. Fill correct App ID / App Secret first, then start OpenClaw services.
+1. Make sure you have obtained your App ID / App Secret (see Step 4), filled them correctly in OpenClaw, then start OpenClaw services.
 2. In Feishu console, confirm the app is already published and installed to the tenant.
 3. Verify Event Subscriptions is set to **Long Connection (WebSocket)** and keep that page refreshed.
 4. Check gateway logs for success markers such as `WebSocket connected` or `event stream started`.
