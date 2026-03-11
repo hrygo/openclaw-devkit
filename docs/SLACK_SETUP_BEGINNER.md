@@ -160,5 +160,43 @@ SLACK_APP_TOKEN=xapp-x-xxxxxxxxxxx-xxxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 3. 对它说一句 `"Hi"`，如果它响应了你，说明接入成功！
 
 > [!IMPORTANT]
-> **关于网络代理**：
-> 如果你在容器内运行且无法连接 Slack，请务必检查 `.env` 中的 `HTTP_PROXY` 是否正确指向了宿主机的代理端口（例如：`http://host.docker.internal:7897`）。
+> **关于网络代理 (生产环境必读)**：
+> 由于国内访问 Slack API 可能受限，请务必检查 `.env` 中的 `HTTP_PROXY` 是否正确指向了宿主机的代理端口。
+> 例如：`HTTP_PROXY=http://host.docker.internal:7897`。
+
+---
+
+## 🚀 进阶与高级配置 (Advanced Configuration)
+
+如果你在多人协作的团队环境中使用 OpenClaw，仅配置两把“钥匙”可能还不够。你需要更精细的权限管控来避免机器人胡乱接话或越权操作。
+
+打开你的 [`.env`](.env) 文件，你可以追加配置以下高级变量：
+
+### 1. 绑定超级管理员 (Admin Binding)
+默认情况下，任何人都可以对 OpenClaw 发号施令。设置管理员后，所有的**敏感高危操作（如修改代码核心配置、删除文件等）**都会被拦截，并通过交互式卡片等待管理员点击“批准”(Approve) 才能执行。
+
+```env
+# 填入你的个人 Member ID
+SLACK_PRIMARY_OWNER=U0123456789
+```
+> **如何获取我的 Member ID？**
+> 在 Slack 中点击你自己的个人头像，选择 **"Profile"**，点击头像旁边的 **"..." (More)** 按钮，选择 **"Copy member ID"**。
+
+### 2. 消息响应模式 (@ 模式 / Mention Mode)
+默认情况下，如果把机器人拉进一个群组，它极有可能会尝试分析并回复频道里的所有日常聊天（这不仅消耗大量 Tokens 成本，还会显得非常吵闹）。
+
+```env
+# 推荐设置为 mention
+SLACK_GROUP_POLICY=mention
+```
+- `open`：默认。无论是否被 @ 都会倾听并可能抢答。
+- `mention`：**强烈推荐**。机器人只装死，直到有人明确 `@OpenClaw` 才会出击处理专属需求。
+
+### 3. 限定工作频道 (Channel Binding)
+如果你不希望任何人私自把机器人拉入私人瞎聊频道，可以通过绑定指定频道 ID 的方式建立“安全隔离区”。
+
+```env
+# 仅允许在这几个特定的频道 ID 中运作
+SLACK_ALLOWED_CHANNELS=C1A2B3C4D5,C9Z8Y7X6W5
+```
+*(注：由于底层架构引擎会将其最终结构化存储，除 `.env` 变量外，你也可在配置成功后，直接进容器审查 `~/.openclaw/openclaw.json` 里的 `channels.slack` 属性树)*

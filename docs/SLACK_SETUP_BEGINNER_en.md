@@ -167,3 +167,40 @@ SLACK_APP_TOKEN=xapp-x-xxxxxxxxxxx-xxxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 > **About Network Proxies (Must-read for production)**:
 > Since accessing the Slack API from certain regions might be restricted, please ensure that the `HTTP_PROXY` in `.env` correctly points to your host's proxy port.
 > Example: `HTTP_PROXY=http://host.docker.internal:7897`.
+
+---
+
+## 🚀 Advanced Configuration
+
+If you are using OpenClaw in a team collaboration environment, configuring just the two "keys" might not be enough. You need finer-grained permission controls to prevent the bot from interrupting casually or executing unauthorized operations.
+
+Open your [`.env`](.env) file, and you can append the following advanced variables:
+
+### 1. Admin Binding (Superuser Role)
+By default, anyone can issue commands to OpenClaw. After setting an administrator, all **highly sensitive operations (like modifying core configs, deleting files, etc.)** will be intercepted. OpenClaw will send an interactive card and wait for the administrator to click "Approve" before executing.
+
+```env
+# Fill in your personal Member ID
+SLACK_PRIMARY_OWNER=U0123456789
+```
+> **How to get my Member ID?**
+> Click on your profile picture in Slack, select **"Profile"**, click the **"..." (More)** button next to your picture, and select **"Copy member ID"**.
+
+### 2. Mention Mode (Group Policy)
+By default, if you invite the bot into a group channel, it might try to analyze and reply to all daily chats (which consumes a lot of Token costs and can be very noisy).
+
+```env
+# Highly recommended to set to 'mention'
+SLACK_GROUP_POLICY=mention
+```
+- `open`: Default. It listens and might proactively reply whether mentioned or not.
+- `mention`: **Highly Recommended**. The bot stays silent until someone explicitly mentions `@OpenClaw` to handle a specific request.
+
+### 3. Channel Binding (Allowed Channels)
+If you don't want anyone to privately pull the bot into unauthorized random channels, you can establish a "safe isolation zone" by binding specific channel IDs.
+
+```env
+# Only allowed to operate in these specific channel IDs
+SLACK_ALLOWED_CHANNELS=C1A2B3C4D5,C9Z8Y7X6W5
+```
+*(Note: Because the underlying architectural engine stores this securely, besides using the `.env` variable, you can also directly inspect the `channels.slack` property tree in `~/.openclaw/openclaw.json` inside the container after a successful configuration)*
