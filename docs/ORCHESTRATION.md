@@ -12,8 +12,8 @@
 │  PHASE 1: 环境注入 (ENVIRONMENT INJECTION)                              │
 │ ---------------------------------------------------------------------- │
 │ 1. Makefile 加载 .env 文件                                              │
-│ 2. 获取 $OPENCLAW_IMAGE (例如: ghcr.io/hrygo/openclaw-devkit:latest)    │
-│ 3. 变量初始化: IMAGE_NAME := $(OPENCLAW_IMAGE) || "openclaw:dev"       │
+│ 2. 获取 $OPENCLAW_IMAGE (例如: ghcr.io/hrygo/openclaw-devkit:dev)      │
+│ 3. 变量初始化: IMAGE_NAME := $(OPENCLAW_IMAGE) || "openclaw-devkit:dev"│
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
                                     ▼

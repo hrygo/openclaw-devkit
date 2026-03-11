@@ -328,7 +328,6 @@ OPENCLAW_CONFIG_DIR="${OPENCLAW_CONFIG_DIR/#\~/$HOME}"
 OPENCLAW_WORKSPACE_DIR="${OPENCLAW_WORKSPACE_DIR/#\~/$HOME}"
 OPENCLAW_GATEWAY_PORT="${OPENCLAW_GATEWAY_PORT:-18789}"
 OPENCLAW_BRIDGE_PORT="${OPENCLAW_BRIDGE_PORT:-18790}"
-OPENCLAW_GATEWAY_BIND="${OPENCLAW_GATEWAY_BIND:-lan}"
 
 # 验证路径
 validate_mount_path_value "OPENCLAW_CONFIG_DIR" "$OPENCLAW_CONFIG_DIR"
@@ -352,6 +351,43 @@ export OPENCLAW_IMAGE="$IMAGE_NAME"
 # ============================================================
 # 创建目录 (借鉴 docker-setup.sh 的完整目录树)
 # ============================================================
+
+# 检查并修复权限：如果目录已存在且属于其他用户，尝试自动修复
+repair_host_permissions() {
+    local dir="$1"
+    if [[ -d "$dir" ]]; then
+        # 兼容 Linux (stat -c) 和 macOS (stat -f)
+        local dir_owner
+        dir_owner=$(stat -c '%u' "$dir" 2>/dev/null || stat -f '%u' "$dir" 2>/dev/null || echo "0")
+
+        if [[ "$dir_owner" != "$(id -u)" ]]; then
+            echo "  --> 发现目录 $dir 属于其他用户 (UID: $dir_owner)，尝试修复..."
+
+            # 方案1: 尝试用 docker run 修复（需要 docker 权限）
+            if docker info >/dev/null 2>&1; then
+                # 使用当前环境的镜像修复权限（如果已存在）
+                local repair_image="alpine"
+                if docker images alpine --format '{{.Repository}}' 2>/dev/null | grep -q alpine || \
+                   docker pull "$repair_image" >/dev/null 2>&1; then
+                    docker run --rm -v "$dir:/target" "$repair_image" \
+                        chown -R "$(id -u):$(id -g)" /target 2>/dev/null && \
+                        echo "  --> 权限已通过 Docker 修复" && return 0
+                fi
+            fi
+
+            # 方案2: 尝试直接 chown（当前用户如果是文件所有者）
+            if chown -R "$(id -u):$(id -g)" "$dir" 2>/dev/null; then
+                echo "  --> 权限已修复" && return 0
+            fi
+
+            # 方案3: 均失败，提示用户
+            fail "无法自动修复目录 $dir 的权限。\n请手动运行: sudo chown -R $(id -u):$(id -g) $dir"
+        fi
+    fi
+}
+
+# 先检查并修复权限
+repair_host_permissions "$OPENCLAW_CONFIG_DIR"
 
 mkdir -p "$OPENCLAW_CONFIG_DIR"
 mkdir -p "$OPENCLAW_WORKSPACE_DIR"
@@ -496,7 +532,6 @@ upsert_env "$ENV_FILE" \
   OPENCLAW_WORKSPACE_DIR \
   OPENCLAW_GATEWAY_PORT \
   OPENCLAW_BRIDGE_PORT \
-  OPENCLAW_GATEWAY_BIND \
   OPENCLAW_GATEWAY_TOKEN \
   OPENCLAW_IMAGE \
   OPENCLAW_EXTRA_MOUNTS \

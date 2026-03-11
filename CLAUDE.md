@@ -11,9 +11,10 @@ openclaw-devkit 开发工具箱套件 - 为 [OpenClaw](https://github.com/opencl
 ```
 openclaw-devkit/
 ├── Makefile                # Docker 运维命令入口
-├── docker-compose.yml      # Docker Compose 配置 (支持 dev/java/office)
+├── docker-compose.yml      # Docker Compose 配置 (支持 dev/go/java/office)
 ├── Dockerfile             # 开发环境镜像定义 (标准版)
 ├── Dockerfile.java        # Java 版本镜像
+├── Dockerfile.go          # Go 版本镜像
 ├── Dockerfile.office     # Office 版本镜像
 ├── docker-setup.sh       # 交互式初始化脚本
 ├── update-source.sh      # 从 GitHub Release 更新源码
@@ -69,6 +70,7 @@ make clean-volumes    # 清理所有数据卷 (危险!)
 | Variant | Dockerfile    | Use Case                    |
 |---------|---------------|------------------------------|
 | dev     | Dockerfile    | 标准开发版 (Node.js + Go)   |
+| go      | Dockerfile.go | Go 开发版 (包含 golangci-lint + Go 工具) |
 | java    | Dockerfile.java | Java 支持 (包含 JDK)       |
 | office  | Dockerfile.office | 办公环境集成 (PDF/OCR)    |
 
@@ -186,7 +188,7 @@ curl -fsSL -o /dev/null -w "%{http_code}" "https://nodejs.org/dist/v22.22.1/node
 docker build --check -f Dockerfile.dev .  # Validate without full build
 ```
 
-### Current Stable Versions (2026)
+### Current Stable Versions
 - Node.js: 22.x LTS (24.x not yet released)
 - Go: 1.26.x (1.27.x not yet released)
 - golangci-lint: 1.64.x

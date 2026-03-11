@@ -91,7 +91,7 @@ help: ## 显示完整命令列表
 	@printf "    %-22s %s\n" "make logs" "查看 Gateway 实时日志"
 	@printf "    %-22s %s\n" "make shell" "进入隔离沙盒 Shell"
 	@printf "    %-22s %s\n" "make test-proxy" "黑盒代理通配性测试"
-	@printf "    %-22s %s\n" "make verify" "2025 工具链合规检查"
+	@printf "    %-22s %s\n" "make verify" "工具链合规检查"
 	@echo ""
 	@echo "  $(BOLD)💾  持久化维护$(NC)"
 	@printf "    %-22s %s\n" "make backup-config" "配置全量备份"
@@ -99,7 +99,7 @@ help: ## 显示完整命令列表
 	@echo ""
 	@echo "  ══════════════════════════════════════════════════════════"
 	@echo "  $(BOLD)分级调用:$(NC) make <cmd> <version>"
-	@echo "  $(INFO)  $(YELLOW)dev$(NC) (标准) | $(YELLOW)go$(NC) (Go版) | $(YELLOW)java$(NC) (增强) | $(YELLOW)office$(NC) (办公)"
+	@echo "  $(INFO)  $(YELLOW)dev$(NC) (标准) | $(YELLOW)go$(NC) (Go) | $(YELLOW)java$(NC) (Java) | $(YELLOW)office$(NC) (办公)"
 	@echo ""
 	@echo "  $(BOLD)示例:$(NC) ${CYAN}make install go${NC}"
 	@echo "  ══════════════════════════════════════════════════════════"
@@ -162,7 +162,7 @@ status: ## 查看服务状态
 # 构建与清理
 # ============================================================
 
-build: ## 构建标准版镜像 (1+3 基座)
+build: ## 构建标准版镜像 (1+2 基座)
 	@$(call do_build,dev,$(MAKECMDGOALS))
 
 build-go: build ## 构建 Go 版镜像 (基于 Standard)
@@ -214,7 +214,7 @@ logs-all: ## 查看所有容器日志
 shell: ## 进入 Gateway 容器
 	@docker compose exec openclaw-gateway bash
 
-verify: ## 验证镜像工具版本 (2025 最佳实践检查)
+verify: ## 验证镜像工具版本 (最佳实践检查)
 	@echo "$(INFO) 验证目标镜像: $(BOLD)$(YELLOW)$(IMAGE_NAME)$(NC)"
 	@docker run --rm $(IMAGE_NAME) node -v | grep -q "v22" && echo "$(SUCCESS) Node.js v22 (LTS) OK" || echo "$(ERROR) Node.js version mismatch"
 	@docker run --rm $(IMAGE_NAME) go version 2>/dev/null | grep -q "1.2" && echo "$(SUCCESS) Go 1.2x" || echo "$(WARN) Go (Office版无)"

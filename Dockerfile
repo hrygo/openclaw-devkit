@@ -4,8 +4,6 @@
 # 全局构建参数 (跨所有阶段)
 # ============================================================
 ARG BUN_VERSION=1.3.10
-ARG GO_VERSION=1.26.1
-ARG GOLANGCI_LINT_VERSION=1.64.8
 ARG PYTHON_PACKAGES="python-pptx openpyxl python-docx beautifulsoup4 lxml pyyaml pandoc"
 ARG INSTALL_BROWSER=1
 ARG DOCKER_MIRROR=docker.io
@@ -31,7 +29,7 @@ FROM ${DOCKER_MIRROR}/library/debian:stable-slim AS builder
 
 # 定义所有构建参数 (确保每个阶段都能访问)
 ARG BUN_VERSION=1.3.10
-ARG GO_VERSION=1.26.1
+ARG GO_VERSION=1.26.0
 ARG GOLANGCI_LINT_VERSION=1.64.8
 ARG PYTHON_PACKAGES="python-pptx openpyxl python-docx beautifulsoup4 lxml pyyaml pandoc"
 ARG INSTALL_BROWSER=1
@@ -68,18 +66,16 @@ RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries && \
 
 # 安装系统依赖和开发工具链
 # ============================================================
-RUN apt-get update && \
+RUN (apt-get update || (sleep 5 && apt-get update) || (sleep 10 && apt-get update)) && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends -o Acquire::Retries=3 \
     curl wget jq git ripgrep fd-find bat httpie python3 python3-pip python3-venv build-essential pkg-config \
-    # 文档处理导出
+    unzip file sqlite3 zip && \
+    # 第二阶段：重工具与浏览器依赖 (Split for resilience)
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends -o Acquire::Retries=3 \
     pandoc texlive-latex-base texlive-fonts-recommended \
-    # 浏览器自动化依赖
     xvfb libnss3 libatk-bridge2.0-0 libdrm2 libxkbcommon0 \
     libgbm1 libasound2 libatspi2.0-0 libxshmfence1 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
     libdbus-1-3 libgtk-3-0 fonts-liberation fonts-noto-color-emoji \
-    # 基础工具
-    unzip file sqlite3 zip \
-    # 2026 增强: 现代导航与搜索 (Agent UX)
     zoxide fzf && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -96,17 +92,6 @@ RUN apt-get update && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ============================================================
-# Go 1.26 (Latest Stable 2025)
-# ============================================================
-RUN ARCH=$(dpkg --print-architecture) && \
-    curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" | tar -C /usr/local -xz && \
-    ln -sf /usr/local/go/bin/go /usr/local/bin/go && \
-    ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
-ENV PATH="/usr/local/go/bin:${PATH}"
-ENV GOPATH=/root/go
-ENV PATH="${GOPATH}/bin:${PATH}"
-
-# ============================================================
 # GitHub CLI 最新版
 # ============================================================
 RUN ARCH=$(dpkg --print-architecture) && \
@@ -118,7 +103,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 # ============================================================
-# 2026 专家工具下载 (uv, yq, just, lazygit)
+# 专家工具下载 (uv, yq, just, lazygit)
 # ============================================================
 RUN ARCH=$(dpkg --print-architecture) && \
     # uv (Python 极速版)
@@ -175,35 +160,6 @@ RUN if [ -n "$PYTHON_MIRROR" ]; then \
     pip3 install --break-system-packages --no-cache-dir $PYTHON_PACKAGES
 
 # ============================================================
-# Go 开发工具链 (golangci-lint, gopls, dlv, etc.)
-# ============================================================
-RUN ARCH=$(dpkg --print-architecture) && \
-    curl -fsSL "https://github.com/golangci/golangci-lint/releases/download/v${GOLANGCI_LINT_VERSION}/golangci-lint-${GOLANGCI_LINT_VERSION}-linux-${ARCH}.tar.gz" | \
-    tar -xz -C /tmp && \
-    mv /tmp/golangci-lint-${GOLANGCI_LINT_VERSION}-linux-${ARCH}/golangci-lint /usr/local/bin/ && \
-    rm -rf /tmp/golangci-lint-*
-
-# Go 工具安装
-ARG GO_TOOLS="\
-    golang.org/x/tools/gopls@latest \
-    github.com/go-delve/delve/cmd/dlv@latest \
-    honnef.co/go/tools/cmd/staticcheck@latest \
-    github.com/securego/gosec/v2/cmd/gosec@latest \
-    golang.org/x/tools/cmd/goimports@latest \
-    github.com/air-verse/air@latest \
-    github.com/google/mock/mockgen@latest \
-    github.com/google/wire/cmd/wire@latest \
-    github.com/onsi/ginkgo/v2/ginkgo@latest"
-
-RUN --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=cache,target=/root/go/pkg/mod \
-    mkdir -p "${GOPATH}/bin" && \
-    for tool in ${GO_TOOLS}; do \
-    echo "Installing $tool..." && \
-    go install "$tool"; \
-    done
-
-# ============================================================
 # 阶段 1 (续): 安装 OpenClaw 核心组件并构建
 # ============================================================
 WORKDIR /app
@@ -232,7 +188,7 @@ FROM ${DOCKER_MIRROR}/library/debian:stable-slim AS base
 
 # 定义所有构建参数
 ARG BUN_VERSION=1.3.10
-ARG GO_VERSION=1.26.1
+ARG GO_VERSION=1.26.0
 ARG PYTHON_PACKAGES="python-pptx openpyxl python-docx beautifulsoup4 lxml pyyaml pandoc"
 ARG APT_MIRROR=deb.debian.org
 ARG NPM_MIRROR=
@@ -260,26 +216,17 @@ RUN mkdir -p /etc/apt/keyrings && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
 
 # 安装运行时依赖
-RUN apt-get update && \
+RUN (apt-get update || (sleep 5 && apt-get update) || (sleep 10 && apt-get update)) && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends -o Acquire::Retries=3 \
-    git openssl \
-    # AI Agent 核心依赖 (Claude Code / OpenClaw Grep & Glob 底层)
-    jq ripgrep fd-find \
-    # 编译 Node.js 原生模块 (better-sqlite3 等)
-    build-essential pkg-config \
-    # 开发者工具
-    bat httpie wget \
-    # 容器内便利工具
-    less vim-tiny tree procps openssh-client \
-    # 文档处理
+    git openssl jq ripgrep fd-find build-essential pkg-config bat httpie wget \
+    less vim-tiny tree procps openssh-client python3 python3-pip python3-venv \
+    unzip file sqlite3 zip && \
+    # 第二阶段：重工具与浏览器依赖 (Split for resilience)
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends -o Acquire::Retries=3 \
     pandoc texlive-latex-base texlive-fonts-recommended \
-    # 浏览器自动化依赖
     xvfb libnss3 libatk-bridge2.0-0 libdrm2 libxkbcommon0 \
     libgbm1 libasound2 libatspi2.0-0 libxshmfence1 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
     libdbus-1-3 libgtk-3-0 fonts-liberation fonts-noto-color-emoji \
-    # 基础工具
-    python3 python3-pip python3-venv unzip file sqlite3 zip \
-    # 2026 增强: 现代导航与搜索
     zoxide fzf && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -289,7 +236,7 @@ RUN npm install -g pnpm@latest \
     opencode-ai \
     @mariozechner/pi-coding-agent \
     tldr && \
-    # 2026 增强: 安装 uv (面向 Agent 提速)
+    # 运行时增强: 安装 uv (面向 Agent 提速)
     curl -fsSL https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
 
 # 安装 Bun 运行时

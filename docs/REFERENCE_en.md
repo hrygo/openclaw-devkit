@@ -72,21 +72,39 @@ make onboard
 ## 🔵 Power User Tier: Productivity Scaling
 
 ### 4. Flavor Switching (Technical Matrix)
-DevKit offers three curated toolchains to handle different development scenarios:
+DevKit offers four curated toolchains to handle different development scenarios:
 
 | Flavor Name | Image Size (Compressed) | Software Stack (Baseline) | Core use Case |
 | :--- | :--- | :--- | :--- |
-| **Standard** | **~2.21 GB** | Node 22, Go 1.2x, Python 3.12, Bun | Full-stack dev, AI plugin writing, automation scripts. |
-| **Office** | **~4.04 GB** | Standard + Pandoc, LaTeX, Playwright | Doc conversion, web scraping, OCR, office automation. |
+| **Standard** | **~2.21 GB** | Node 22, Go 1.26, Python 3.12, Bun | Full-stack dev, AI plugin writing, automation scripts. |
+| **Go** | **~2.30 GB** | Standard + Go 1.26, golangci-lint, Go tools | Go backend dev, debugging with dlv, static analysis. |
 | **Java** | **~2.20 GB** | Standard + JDK 21, Gradle 8.x, Maven | Enterprise Java dev, large project building & debugging. |
+| **Office** | **~4.04 GB** | Standard + LibreOffice, Tesseract OCR, PDF tools | Doc conversion, web scraping, OCR, office automation. |
 
-**How to switch**:
+**Initial Installation** (run once):
 ```bash
-# Switch to Office environment
-make install office
-# Switch to Java environment
-make install java
+# First-time install with specific flavor
+make install go        # Go edition
+make install java     # Java edition
+make install office   # Office edition
 ```
+
+**Switching Images Later** (no need to re-run install):
+```bash
+# Modify OPENCLAW_IMAGE in .env, then:
+make rebuild go       # pull/build and restart
+make rebuild java     # pull/build and restart
+make rebuild office   # pull/build and restart
+```
+
+| Operation | Command | When to Use |
+| :--- | :--- | :--- |
+| **First Install** | `make install <variant>` | Initial deployment, creates data dirs & config |
+| **Switch Image** | `make rebuild <variant>` | Already installed, need to switch versions |
+
+> **Tip**: `make install` is for **first-time setup only**. To switch flavors later, just modify `.env` and use `make build/rebuild`. Data directories are preserved.
+>
+> Available variants: `go`, `java`, `office` (default: standard)
 
 ### 5. Deep Dive: Data Mounting & Persistence
 To ensure AI containers are "non-volatile," we designed a dual-track persistence model:
@@ -112,12 +130,12 @@ When the pre-built toolchains cannot meet specific business requirements, DevKit
 If you need to install specific system packages (like `ffmpeg`) or inject corporate internal certificates:
 1. **Inheritance Model**: Create a brand new `Dockerfile.custom` and utilize the official image as the Base Image.
    ```dockerfile
-   FROM ghcr.io/hrygo/openclaw-devkit:latest
+   FROM ghcr.io/hrygo/openclaw-devkit:dev
    USER root
    RUN apt-get update && apt-get install -y ffmpeg
    USER node
    ```
-2. **Seamless Integration**: Once your bespoke image is built, simply declare `OPENCLAW_IMAGE=my-custom-openclaw:latest` in your `.env`. You can securely switch environments without dismantling any official startup scripts, guaranteeing you effortlessly receive future framework updates.
+2. **Seamless Integration**: Once your bespoke image is built, simply declare `OPENCLAW_IMAGE=my-custom-openclaw:dev` in your `.env`. You can securely switch environments without dismantling any official startup scripts, guaranteeing you effortlessly receive future framework updates.
 
 **Best Practice B: Non-Intrusive Orchestration Enhancement (Compose Override)**
 When you need to hook specialized business persistence directories to the gateway container, or inject a sidecar service locally (such as an ephemeral Redis Server):
@@ -149,7 +167,7 @@ The DevKit `Makefile` is a precision engine that dynamically reassembles Compose
 When you start a container, `docker-entrypoint.sh` takes over for the first 5 seconds:
 1. **UID Adaptation**: Detects the host User ID and performs `chown` to fix permissions on mounted volumes, eliminating `EACCES` errors.
 2. **Seed Injection**: If the workspace is empty, it automatically populates it from the internal `/home/node/.openclaw-seed`.
-3. **Network Alignment**: Locks the gateway port and sets the bind address to `lan` to bypass Docker bridge network isolation.
+3. **Network Alignment**: Locks the gateway port and sets the bind address to `lan` to bypass Docker bridge network isolation (`loopback` mode would prevent host access).
 
 **Visual Architecture Reference**: For precision details on every decision step, refer to [ORCHESTRATION.md](ORCHESTRATION.md).
 

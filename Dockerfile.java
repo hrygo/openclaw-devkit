@@ -6,6 +6,7 @@
 # ============================================================
 ARG BASE_IMAGE=openclaw-devkit:dev
 ARG SPRING_BOOT_VERSION=3.5.3
+ARG APT_MIRROR=deb.debian.org
 
 # 继承自标准版镜像
 FROM ${BASE_IMAGE}
@@ -17,7 +18,12 @@ USER root
 # ============================================================
 
 # 安装 OpenJDK 21 via Eclipse Temurin
-RUN apt-get update && \
+RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries && \
+    if [ "$APT_MIRROR" != "deb.debian.org" ]; then \
+    sed -i "s/deb.debian.org/$APT_MIRROR/g" /etc/apt/sources.list.d/debian.sources || \
+    sed -i "s/deb.debian.org/$APT_MIRROR/g" /etc/apt/sources.list; \
+    fi && \
+    apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends -o Acquire::Retries=3 \
     wget apt-transport-https gnupg && \
     mkdir -p /etc/apt/keyrings && \
@@ -27,7 +33,8 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends temurin-21-jdk && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-ENV JAVA_HOME=/usr/lib/jvm/temurin-21-jdk-amd64
+RUN ln -sf $(ls -d /usr/lib/jvm/temurin-21-jdk-*) /usr/lib/jvm/java-21
+ENV JAVA_HOME=/usr/lib/jvm/java-21
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8"
 

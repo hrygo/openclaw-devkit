@@ -81,14 +81,29 @@ make onboard
 
 ### 2. 版本选择
 
-如果您需要特定环境，可以在安装时指定（或修改 `.env` 中的 `OPENCLAW_IMAGE`）：
+如果您需要特定环境，可以在安装时指定：
 
 | 版本 | 安装命令 | 说明 |
 | :--- | :--- | :--- |
 | **标准版** | `make install` | 默认版本 (Node + Python + Playwright) |
-| **Go 增强版** | `make install go` | 在标准版基础上集成 Go 1.26 + 常用工具 |
+| **Go 增强版** | `make install go`基础上集成 Go 1.26 + | 在标准版 常用工具 |
 | **Java 增强版** | `make install java` | 含 JDK 21 + Gradle + Maven |
 | **Office 旗舰版** | `make install office` | 专注 RAG 预处理：pandoc + LaTeX + OCR |
+
+> [!IMPORTANT]
+> **首次安装后切换镜像**：无需重复运行 `make install`，只需修改 `.env` 文件中的 `OPENCLAW_IMAGE` 并重启：
+> ```bash
+> # 1. 修改 .env 中的镜像名称
+> #    openclaw-devkit:dev          (标准版)
+> #    openclaw-devkit:dev-go       (Go 版)
+> #    openclaw-devkit:dev-java     (Java 版)
+> #    openclaw-devkit:dev-office   (Office 版)
+>
+> # 2. 拉取/构建新镜像并重启
+> make rebuild go        # 或 make build go && make restart
+> make rebuild java     # 或 make build java && make restart
+> make rebuild office   # 或 make build office && make restart
+> ```
 
 ---
 

@@ -1,12 +1,13 @@
 # syntax=docker/dockerfile:1
 
 # ============================================================
-# OpenClaw 1+3 DRY 架构 - Go 扩展版
+# OpenClaw 1+2 架构 - Go 扩展版
 # 基于 openclaw:dev (Standard) 镜像构建
 # ============================================================
 ARG BASE_IMAGE=openclaw-devkit:dev
-ARG GO_VERSION=1.26.1
+ARG GO_VERSION=1.26.0
 ARG GOLANGCI_LINT_VERSION=1.64.8
+ARG APT_MIRROR=deb.debian.org
 
 # 继承自标准版镜像
 FROM ${BASE_IMAGE}
@@ -16,6 +17,13 @@ USER root
 # ============================================================
 # Go 1.26 工具链安装
 # ============================================================
+# 配置高速镜像和 Apt 重试
+RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries && \
+    if [ "$APT_MIRROR" != "deb.debian.org" ]; then \
+    sed -i "s/deb.debian.org/$APT_MIRROR/g" /etc/apt/sources.list.d/debian.sources || \
+    sed -i "s/deb.debian.org/$APT_MIRROR/g" /etc/apt/sources.list; \
+    fi
+
 RUN ARCH=$(dpkg --print-architecture) && \
     curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" | tar -C /usr/local -xz && \
     ln -sf /usr/local/go/bin/go /usr/local/bin/go && \
@@ -48,6 +56,9 @@ ARG GO_TOOLS="\
 
 RUN mkdir -p "${GOPATH}/bin" && chown -R node:node "${GOPATH}" && \
     # 使用 node 用户安装 Go 工具
+    if [ "$APT_MIRROR" != "deb.debian.org" ]; then \
+    sudo -u node PATH=$PATH:/usr/local/go/bin GOPATH=$GOPATH go env -w GOPROXY=https://goproxy.cn,direct; \
+    fi && \
     sudo -u node PATH=$PATH:/usr/local/go/bin GOPATH=$GOPATH go install -v $GO_TOOLS
 
 # 切换回 node 用户

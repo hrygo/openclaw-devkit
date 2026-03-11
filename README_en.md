@@ -81,13 +81,27 @@ make onboard
 
 ### 2. Version Choice
 
-If you need a specific environment, specify it during installation (or modify `OPENCLAW_IMAGE` in `.env`):
+If you need a specific environment, specify it during installation:
 
 | Edition | Installation Command | Description |
 | :--- | :--- | :--- |
-| **Standard** | `make install` | Default version (Node + Go + Python + Playwright) |
-| **Office** | `make install office` | Includes pandoc + LaTeX + OCR |
-| **Java** | `make install java` | Includes JDK 21 + Gradle + Maven |
+| **Standard** | `make install` | Default version (Node.js + Go + Python + Playwright) |
+| **Go** | `make install go` | Standard + Go 1.26 + golangci-lint + Go tools (gopls, dlv, staticcheck) |
+| **Java** | `make install java` | Standard + JDK 21 + Gradle + Maven |
+| **Office** | `make install office` | Standard + LibreOffice + Tesseract OCR + PDF tools |
+
+> [!IMPORTANT]
+> **Switching images after initial install**: No need to run `make install` again. Just modify `OPENCLAW_IMAGE` in `.env` and restart:
+> ```bash
+> # 1. Modify image name in .env
+> #    openclaw-devkit:dev        (Standard)
+> #    openclaw-devkit-go:dev     (Go)
+> #    openclaw-devkit-java:dev   (Java)
+> #    openclaw-devkit-office:dev (Office)
+>
+> # 2. Pull/build new image and restart
+> make rebuild go    # or: make build go && make restart
+> ```
 
 ---
 
@@ -128,11 +142,14 @@ Ensure your proxy has "Allow LAN Connections" enabled. Run `make test-proxy` to 
 <summary><b>Q: How to switch versions?</b></summary>
 
 ```bash
-# Office edition
-make rebuild office
+# Go edition
+make rebuild go
 
 # Java edition
 make rebuild java
+
+# Office edition
+make rebuild office
 ```
 </details>
 
