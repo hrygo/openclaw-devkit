@@ -523,7 +523,7 @@ Gateway Token:
 包含的开发工具:
   ${SUCCESS}Node.js 22 + pnpm + Bun
   ${SUCCESS}Python 3 + Office 自动化套件
-  ${SUCCESS}Go & JDK 25 (根据版本选择)
+  ${SUCCESS}Go & JDK 21 (根据版本选择)
   ${SUCCESS}Chromium/Playwright & Pandoc & LaTeX
 
 

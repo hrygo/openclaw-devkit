@@ -87,7 +87,7 @@ If you need a specific environment, specify it during installation (or modify `O
 | :--- | :--- | :--- |
 | **Standard** | `make install` | Default version (Node + Go + Python + Playwright) |
 | **Office** | `make install office` | Includes pandoc + LaTeX + OCR |
-| **Java** | `make install java` | Includes JDK 25 + Gradle + Maven |
+| **Java** | `make install java` | Includes JDK 21 + Gradle + Maven |
 
 ---
 

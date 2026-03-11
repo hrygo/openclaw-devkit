@@ -87,7 +87,7 @@ make onboard
 | :--- | :--- | :--- |
 | **标准版** | `make install` | 默认版本 (Node + Go + Python + Playwright) |
 | **Office 版** | `make install office` | 含 pandoc + LaTeX + OCR |
-| **Java 版** | `make install java` | 含 JDK 25 + Gradle + Maven |
+| **Java 版** | `make install java` | 含 JDK 21 + Gradle + Maven |
 
 ---
 
