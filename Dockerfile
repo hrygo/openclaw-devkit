@@ -48,7 +48,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # ============================================================
 RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries && \
     rm -f /etc/apt/sources.list.d/debian.sources /etc/apt/sources.list 2>/dev/null || true && \
-    printf 'deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware\ndeb http://deb.debian.org/debian-security bookworm-security main contrib non-free\ndeb http://deb.debian.org/debian bookworm-updates main contrib non-free\n' > /etc/apt/sources.list
+    printf 'deb http://deb.debian.org/debian stable main contrib non-free non-free-firmware\ndeb http://deb.debian.org/debian-security stable-security main contrib non-free\ndeb http://deb.debian.org/debian stable-updates main contrib non-free\n' > /etc/apt/sources.list
 
 LABEL org.opencontainers.image.base.name="docker.io/library/debian:stable-slim" \
     org.opencontainers.image.source="https://github.com/openclaw/openclaw" \
@@ -62,7 +62,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # ============================================================
 RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries && \
     rm -f /etc/apt/sources.list.d/debian.sources /etc/apt/sources.list 2>/dev/null || true && \
-    printf 'deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware\ndeb http://deb.debian.org/debian-security bookworm-security main contrib non-free\ndeb http://deb.debian.org/debian bookworm-updates main contrib non-free\n' > /etc/apt/sources.list
+    printf 'deb http://deb.debian.org/debian stable main contrib non-free non-free-firmware\ndeb http://deb.debian.org/debian-security stable-security main contrib non-free\ndeb http://deb.debian.org/debian stable-updates main contrib non-free\n' > /etc/apt/sources.list
 
 # 安装系统依赖和开发工具链
 # ============================================================
@@ -206,7 +206,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # 配置 Apt 重试以提高网络容错性
 RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries && \
     rm -f /etc/apt/sources.list.d/debian.sources /etc/apt/sources.list 2>/dev/null || true && \
-    printf 'deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware\ndeb http://deb.debian.org/debian-security bookworm-security main contrib non-free\ndeb http://deb.debian.org/debian bookworm-updates main contrib non-free\n' > /etc/apt/sources.list
+    printf 'deb http://deb.debian.org/debian stable main contrib non-free non-free-firmware\ndeb http://deb.debian.org/debian-security stable-security main contrib non-free\ndeb http://deb.debian.org/debian stable-updates main contrib non-free\n' > /etc/apt/sources.list
 
 # 安装基础工具 (curl, ca-certificates for HTTPS)
 RUN apt-get update && \
