@@ -37,25 +37,20 @@ jobs:
 
             if (!hasIssueReference) {
               // Comment on the PR with guidance
-              const comment = `## ⚠️ Missing Issue Reference
-
-This PR does not seem to be linked to an existing issue.
-
-**Please add one of the following issue references in your PR description or title:**
-- \`Closes #123\` - when the PR fully resolves the issue
-- \`Fixes #123\` - when the PR fixes the bug
-- \`Resolves #123\` - when the PR resolves the issue
-- \`Addresses #123\` - for related discussions
-
-Example:
-\`\`\`
-## Summary
-Add new feature for...
-
-## Related Issue
-Closes #123
-\`\`\`
-`;
+              const comment = "## ⚠️ Missing Issue Reference\n\n" +
+                "This PR does not seem to be linked to an existing issue.\n\n" +
+                "**Please add one of the following issue references in your PR description or title:**\n" +
+                "- `Closes #123` - when the PR fully resolves the issue\n" +
+                "- `Fixes #123` - when the PR fixes the bug\n" +
+                "- `Resolves #123` - when the PR resolves the issue\n" +
+                "- `Addresses #123` - for related discussions\n\n" +
+                "Example:\n" +
+                "```\n" +
+                "## Summary\n" +
+                "Add new feature for...\n\n" +
+                "## Related Issue\n" +
+                "Closes #123\n" +
+                "```";
               github.rest.issues.createComment({
                 issue_number: pr.number,
                 owner: context.repo.owner,
