@@ -106,7 +106,9 @@ FEISHU_EVENT_MODE=websocket
 ```
 
 > [!IMPORTANT]
-> 变量名可能会随 OpenClaw 版本演进。如果你使用的是较新版本并通过 `make onboard` 完成配置，请以 `~/.openclaw/openclaw.json` 中落盘键名为准；上面的 `.env` 片段用于帮助你快速理解参数映射关系。
+> 当前仓库的 `.env.example` 默认**不包含**上面这些 `FEISHU_*` 键名，且新版本 OpenClaw 在通过 `make onboard` 配置时**不一定会从 `.env` 中读取这些变量**。实际生效的配置以 `~/.openclaw/openclaw.json` 中的落盘键名和值为准。
+> >
+> > 上面的 `.env` 代码片段主要用于帮你**理解飞书控制台字段与 OpenClaw 内部配置项之间的映射关系**。如果你希望继续使用 `.env` 方式，请先完成 `make onboard`，然后对照 `~/.openclaw/openclaw.json` 中的字段名称，将对应值手动映射到你自己的环境变量命名方案中。
 
 ---
 
