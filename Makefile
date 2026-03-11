@@ -125,7 +125,8 @@ install: ## 首次安装/初始化环境
 	@$(call select_image,$(MAKECMDGOALS))
 	@echo "$(INFO) 目标环境: $(BOLD)$(YELLOW)$(IMAGE_NAME)$(NC)"
 	@OPENCLAW_IMAGE=$(IMAGE_NAME) ./$(SETUP_SCRIPT)
-	@echo "$(SUCCESS) $(GREEN)安装协议执行完毕$(NC)"
+	@echo "$(SUCCESS) $(GREEN)环境安装完毕!$(NC)"
+	@echo "  $(INFO) 提示: 首次安装后，请执行 $(BOLD)make onboard$(NC) 以交互式引导配置 LLM 与 聊天应用。"
 
 up: ## 启动服务
 	@docker compose up -d

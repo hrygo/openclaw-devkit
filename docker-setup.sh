@@ -521,5 +521,5 @@ Gateway Token:
   ${SUCCESS}Go & JDK 25 (根据版本选择)
   ${SUCCESS}Chromium/Playwright & Pandoc & LaTeX
 
-${BLUE}OpenClaw Team | 2026 技术规格书${NC}
+
 END
