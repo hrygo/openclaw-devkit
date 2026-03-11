@@ -36,8 +36,8 @@ if [ ! -f "$CONFIG_FILE" ]; then
     
     # If still missing, run official setup
     if [ ! -f "$CONFIG_FILE" ]; then
-        echo "--> Running official OpenClaw setup (non-interactive)..."
-        run_as_node openclaw setup --non-interactive
+        echo "--> Running official OpenClaw onboarding (non-interactive)..."
+        run_as_node openclaw onboard --non-interactive --accept-risk
     fi
 fi
 

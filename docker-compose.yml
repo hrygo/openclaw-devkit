@@ -93,7 +93,7 @@ services:
   # ============================================================================
   openclaw-gateway:
     <<: *openclaw-common
-    # user: "0:0" # Run as root to fix permissions - disabled due to macOS Docker limitations
+    user: "0:0" # Run as root to fix permissions - enabled to fix EACCES
     container_name: openclaw-gateway
     ports:
       - "127.0.0.1:18789:18789"
@@ -122,6 +122,8 @@ services:
       - openclaw-node-modules:/app/node_modules:rw
       - openclaw-go-mod:/home/node/go/pkg/mod:rw
       - openclaw-playwright-cache:/home/node/.cache/ms-playwright:rw
+      # Mount local entrypoint to apply fixes without rebuilding
+      - ./docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
       # -------------------------------------------------------------------------
       # 🔌 添加额外挂载点 (Extend with custom mounts)
       # -------------------------------------------------------------------------
