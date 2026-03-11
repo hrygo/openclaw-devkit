@@ -17,22 +17,20 @@ USER root
 # Java 开发工具链 (JDK 21 LTS, Gradle, Maven)
 # ============================================================
 
-# 安装 OpenJDK 21 via Eclipse Temurin
-RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries && \
-    # 修复可能损坏的 apt sources
-    rm -f /etc/apt/sources.list.d/debian.sources /etc/apt/sources.list 2>/dev/null || true && \
-    printf 'deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware\ndeb http://deb.debian.org/debian-security bookworm-security main contrib non-free\ndeb http://deb.debian.org/debian bookworm-updates main contrib non-free\n' > /etc/apt/sources.list && \
-    apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends -o Acquire::Retries=3 \
-    wget apt-transport-https gnupg && \
-    mkdir -p /etc/apt/keyrings && \
-    wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor -o /etc/apt/keyrings/adoptium.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb $(cat /etc/os-release | grep VERSION_CODENAME | cut -d= -f2) main" > /etc/apt/sources.list.d/adoptium.list && \
-    apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends temurin-21-jdk && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-RUN ln -sf $(ls -d /usr/lib/jvm/temurin-21-jdk-*) /usr/lib/jvm/java-21
+# 安装 OpenJDK 21 via Eclipse Temurin (直接下载 tar.gz，避免 apt 仓库在多平台 buildx 中不稳定)
+RUN set -eux && \
+    ARCH=$(dpkg --print-architecture) && \
+    case "$ARCH" in \
+        amd64) TEMURIN_ARCH="x64" ;; \
+        arm64) TEMURIN_ARCH="aarch64" ;; \
+        *) echo "Unsupported arch: $ARCH" && exit 1 ;; \
+    esac && \
+    TEMURIN_URL=$(curl -fsSL \
+        "https://api.adoptium.net/v3/assets/latest/21/hotspot?architecture=${TEMURIN_ARCH}&image_type=jdk&jvm_impl=hotspot&os=linux&vendor=eclipse" \
+        | grep -o '"link":"[^"]*"' | head -1 | cut -d'"' -f4) && \
+    curl -fsSL "$TEMURIN_URL" | tar -xz -C /opt && \
+    JDK_DIR=$(ls -d /opt/jdk-21*) && \
+    ln -sf "$JDK_DIR" /usr/lib/jvm/java-21
 ENV JAVA_HOME=/usr/lib/jvm/java-21
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8"

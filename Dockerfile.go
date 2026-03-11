@@ -5,8 +5,8 @@
 # 基于 openclaw:dev (Standard) 镜像构建
 # ============================================================
 ARG BASE_IMAGE=openclaw-devkit:dev
-ARG GO_VERSION=1.26.1
-ARG GOLANGCI_LINT_VERSION=1.64.8
+ARG GO_VERSION=1.24.2
+ARG GOLANGCI_LINT_VERSION=2.11.3
 ARG APT_MIRROR=deb.debian.org
 
 # 继承自标准版镜像
@@ -36,11 +36,8 @@ ENV PATH="${GOPATH}/bin:${PATH}"
 # ============================================================
 # Go 开发工具 (golangci-lint, gopls, dlv, etc.)
 # ============================================================
-RUN ARCH=$(dpkg --print-architecture) && \
-    curl -fsSL "https://github.com/golangci/golangci-lint/releases/download/v${GOLANGCI_LINT_VERSION}/golangci-lint-${GOLANGCI_LINT_VERSION}-linux-${ARCH}.tar.gz" | \
-    tar -xz -C /tmp && \
-    mv /tmp/golangci-lint-${GOLANGCI_LINT_VERSION}-linux-${ARCH}/golangci-lint /usr/local/bin/ && \
-    rm -rf /tmp/golangci-lint-*
+RUN curl -sSfL "https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh" | \
+    sh -s -- -b /usr/local/bin "v${GOLANGCI_LINT_VERSION}"
 
 # Go 工具安装 (并发提速)
 ARG GO_TOOLS="\
