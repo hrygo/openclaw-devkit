@@ -257,6 +257,7 @@ jobs:
           no-cache: true
           build-args: |
             BASE_IMAGE=${{ env.REGISTRY }}/${{ needs.prepare.outputs.image_name }}:${{ needs.prepare.outputs.version }}
+            APT_MIRROR=deb.debian.org
             GO_VERSION=1.26.0
             GOLANGCI_LINT_VERSION=1.64.8
             GH_VERSION=${{ needs.prepare.outputs.gh_version }}
