@@ -72,11 +72,11 @@ make onboard
 ### 4. 版本一键切换 (精准规格表)
 DevKit 严选三套垂直工具链，以应对不同的开发场景：
 
-| 规格名称 | 软件栈版本 (2026 Baseline) | 核心场景 |
-| :--- | :--- | :--- |
-| **Standard** | Node 22, Go 1.2x, Python 3.12, Bun | 全栈开发、AI 插件编写、自动化脚本 |
-| **Office** | Standard + Pandoc, LaTeX, Playwright | 文档转换、网页爬虫、OCR 办公自动化 |
-| **Java** | Standard + JDK 25, Gradle 8.x, Maven | 企业级 Java 开发、大型项目构建与调试 |
+| 规格名称 | 镜像大小 (Compressed) | 软件栈版本 (2026 Baseline) | 核心场景 |
+| :--- | :--- | :--- | :--- |
+| **Standard** | **~2.21 GB** | Node 22, Go 1.2x, Python 3.12, Bun | 全栈开发、AI 插件编写、自动化脚本 |
+| **Office** | **~4.04 GB** | Standard + Pandoc, LaTeX, Playwright | 文档转换、网页爬虫、OCR 办公自动化 |
+| **Java** | **~2.20 GB** | Standard + JDK 25, Gradle 8.x, Maven | 企业级 Java 开发、大型项目构建与调试 |
 
 **切换方式**：
 ```bash

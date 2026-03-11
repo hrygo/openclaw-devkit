@@ -72,11 +72,11 @@ make onboard
 ### 4. Flavor Switching (Technical Matrix)
 DevKit offers three curated toolchains to handle different development scenarios:
 
-| Flavor Name | Software Stack (2026 Baseline) | Core use Case |
-| :--- | :--- | :--- |
-| **Standard** | Node 22, Go 1.2x, Python 3.12, Bun | Full-stack dev, AI plugin writing, automation scripts. |
-| **Office** | Standard + Pandoc, LaTeX, Playwright | Doc conversion, web scraping, OCR, office automation. |
-| **Java** | Standard + JDK 25, Gradle 8.x, Maven | Enterprise Java dev, large project building & debugging. |
+| Flavor Name | Image Size (Compressed) | Software Stack (2026 Baseline) | Core use Case |
+| :--- | :--- | :--- | :--- |
+| **Standard** | **~2.21 GB** | Node 22, Go 1.2x, Python 3.12, Bun | Full-stack dev, AI plugin writing, automation scripts. |
+| **Office** | **~4.04 GB** | Standard + Pandoc, LaTeX, Playwright | Doc conversion, web scraping, OCR, office automation. |
+| **Java** | **~2.20 GB** | Standard + JDK 25, Gradle 8.x, Maven | Enterprise Java dev, large project building & debugging. |
 
 **How to switch**:
 ```bash
