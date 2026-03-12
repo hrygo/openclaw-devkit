@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.5.0] - 2026-03-12
+
+### Added
+- **Pre-Start Config Migration**: Added `openclaw-init` container that runs `openclaw doctor --fix` before gateway starts, preventing "unhealthy container" errors when upgrading from old OpenClaw versions with incompatible config schema.
+- **Auto-Cleanup Init Container**: The init container now automatically removes itself after successful config repair, keeping the environment clean.
+
+### Improved
+- **Config Migration UX**: Eliminated confusing "Warning: Could not fix permissions" message from entrypoint logs.
+- **Startup Reliability**: Gateway now waits for config repair to complete before starting healthcheck, ensuring smooth upgrades.
+- **clean-volumes**: Fixed to remove only existing volume references.
+
 ## [v1.4.0] - 2026-03-12
 
 ### Added
@@ -12,6 +23,11 @@ All notable changes to this project will be documented in this file.
 ### Improved
 - **Container Setup Routine**: Enhanced `docker-setup.sh` with better permission handling and support for the new hierarchical image structure.
 - **Documentation Parity**: Synchronized image variant details and artifact paths across all manuals.
+
+## [v1.4.1] - 2026-03-12
+
+### Changed
+- **OpenClaw Installation**: Use npm to install OpenClaw CLI instead of install.sh script for better reliability.
 
 ## [v1.3.1] - 2026-03-11
 
