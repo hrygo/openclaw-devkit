@@ -17,7 +17,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-IMAGE_NAME="${OPENCLAW_IMAGE:-openclaw-devkit:dev}"
+IMAGE_NAME="${OPENCLAW_IMAGE:-openclaw-devkit}"
 # COMPOSE_FILE is managed by .env for flexibility
 # EXTRA_COMPOSE_FILE still used for on-the-fly mounts
 EXTRA_COMPOSE_FILE="$ROOT_DIR/docker-compose.dev.extra.yml"
@@ -425,65 +425,18 @@ export OPENCLAW_GATEWAY_TOKEN
 # 构建镜像
 # ============================================================
 
-info "检查/拉取开发环境镜像: ${CYAN}$IMAGE_NAME${NC}"
+info "检查开发环境镜像: ${CYAN}$IMAGE_NAME${NC}"
 if is_truthy_value "${OPENCLAW_SKIP_BUILD:-}"; then
-  info "模式: ${BOLD}极速模式 (Fast Mode)${NC} - 正在拉取同步..."
-  docker pull "$IMAGE_NAME"
+  # 极速模式：尝试拉取镜像
+  if ! docker inspect "$IMAGE_NAME" >/dev/null 2>&1; then
+    info "正在拉取镜像: ${BOLD}$IMAGE_NAME${NC}..."
+    docker pull "$IMAGE_NAME" || warn "无法拉取镜像，请检查网络或执行 'make build' 手动构建。"
+  fi
 else
-  info "模式: ${BOLD}开发模式 (Dev Mode)${NC} - 正在本地构建..."
-  if [[ ! -f "$ROOT_DIR/.openclaw_src/package.json" ]]; then
-    echo ""
-    fail "在 .openclaw_src 目录中未找到项目源码 (package.json)。\n提示: 请先运行 ${BOLD}make update${NC} 拉取源码。"
+  # 本地构建模式：验证镜像是否存在
+  if ! docker inspect "$IMAGE_NAME" >/dev/null 2>&1; then
+    error "未找到镜像 ${BOLD}$IMAGE_NAME${NC}。\n提示: 本地开发模式下，请使用 ${BOLD}make build${NC} 构建镜像。\n原脚本中的内置构建逻辑已移除，以符合 DRY 原则（统一由 Makefile 管理）。"
   fi
-
-  # 选择 Dockerfile
-  DOCKERFILE_PATH="$ROOT_DIR/Dockerfile"
-  IS_VARIANT=false
-  # 1+3 架构: 变体依赖于标准版 (BASE_IMAGE)
-  BASE_IMAGE_TAG="${OPENCLAW_IMAGE_BASE:-openclaw-devkit:dev}"
-
-  if [[ "$IMAGE_NAME" == *"-java"* ]]; then
-    DOCKERFILE_PATH="$ROOT_DIR/Dockerfile.java"
-    IS_VARIANT=true
-  elif [[ "$IMAGE_NAME" == *"-go"* ]]; then
-    DOCKERFILE_PATH="$ROOT_DIR/Dockerfile.go"
-    IS_VARIANT=true
-  elif [[ "$IMAGE_NAME" == *"office"* ]]; then
-    DOCKERFILE_PATH="$ROOT_DIR/Dockerfile.office"
-    IS_VARIANT=true
-  fi
-
-  # 1+3 架构: 注入构建资产到上下文
-  cp -f "$ROOT_DIR"/Dockerfile* "$ROOT_DIR"/docker-entrypoint.sh "$ROOT_DIR"/.openclaw_src/ 2>/dev/null || true
-
-  # 如果是变体，必须先构建/确保基座镜像存在
-  if [ "$IS_VARIANT" = true ]; then
-    info "正在构建基座镜像: ${CYAN}${BASE_IMAGE_TAG}${NC}"
-    docker build \
-      -t "$BASE_IMAGE_TAG" \
-      -f "$ROOT_DIR/.openclaw_src/Dockerfile" \
-      --build-arg "INSTALL_BROWSER=${INSTALL_BROWSER}" \
-      --build-arg "DOCKER_MIRROR=${DOCKER_MIRROR:-docker.io}" \
-      --build-arg "APT_MIRROR=${APT_MIRROR:-deb.debian.org}" \
-      --build-arg "NPM_MIRROR=${NPM_MIRROR:-}" \
-      --build-arg "PYTHON_MIRROR=${PYTHON_MIRROR:-}" \
-      --build-arg "HTTP_PROXY=${HTTP_PROXY:-}" \
-      --build-arg "HTTPS_PROXY=${HTTPS_PROXY:-}" \
-      "$ROOT_DIR/.openclaw_src"
-  fi
-
-  info "正在构建目标镜像: ${CYAN}$IMAGE_NAME${NC}"
-  docker build \
-    -t "$IMAGE_NAME" \
-    -f "$ROOT_DIR/.openclaw_src/$(basename "$DOCKERFILE_PATH")" \
-    --build-arg "BASE_IMAGE=${BASE_IMAGE_TAG}" \
-    --build-arg "DOCKER_MIRROR=${DOCKER_MIRROR:-docker.io}" \
-    --build-arg "APT_MIRROR=${APT_MIRROR:-deb.debian.org}" \
-    --build-arg "NPM_MIRROR=${NPM_MIRROR:-}" \
-    --build-arg "PYTHON_MIRROR=${PYTHON_MIRROR:-}" \
-    --build-arg "HTTP_PROXY=${HTTP_PROXY:-}" \
-    --build-arg "HTTPS_PROXY=${HTTPS_PROXY:-}" \
-    "$ROOT_DIR/.openclaw_src"
 fi
 
 # ============================================================

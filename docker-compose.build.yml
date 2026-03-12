@@ -11,6 +11,8 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
+        BASE_IMAGE: ${BASE_IMAGE:-openclaw-runtime:base}
+        OPENCLAW_VERSION: ${OPENCLAW_VERSION:-latest}
         HTTP_PROXY: ${HTTP_PROXY:-}
         HTTPS_PROXY: ${HTTPS_PROXY:-}
         DOCKER_MIRROR: ${DOCKER_MIRROR:-docker.io}
@@ -23,6 +25,8 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
+        BASE_IMAGE: ${BASE_IMAGE:-openclaw-runtime:base}
+        OPENCLAW_VERSION: ${OPENCLAW_VERSION:-latest}
         HTTP_PROXY: ${HTTP_PROXY:-}
         HTTPS_PROXY: ${HTTPS_PROXY:-}
         DOCKER_MIRROR: ${DOCKER_MIRROR:-docker.io}

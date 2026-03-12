@@ -18,7 +18,7 @@
 # YAML Anchors for DRY Configuration
 # ------------------------------------------------------------------------------
 x-openclaw-common: &openclaw-common
-  image: ${OPENCLAW_IMAGE:-openclaw-devkit:dev}
+  image: ${OPENCLAW_IMAGE:-openclaw}
   environment: &common-env
     HOST_UID: ${HOST_UID:-1000}
     # ─────────────────────────────────────────────────────────────────

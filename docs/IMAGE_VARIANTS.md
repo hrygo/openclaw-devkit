@@ -8,10 +8,15 @@
 
 ```mermaid
 graph TD
-    Base["dev (基座): Node 22 / Python 3 / Bun / AI Agent Tools"]
-    Base --> Go["go 变体: + Go 1.26 / golangci-lint / Go 工具链"]
-    Base --> Java["java 变体: + JDK 21 / Gradle / Maven"]
-    Base --> Office["office 变体: + LibreOffice / OCR / IDP Libs"]
+    Base["openclaw-runtime:base (底座): Node 22 / Bun / AI工具"]
+    Base --> GoStack["openclaw-runtime:go (技术栈): Go SDK 1.26"]
+    Base --> JavaStack["openclaw-runtime:java (技术栈): JDK 21 / Maven / Gradle"]
+    Base --> OfficeStack["openclaw-runtime:office (技术栈): LibreOffice / Tesseract"]
+    
+    GoStack --> GoProduct["openclaw-devkit:go (产品)"]
+    JavaStack --> JavaProduct["openclaw-devkit:java (产品)"]
+    OfficeStack --> OfficeProduct["openclaw-devkit:office (产品)"]
+    Base --> StdProduct["openclaw-devkit:latest (标准版)"]
 ```
 
 ### 📉 架构收益
@@ -23,12 +28,12 @@ graph TD
 
 ## 📊 镜像命名矩阵
 
-| 变体 | Dockerfile | 本地构建 | Docker Registry | 说明 |
-| :--- | :--- | :--- | :--- | :--- |
-| **dev** | `Dockerfile` | `openclaw-devkit:dev` | `ghcr.io/hrygo/openclaw-devkit:vX.Y.Z` | 默认标准版 |
-| **go** | `Dockerfile.go` | `openclaw-devkit-go:dev` | `ghcr.io/hrygo/openclaw-devkit:vX.Y.Z-go` | Go 开发版 |
-| **java** | `Dockerfile.java` | `openclaw-devkit-java:dev` | `ghcr.io/hrygo/openclaw-devkit:vX.Y.Z-java` | Java 开发版 |
-| **office** | `Dockerfile.office` | `openclaw-devkit-office:dev` | `ghcr.io/hrygo/openclaw-devkit:vX.Y.Z-office` | 办公/IDP 版 |
+| 变体       | Dockerfile   | 本地构建                 | Docker Registry                        | 说明        |
+| :--------- | :----------- | :----------------------- | :------------------------------------- | :---------- |
+| **latest** | `Dockerfile` | `openclaw-devkit:latest` | `ghcr.io/hrygo/openclaw-devkit:latest` | 标准版      |
+| **go**     | `Dockerfile` | `openclaw-devkit:go`     | `ghcr.io/hrygo/openclaw-devkit:go`     | Go 开发版   |
+| **java**   | `Dockerfile` | `openclaw-devkit:java`   | `ghcr.io/hrygo/openclaw-devkit:java`   | Java 开发版 |
+| **office** | `Dockerfile` | `openclaw-devkit:office` | `ghcr.io/hrygo/openclaw-devkit:office` | 办公/IDP 版 |
 
 ---
 
@@ -36,100 +41,100 @@ graph TD
 
 ### 1. 核心运行时对比
 
-| 组件 | dev | go | java | office |
-| :--- | :---: | :---: | :---: | :---: |
-| **Node.js** 22 LTS | ✅ | ✅ | ✅ | ✅ |
-| **Python** 3.x | ✅ | ✅ | ✅ | ✅ |
-| **Bun** 1.3.10 | ✅ | ✅ | ✅ | ✅ |
-| **Go** 1.26.1 | ✅ | ✅+ | ✅ | ✅ |
-| **JDK** 21 (Temurin) | ❌ | ❌ | ✅ | ❌ |
-| **Gradle** 8.14 | ❌ | ❌ | ✅ | ❌ |
-| **Maven** 3.9.9 | ❌ | ❌ | ✅ | ❌ |
+| 组件                 |  dev  |  go   | java  | office |
+| :------------------- | :---: | :---: | :---: | :----: |
+| **Node.js** 22 LTS   |   ✅   |   ✅   |   ✅   |   ✅    |
+| **Python** 3.x       |   ✅   |   ✅   |   ✅   |   ✅    |
+| **Bun** 1.3.10       |   ✅   |   ✅   |   ✅   |   ✅    |
+| **Go** 1.26.1        |   ✅   |   ✅   |   ✅   |   ✅    |
+| **JDK** 21 (Temurin) |   ❌   |   ❌   |   ✅   |   ❌    |
+| **Gradle** 8.14      |   ❌   |   ❌   |   ✅   |   ❌    |
+| **Maven** 3.9.9      |   ❌   |   ❌   |   ✅   |   ❌    |
 
 > `Go 1.26.1`: dev 版内置，go 版显式重新安装（确保版本一致性）
 
 ### 2. AI Agent 工具 (全版本通用)
 
-| 工具 | 版本 | 说明 |
-| :--- | :--- | :--- |
-| **Claude Code** | latest | Anthropic 官方编码 CLI |
-| **OpenCode** | latest | 开源 AI 辅助编码套件 |
-| **Pi-Mono** | latest | Mario Zechner AI 编码 Agent |
-| **uv** | latest | Python 极速包管理 (Astral) |
-| **yq** | latest | YAML/XML 智能解析 |
-| **just** | latest | 命令行任务运行器 |
-| **lazygit** | latest | Git TUI 交互工具 |
-| **tldr** | latest | 命令速查 (防幻觉) |
-| **fzf** / **zoxide** | latest | 智能跳转与搜索 |
-| **Playwright** | latest | 网页自动化 + Chromium 浏览器 |
-| **GitHub CLI (gh)** | latest | GitHub 官方 CLI |
+| 工具                 | 版本   | 说明                         |
+| :------------------- | :----- | :--------------------------- |
+| **Claude Code**      | latest | Anthropic 官方编码 CLI       |
+| **OpenCode**         | latest | 开源 AI 辅助编码套件         |
+| **Pi-Mono**          | latest | Mario Zechner AI 编码 Agent  |
+| **uv**               | latest | Python 极速包管理 (Astral)   |
+| **yq**               | latest | YAML/XML 智能解析            |
+| **just**             | latest | 命令行任务运行器             |
+| **lazygit**          | latest | Git TUI 交互工具             |
+| **tldr**             | latest | 命令速查 (防幻觉)            |
+| **fzf** / **zoxide** | latest | 智能跳转与搜索               |
+| **Playwright**       | latest | 网页自动化 + Chromium 浏览器 |
+| **GitHub CLI (gh)**  | latest | GitHub 官方 CLI              |
 
 ### 3. Go 开发工具链 (go 版独有)
 
-| 工具 | 版本 | 说明 |
-| :--- | :--- | :--- |
+| 工具              | 版本   | 说明                             |
+| :---------------- | :----- | :------------------------------- |
 | **golangci-lint** | 1.64.8 | Go 代码静态分析 (多 linter 聚合) |
-| **gopls** | latest | Go 语言服务器 (LSP) |
-| **dlv** | latest | Go 调试器 (Delve) |
-| **staticcheck** | latest | Go 静态检查 |
-| **gosec** | latest | Go 安全扫描 |
-| **goimports** | latest | Go 导入自动管理 |
-| **air** | latest | Go 热重载 (开发时使用) |
-| **mockgen** | latest | Go Mock 代码生成 |
-| **wire** | latest | Google Wire 依赖注入 |
-| **ginkgo** | latest | Go BDD 测试框架
+| **gopls**         | latest | Go 语言服务器 (LSP)              |
+| **dlv**           | latest | Go 调试器 (Delve)                |
+| **staticcheck**   | latest | Go 静态检查                      |
+| **gosec**         | latest | Go 安全扫描                      |
+| **goimports**     | latest | Go 导入自动管理                  |
+| **air**           | latest | Go 热重载 (开发时使用)           |
+| **mockgen**       | latest | Go Mock 代码生成                 |
+| **wire**          | latest | Google Wire 依赖注入             |
+| **ginkgo**        | latest | Go BDD 测试框架                  |
 
 ### 4. 办公自动化与 IDP 工具 (Office 独有)
 
-| 组件              | 说明                          | 版本  |
-| ----------------- | ---------------------------- | ----- |
+| 组件              | 说明                         | 版本           |
+| ----------------- | ---------------------------- | -------------- |
 | **LibreOffice**   | 无头版办公套件 (Writer/Calc) | latest (nogui) |
-| **OCRmyPDF**     | 扫描件 PDF/A 搜索化          | latest |
-| **Tesseract OCR** | OCR 引擎 (简/繁/英)          | latest |
-| **poppler-utils** | PDF 工具集                    | latest |
-| **Ghostscript**   | PostScript/PDF 处理          | latest |
-| **ImageMagick**   | 图像处理                     | latest |
+| **OCRmyPDF**      | 扫描件 PDF/A 搜索化          | latest         |
+| **Tesseract OCR** | OCR 引擎 (简/繁/英)          | latest         |
+| **poppler-utils** | PDF 工具集                   | latest         |
+| **Ghostscript**   | PostScript/PDF 处理          | latest         |
+| **ImageMagick**   | 图像处理                     | latest         |
 
 ### 5. Python 库差异
 
-| 包分类 | dev | go | java | office |
-| :--- | :---: | :---: | :---: | :---: |
-| **文档处理** | | | | |
-| `python-docx` | ✅ | ✅ | ✅ | ✅ |
-| `python-pptx` | ✅ | ✅ | ✅ | ✅ |
-| `openpyxl` | ✅ | ✅ | ✅ | ✅ |
-| `pypdf` | ❌ | ❌ | ❌ | ✅ |
-| `pymupdf` | ❌ | ❌ | ❌ | ✅ |
-| `reportlab` | ❌ | ❌ | ❌ | ✅ |
-| `docx2txt` | ❌ | ❌ | ❌ | ✅ |
-| **数据处理** | | | | |
-| `pandas` | ❌ | ❌ | ❌ | ✅ |
-| `numpy` | ❌ | ❌ | ❌ | ✅ |
-| `polars` | ❌ | ❌ | ❌ | ✅ |
-| `pyarrow` | ❌ | ❌ | ❌ | ✅ |
-| **网络/自动化** | | | | |
-| `requests` | ❌ | ❌ | ❌ | ✅ |
-| `aiohttp` | ❌ | ❌ | ❌ | ✅ |
-| `selenium` | ❌ | ❌ | ❌ | ✅ |
-| `webdriver-manager` | ❌ | ❌ | ❌ | ✅ |
-| **OCR/图像** | | | | |
-| `pytesseract` | ❌ | ❌ | ❌ | ✅ |
-| `pdf2image` | ❌ | ❌ | ❌ | ✅ |
-| `pillow` | ❌ | ❌ | ❌ | ✅ |
-| `xlwings` | ❌ | ❌ | ❌ | ✅ |
-| **其他** | | | | |
-| `beautifulsoup4` | ✅ | ✅ | ✅ | ✅ |
-| `lxml` | ✅ | ✅ | ✅ | ✅ |
-| `pyyaml` | ✅ | ✅ | ✅ | ✅ |
-| `pandoc` | ✅ | ✅ | ✅ | ✅ |
+| 包分类              |  dev  |  go   | java  | office |
+| :------------------ | :---: | :---: | :---: | :----: |
+| **文档处理**        |       |       |       |        |
+| `python-docx`       |   ✅   |   ✅   |   ✅   |   ✅    |
+| `python-pptx`       |   ✅   |   ✅   |   ✅   |   ✅    |
+| `openpyxl`          |   ✅   |   ✅   |   ✅   |   ✅    |
+| `pypdf`             |   ❌   |   ❌   |   ❌   |   ✅    |
+| `pymupdf`           |   ❌   |   ❌   |   ❌   |   ✅    |
+| `reportlab`         |   ❌   |   ❌   |   ❌   |   ✅    |
+| `docx2txt`          |   ❌   |   ❌   |   ❌   |   ✅    |
+| **数据处理**        |       |       |       |        |
+| `pandas`            |   ❌   |   ❌   |   ❌   |   ✅    |
+| `numpy`             |   ❌   |   ❌   |   ❌   |   ✅    |
+| `polars`            |   ❌   |   ❌   |   ❌   |   ✅    |
+| `pyarrow`           |   ❌   |   ❌   |   ❌   |   ✅    |
+| **网络/自动化**     |       |       |       |        |
+| `requests`          |   ❌   |   ❌   |   ❌   |   ✅    |
+| `aiohttp`           |   ❌   |   ❌   |   ❌   |   ✅    |
+| `selenium`          |   ❌   |   ❌   |   ❌   |   ✅    |
+| `webdriver-manager` |   ❌   |   ❌   |   ❌   |   ✅    |
+| **OCR/图像**        |       |       |       |        |
+| `pytesseract`       |   ❌   |   ❌   |   ❌   |   ✅    |
+| `pdf2image`         |   ❌   |   ❌   |   ❌   |   ✅    |
+| `pillow`            |   ❌   |   ❌   |   ❌   |   ✅    |
+| `xlwings`           |   ❌   |   ❌   |   ❌   |   ✅    |
+| **其他**            |       |       |       |        |
+| `beautifulsoup4`    |   ✅   |   ✅   |   ✅   |   ✅    |
+| `lxml`              |   ✅   |   ✅   |   ✅   |   ✅    |
+| `pyyaml`            |   ✅   |   ✅   |   ✅   |   ✅    |
+| `pandoc`            |   ✅   |   ✅   |   ✅   |   ✅    |
 
 ### 6. 旗舰级 IDP 工具 (office 版独有)
 
-| 工具 | 说明 |
-| :--- | :--- |
-| **Docling** | IBM 语义级 PDF→Markdown 转换 |
-| **Marker-PDF** | 高保真文档解析 (保留表格/布局) |
-| **pdfplumber** | PDF 内容精确提取 |
+| 工具             | 说明                                  |
+| :--------------- | :------------------------------------ |
+| **Docling**      | IBM 语义级 PDF→Markdown 转换          |
+| **Marker-PDF**   | 高保真文档解析 (保留表格/布局)        |
+| **pdfplumber**   | PDF 内容精确提取                      |
 | **unstructured** | 多格式文档解析 (PDF/Word/HTML/CSV 等) |
 
 ---
@@ -203,16 +208,16 @@ graph TD
 
 ## 📋 快速选择指南
 
-| 需求 | 推荐版本 |
-| :--- | :--- |
-| 不确定，用默认 | **dev** |
-| Go 后端开发 | **go** |
-| Spring Boot 开发 | **java** |
-| 文档处理/RAG | **office** |
-| 前后端全栈 | **dev** |
-| Go + 其他语言 | **go** |
-| Java + 前端 | **java** |
-| PDF 自动化 | **office** |
+| 需求             | 推荐版本   |
+| :--------------- | :--------- |
+| 不确定，用默认   | **dev**    |
+| Go 后端开发      | **go**     |
+| Spring Boot 开发 | **java**   |
+| 文档处理/RAG     | **office** |
+| 前后端全栈       | **dev**    |
+| Go + 其他语言    | **go**     |
+| Java + 前端      | **java**   |
+| PDF 自动化       | **office** |
 
 ---
 
@@ -232,10 +237,10 @@ make rebuild office    # 或: make build office && make restart
 
 ### 首次安装 vs 后续切换
 
-| 操作 | 命令 | 适用场景 |
-| :--- | :--- | :--- |
+| 操作         | 命令                     | 适用场景                         |
+| :----------- | :----------------------- | :------------------------------- |
 | **首次安装** | `make install <variant>` | 首次部署环境，创建数据目录和配置 |
-| **切换镜像** | `make rebuild <variant>` | 已安装后需要切换到不同版本 |
+| **切换镜像** | `make rebuild <variant>` | 已安装后需要切换到不同版本       |
 
 > [!NOTE]
 > `make install` 仅用于**首次安装**。后续切换镜像只需修改 `.env` 并使用 `make build/rebuild` 即可，数据目录会被保留。
