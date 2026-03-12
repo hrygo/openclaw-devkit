@@ -132,7 +132,6 @@ make install office
 | `make status` | 查看运行状态 |
 | `make logs` | 查看实时日志 |
 | `make shell` | 进入容器 Shell |
-| `make update` | 更新 OpenClaw 源码 |
 
 > 📖 更完整的命令说明 → [详细参考手册](./docs/REFERENCE.md)
 
