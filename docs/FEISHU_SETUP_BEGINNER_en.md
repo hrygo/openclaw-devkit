@@ -1,170 +1,227 @@
-# 👶 Zero-Friction! Feishu (Lark) Integration Beginner Guide for OpenClaw
+# 👶 零基础！Feishu (Feishu/Lark) 接入 OpenClaw Beginner-friendly完整教程
 
-> 🎯 **This guide is written for OpenClaw users who want a step-by-step setup with screenshots.**
-> You can complete Feishu/Lark integration in around 10 minutes using long connection mode (WebSocket), without exposing a public webhook endpoint.
+> 🎯 **本教程专为 OpenClaw DevKit 用户设计。**
+> 跟着以下Beginner-friendly图文步骤，只需 10 分钟即可完成FeishuBot接入（长连接模式），无需公网 IP。
 
 ---
 
-## 🟢 Core Concept: Which "keys" do we need?
-For Feishu/Lark long-connection integration, you usually need these credentials:
-1. **App ID**: Unique app identifier.
-2. **App Secret**: App-level secret key.
-3. **Verification Token**: Event source verification token.
-4. **Encrypt Key (optional)**: Required only when encrypted event payload is enabled.
+## 🟢 核心理念：我们需要准备哪几把“钥匙”？
+
+将 OpenClaw 接入Feishu（Lark）长连接模式，通常需要以下凭证：
+
+1. **App ID**：应用唯一标识（相当于Bot账号 ID）
+2. **App Secret**：应用密钥（相当于Bot密码）
+3. **Verification Token**：Events订阅校验凭证（用于校验回调来源）
 
 > [!TIP]
-> UI labels can differ slightly between Feishu CN and Lark Global, but the menu path is typically the same:
-> **Developer Console -> Your App -> Credentials & Basic Info / Event Subscriptions**.
+> Feishu平台不同版本（Feishu中国站 / Lark 国际站）界面文案可能略有差异，但菜单路径一致：
+> **开发者后台 → 你的应用 → 凭证与基础信息 / Events与回调**
 
 ---
 
-## Step 1: Create a Custom App in Feishu Open Platform
+## 第 1 步：在Feishu开放平台创建Custom App
 
-1. Open [Feishu Open Platform](https://open.feishu.cn/) (for global Lark, use https://open.larksuite.com/).
-2. Sign in with an admin/developer account and enter the developer console.
-3. Click **Create App** and choose **Custom App (tenant app)**.
-4. Fill in app name (recommended: `OpenClaw-devkit`) and description.
-5. Enter the app detail page after creation.
+1. 打开 [Feishu开放平台](https://open.feishu.cn/)（Lark 国际站可使用 https://open.larksuite.com/）
+2. 登录管理员账号，进入 **开发者后台**
+3. 点击 **创建应用**，选择 **Custom App（Custom App）**
+4. 填写应用名称（建议：`OpenClaw-devkit`）和应用描述，确认创建
+5. 创建完成后进入应用详情页
 
-![Step 1: Create custom app](images/guides/feishu_step1_create_app.png)
-
----
-
-## Step 2: Enable Bot Capability and Publish the App
-
-1. Open **Add App Capability** from the left menu.
-2. Enable the bot switch.
-3. Configure app availability scope (recommend a test group first).
-4. Go to **Version Management & Release**, create a version, then publish.
-5. Complete tenant installation/approval if your org requires it.
+![步骤 1：创建Custom App](images/guides/feishu_step1_create_app.png)
 
 ---
 
-## Step 3: Configure Event Subscription (WebSocket / Long Connection)
+## 第 2 步：启用Bot能力并安装到企业
 
-1. Open **Event Subscriptions** in your app settings.
-2. Enable event subscription.
-3. Select **Long Connection (WebSocket)** if a subscription mode selector is provided.
-4. Select the recommended events from the list in this guide.
-5. Save the configuration.
-6. Copy **Verification Token**.
-7. If encrypted event delivery is enabled, copy **Encrypt Key** too.
-8. If encryption is disabled, `Encrypt Key` can be empty.
-
-![Step 3: Enable event subscription with websocket](images/guides/feishu_step3_events.png)
-
-### Common Error Fix: "No app connection detected"
-
-If Feishu shows this message when you save long-connection settings:
-"No app connection detected. Please make sure the long connection is established before saving.",
-handle it in this order:
-
-1. Make sure you have obtained your App ID / App Secret (see Step 4), filled them correctly in OpenClaw, then start OpenClaw services.
-2. In Feishu console, confirm the app is already published and installed to the tenant.
-3. Verify Event Subscriptions is set to **Long Connection (WebSocket)** and keep that page refreshed.
-4. Check gateway logs for success markers such as `WebSocket connected` or `event stream started`.
-5. If no connection logs appear, check outbound networking first:
-    - whether the server can access Feishu Open Platform domains
-    - whether `HTTP_PROXY` / `HTTPS_PROXY` is configured
-    - whether your proxy allows container egress traffic
-6. Return to Event Subscriptions, refresh, and save again.
-
-If it still fails, the most common causes are credential mismatch or app not published/installed. Re-check:
-- App ID / App Secret come from the same app
-- Current tenant is the same tenant where this app is installed
-- Bot capability is enabled
+1. 在应用左侧菜单进入 **添加应用能力**
+2. 打开 **启用Bot** 开关
+3. 在 **可用范围** 中选择测试群或全员（建议先小范围测试）
+4. 进入 **版本管理与发布**，点击 **创建版本** 并 **发布**
+5. 在企业管理后台完成安装/可用Configuration（如需审批，按组织流程处理）
 
 ---
 
-## Step 4: Get App ID and App Secret
+## 第 3 步：ConfigurationEvents订阅（长连接 / WebSocket）
 
-1. Go to **Credentials & Basic Info**.
-2. Copy **App ID**.
-3. Reveal/reset and copy **App Secret**.
-4. Store both values securely.
+1. 在应用菜单进入 **Events与回调 / Event Subscriptions**
+2. 打开 **Events订阅** 开关
+3. 选择 **长连接（WebSocket）** 模式
+4. 按下文"推荐Events列表"勾选必需Events
+5. 保存Configuration
+6. 找到 **Verification Token** 并复制
+7. 如果启用了"加密传输"开关，再复制 **Encrypt Key**（可选）
 
-![Step 4: Get app id and app secret](images/guides/feishu_step4_info.png)
+![步骤 3：开启Events订阅并选择长连接](images/guides/feishu_step3_events.png)
+
+### 推荐Events列表
+
+- `im.message.receive_v1` — 接收消息（群聊/私聊）
+- `im.chat.member.add_v1` — 成员添加
+- `im.chat.member.delete_v1` — 成员移除
 
 ---
 
-## Step 5: Fill your OpenClaw `.env` file
+## 第 4 步：获取 App ID 与 App Secret
 
-Create or edit `.env` in the OpenClaw root directory:
+1. 进入 **凭证与基础信息 / Credentials & Basic Info**
+2. 在页面中找到并复制 **App ID**（格式：`cli_xxxxxxxxxxxxxxxx`）
+3. 点击显示或重置密钥后复制 **App Secret**
+4. 将两项临时保存到你的密码管理器或安全笔记中
+
+![步骤 4：获取 App ID 与 App Secret](images/guides/feishu_step4_info.png)
+
+---
+
+## 第 5 步：Configuration OpenClaw 环境变量
+
+在 OpenClaw DevKit 项目根目录下创建或编辑 `.env` 文件（首次可从 `.env.example` 复制）：
 
 ```env
-# Feishu/Lark App identity
+# Feishu应用凭证
 FEISHU_APP_ID=cli_xxxxxxxxxxxxxxxxx
 FEISHU_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxx
 
-# Event verification (required when event subscription is enabled)
+# Events校验 Token
 FEISHU_VERIFICATION_TOKEN=xxxxxxxxxxxxxxxx
 
-# Optional: required only when encrypted event payload is enabled
-FEISHU_ENCRYPT_KEY=xxxxxxxxxxxxxxxx
+# 可选：加密传输密钥（开启加密传输时需要）
+# FEISHU_ENCRYPT_KEY=xxxxxxxxxxxxxxxx
 
-# Recommended for no-public-IP deployments
+# 推荐：内网/无公网 IP 部署时使用 WebSocket 模式
 FEISHU_EVENT_MODE=websocket
 ```
 
 > [!IMPORTANT]
-> The `FEISHU_*` variable names shown above are **illustrative examples only**. They are **not** guaranteed to appear in `.env.example` or be read directly by OpenClaw.
-> For real deployments, `make onboard` and the generated config in `~/.openclaw/openclaw.json` are the **authoritative configuration path**.
-> Use this `.env` snippet only as a **conceptual mapping** between your Feishu app credentials and potential environment variables, or if your own deployment tooling is explicitly wired to expect these names.
+> Configuration完成后，需要Restart服务使Configuration生效（见第 6 步）
 
 ---
 
-## Step 6: Start services and verify
+## 第 6 步：Start并验证接入
 
-1. Save `.env`, then run in project root:
+1. 保存 `.env` 后，在项目根目录执行：
 
 ```bash
+# 进入项目目录
+cd openclaw-devkit
+
+# Restart服务使Configuration生效
 docker compose down
 docker compose up -d
 ```
 
-2. Invite the bot into a test group.
-3. Mention the bot and send `Hi` or a simple task.
-4. If the bot responds, integration is successful.
+2. 查看日志确认连接成功：
 
-**Recommended log checkpoints**:
-- Gateway logs show WebSocket connected / event received.
-- No auth/decryption errors (`invalid token`, `decrypt failed`).
+```bash
+docker compose logs -f openclaw-gateway
+```
 
----
+**日志检查点**：
+- 出现 `WebSocket connected` 或 `event stream started` 表示连接成功
+- 如果出现 `invalid token` 或 `decrypt failed` 等错误，检查凭证是否正确
 
-## ✅ Recommended Permissions and Event List
-
-### Recommended app permissions (scopes)
-- Send and receive group/direct messages
-- Read conversation metadata (chat/group IDs, conversation type)
-- Read messages that mention the bot
-- Send rich text or interactive cards (if card workflow is enabled)
-
-### Recommended event subscriptions
-- Bot mention event (core trigger)
-- Group message event (enable only for controlled scopes)
-- Direct message event (if DM support is needed)
-- Bot joined/removed or conversation update events (optional for lifecycle sync)
+3. 在Feishu中把Bot拉入测试群
+4. 在群内 @ Bot，发送 `Hi` 或 `帮我总结今天的待办`
+5. 若Bot正常响应，说明接入成功！
 
 > [!TIP]
-> Follow least-privilege principle: start with minimum required permissions, then expand only when needed.
+> 本项目常用命令：
+> - `make up` — Start服务
+> - `make down` — 停止服务
+> - `make restart` — Restart服务
+> - `make logs` — 查看日志
 
 ---
 
-## 🚀 Advanced Recommendations
+## ✅ 推荐Permissions点与Events列表
 
-1. **Canary rollout first**: start with one test chat.
-2. **Admin approval for risky actions**: strongly recommended for team environments.
-3. **Channel allowlist**: limit bot operation to specific business chats.
-4. **Proxy configuration**: set `HTTP_PROXY` / `HTTPS_PROXY` if network egress is restricted.
-5. **Log monitoring**: check gateway logs regularly for connection state and event handling errors.
+### 必需Permissions（Scopes）
+
+- `im:message` — 发送消息
+- `im:message.group_at_msg` — 接收群 @ 消息
+- `im:chat` — 获取会话信息
+- `drive:drive` — 云盘访问
+- `drive:file:readonly` — 只读云盘文件
+- `drive:file` — 云盘文件操作
+- `wiki:wiki` — 知识库访问
+- `contact:user.base:readonly` — 只读用户基础信息
+
+### 推荐Events（Events）
+
+- `im.message.receive_v1` — 接收消息（群聊）
+- `im.message.receive_v1` — 接收消息（私聊）
+- `im.chat.member.add_v1` — 成员添加
+- `im.chat.member.delete_v1` — 成员移除
+
+> [!TIP]
+> Permissions遵循最小化原则：先开启最小必需Permissions跑通流程，再按需扩展
 
 ---
 
-## 📸 Screenshot Asset Naming (under docs/images/guides/)
+## 🚀 AdvancedConfiguration
 
-- `feishu_step1_create_app.png`
-- `feishu_step3_events.png`
-- `feishu_step4_info.png`
+### 网络代理Configuration
 
-> Keep these filenames stable so the team can replace placeholders with real captured screenshots later.
+如果服务器访问Feishu开放平台受限，请在 `.env` 中Configuration代理：
+
+```env
+HTTP_PROXY=http://host.docker.internal:7897
+HTTPS_PROXY=http://host.docker.internal:7897
+```
+
+### 日志监控
+
+定期检查网关日志，关注连接状态和Events处理情况：
+
+```bash
+make logs
+```
+
+---
+
+## 🆘 FAQ
+
+### 问题：Feishu中发送消息无响应
+
+**排查步骤：**
+
+1. 检查服务是否运行：
+   ```bash
+   make status
+   ```
+
+2. 查看错误日志：
+   ```bash
+   make logs
+   ```
+
+3. 检查Configuration是否正确：
+   - 确认 `.env` 中 `FEISHU_APP_ID` 和 `FEISHU_APP_SECRET` 正确
+   - 确认应用已在Feishu开放平台发布
+   - 确认已Configuration长连接（WebSocket）模式
+
+4. Restart服务：
+   ```bash
+   make restart
+   ```
+
+### 问题：Configuration文件格式错误
+
+**解决方法：**
+
+1. 使用 JSON 校验工具检查格式：https://jsonlint.com
+2. 确保使用双引号，不能用单引号
+3. 确保没有 trailing comma
+
+### 问题：未检测到应用连接信息
+
+如果在Feishu后台保存长连接Configuration时看到提示"未检测到应用连接信息"：
+
+1. 确认 OpenClaw 服务已Start（`make status`）
+2. 确认应用已在Feishu后台发布并安装到企业
+3. 检查网络是否能访问Feishu开放平台
+4. 检查代理Configuration是否正确
+
+---
+
+**文档版本：** 1.5.0  
+**最后更新：** 2026-03-12
