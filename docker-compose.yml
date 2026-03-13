@@ -114,6 +114,9 @@ services:
       - "127.0.0.1:${OPENCLAW_BRIDGE_PORT:-18790}:18790"
     env_file:
       - .env
+    environment:
+      - OPENCLAW_CONFIG_DIR=/home/node/.openclaw
+      - OPENCLAW_WORKSPACE_DIR=/home/node/.openclaw/workspace
     init: true
     volumes:
       # === 必需挂载 (Required) ===

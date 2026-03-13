@@ -194,7 +194,12 @@ upsert_env() {
         if [ "$key" = "$k" ]; then
           # Evaluate current value of the variable named 'k'
           eval "val=\${$k-}"
-          printf '%s=%s\n' "$k" "$val" >>"$tmp"
+          if [ -n "$val" ]; then
+            printf '%s=%s\n' "$k" "$val" >>"$tmp"
+          else
+            # Keep original line if new value is empty
+            printf '%s\n' "$line" >>"$tmp"
+          fi
           seen="$seen$k "
           found=true
           break
@@ -209,7 +214,9 @@ upsert_env() {
   for k in "$@"; do
     if [[ "$seen" != *" $k "* ]]; then
       eval "val=\${$k-}"
-      printf '%s=%s\n' "$k" "$val" >>"$tmp"
+      if [ -n "$val" ]; then
+        printf '%s=%s\n' "$k" "$val" >>"$tmp"
+      fi
     fi
   done
 
