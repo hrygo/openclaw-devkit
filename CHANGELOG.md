@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.5.5] - 2026-03-13
+
+### Fixed
+- **Gateway Network Configuration**: Updated `docker-entrypoint.sh` to use `lan` bind mode by default instead of `all`, respecting existing configurations while ensuring host accessibility.
+
 ## [v1.5.4] - 2026-03-13
 
 ### Fixed
