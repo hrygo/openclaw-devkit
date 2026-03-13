@@ -164,9 +164,12 @@ install: ## 首次安装/初始化环境
 	@echo "  $(INFO) 提示: 首次安装后，请执行 $(BOLD)make onboard$(NC) 以交互式引导配置 LLM 与 聊天应用。"
 
 up: ## 启动服务
+	@# 检查并创建必要的目录（如果不存在）
+	@mkdir -p "$(OPENCLAW_CUSTOM_SKILLS_DIR)" 2>/dev/null || true
+	@mkdir -p "$(OPENCLAW_TEAM_SKILLS_DIR)" 2>/dev/null || true
 	@docker compose up -d
 	@echo "✓ 已启动 (Web: http://127.0.0.1:$(GATEWAY_PORT)/)"
-	@echo "提示: 初次使用建议运行 'make onboard' 进行交互式配置。"
+	@echo "提示：初次使用建议运行 'make onboard' 进行交互式配置。"
 
 onboard: ## 交互式引导设置 (LLM, 飞书, 频道等)
 	@echo "==> 启动交互式引导程序..."
