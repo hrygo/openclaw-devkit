@@ -182,16 +182,22 @@ install: ## 首次安装/初始化环境
 	@echo "$(INFO) 目标环境: $(BOLD)$(YELLOW)$(IMAGE_NAME)$(NC)"
 	@OPENCLAW_IMAGE="$(IMAGE_NAME)" bash "$(SETUP_SCRIPT)"
 	@echo "$(SUCCESS) $(GREEN)环境安装完毕!$(NC)"
-	@echo "  $(INFO) 提示: 首次安装后，请执行 $(BOLD)make onboard$(NC) 以交互式引导配置 LLM 与 聊天应用。"
+	@echo "  $(INFO) 🚀 下一步:"
+	@echo "    1. 执行 $(BOLD)make onboard$(NC) 配置核心模型"
+	@echo "    2. 执行 $(BOLD)make dashboard$(NC) 直接打开 Web UI"
 
 up: ## 启动服务
 	@docker compose up -d
 	@echo "✓ 已启动 (Web: http://127.0.0.1:$(GATEWAY_PORT)/)"
-	@echo "提示: 初次使用建议运行 'make onboard' 进行交互式配置。"
+	@echo "  $(INFO) 提示: 执行 $(BOLD)make dashboard$(NC) 获取一键直通链接"
 
 onboard: ## 启动交互式引导程序
 	@echo "$(INFO) 启动交互式引导程序..."
 	@docker compose run --rm -it -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 openclaw-cli openclaw onboard
+	@echo ""
+	@echo "$(SUCCESS) 配对就绪! 您可以通过以下方式访问 Web UI:"
+	@echo "  ⚡ $(BOLD)方法 A (推荐)$(NC): 执行 $(CYAN)make dashboard$(NC) 一键免密直达"
+	@echo "  🔒 $(BOLD)方法 B (安全)$(NC): 访问网页后执行 $(CYAN)make approve$(NC) 自动授权"
 
 down: ## 停止服务
 	@docker compose down
