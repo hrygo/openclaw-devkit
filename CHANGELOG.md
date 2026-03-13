@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.5.3] - 2026-03-13
+
+### Fixed
+- **Docker Build (Go Stack)**: Replaced `rm -rf` with `go clean -modcache` to resolve permission denied errors during image construction as non-root user.
+
 ## [v1.5.2] - 2026-03-13
 
 ### Fixed

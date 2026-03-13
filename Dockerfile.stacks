@@ -35,7 +35,7 @@ RUN go install golang.org/x/tools/gopls@latest && \
     go install github.com/google/wire/cmd/wire@latest && \
     go install github.com/onsi/ginkgo/v2/ginkgo@latest && \
     # Clean up GOPATH cache to keep image small
-    rm -rf /home/node/go/pkg/mod/*
+    go clean -modcache
 
 USER root
 
