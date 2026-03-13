@@ -14,28 +14,40 @@
 #   OPENCLAW_EXTRA_MOUNTS   额外挂载点 (格式: src:dst[:ro],src2:dst2)
 #   OPENCLAW_HOME_VOLUME    命名卷名称 (可选，用于持久化整个 home)
 
-set -euo pipefail
+# Self-upgrade to bash if currently running in a more limited shell
+# This ensures we have access to pipefail, arrays, and other convenience features.
+if [ -z "$BASH_VERSION" ] && command -v bash >/dev/null 2>&1; then
+  exec bash "$0" "$@"
+fi
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-IMAGE_NAME="${OPENCLAW_IMAGE:-openclaw-devkit}"
+set -eu
+if [ -n "$BASH_VERSION" ]; then set -o pipefail; fi
+
+# Portable way to get script directory
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+IMAGE_NAME="${OPENCLAW_IMAGE:-ghcr.io/hrygo/openclaw-devkit:latest}"
 
 # OS Detection
 IS_WINDOWS=false
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
-  IS_WINDOWS=true
-  # Force UTF-8 encoding for Windows terminals to prevent garbled Chinese characters
-  chcp.com 65001 > /dev/null 2>&1
+case "$OSTYPE" in
+  msys*|cygwin*|win32*) IS_WINDOWS=true ;;
+esac
+
+if [ "$IS_WINDOWS" = "true" ]; then
+  # Force UTF-8 encoding for Windows terminals
+  chcp.com 65001 > /dev/null 2>&1 || true
 fi
 
 # Self-Healing: Fix CRLF line endings in docker-entrypoint.sh if on Windows
-# This prevents 'bash\r: No such file or directory' errors in Docker
 if [ -f "$ROOT_DIR/docker-entrypoint.sh" ]; then
-    if grep -q $'\r' "$ROOT_DIR/docker-entrypoint.sh"; then
+    # Use printf to avoid escaping issues with \r
+    if grep -q "$(printf '\r')" "$ROOT_DIR/docker-entrypoint.sh" 2>/dev/null; then
         echo "Detected CRLF line endings in docker-entrypoint.sh, converting to LF..."
         if command -v sed >/dev/null 2>&1; then
             sed -i 's/\r//g' "$ROOT_DIR/docker-entrypoint.sh"
-        elif command -v tr >/dev/null 2>&1; then
-            tr -d '\r' < "$ROOT_DIR/docker-entrypoint.sh" > "$ROOT_DIR/docker-entrypoint.sh.tmp" && mv "$ROOT_DIR/docker-entrypoint.sh.tmp" "$ROOT_DIR/docker-entrypoint.sh"
+        else
+            tr -d '\r' < "$ROOT_DIR/docker-entrypoint.sh" > "$ROOT_DIR/docker-entrypoint.sh.tmp" && \
+            mv "$ROOT_DIR/docker-entrypoint.sh.tmp" "$ROOT_DIR/docker-entrypoint.sh"
         fi
     fi
 fi
@@ -185,32 +197,40 @@ NODE
 upsert_env() {
   local file="$1"
   shift
-  local -a keys=("$@")
+  # We use a temporary file to avoid partial writes
   local tmp
-  tmp="$(mktemp)"
+  if command -v mktemp >/dev/null 2>&1; then
+    tmp="$(mktemp)"
+  else
+    tmp="${file}.tmp.$$"
+  fi
+  
   local seen=" "
 
-  if [[ -f "$file" ]]; then
-    while IFS= read -r line || [[ -n "$line" ]]; do
+  if [ -f "$file" ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
       local key="${line%%=*}"
-      local replaced=false
-      for k in "${keys[@]}"; do
-        if [[ "$key" == "$k" ]]; then
-          printf '%s=%s\n' "$k" "${!k-}" >>"$tmp"
+      local found=false
+      for k in "$@"; do
+        if [ "$key" = "$k" ]; then
+          # Evaluate current value of the variable named 'k'
+          eval "val=\${$k-}"
+          printf '%s=%s\n' "$k" "$val" >>"$tmp"
           seen="$seen$k "
-          replaced=true
+          found=true
           break
         fi
       done
-      if [[ "$replaced" == false ]]; then
+      if [ "$found" = false ]; then
         printf '%s\n' "$line" >>"$tmp"
       fi
     done <"$file"
   fi
 
-  for k in "${keys[@]}"; do
+  for k in "$@"; do
     if [[ "$seen" != *" $k "* ]]; then
-      printf '%s=%s\n' "$k" "${!k-}" >>"$tmp"
+      eval "val=\${$k-}"
+      printf '%s=%s\n' "$k" "$val" >>"$tmp"
     fi
   done
 
@@ -342,12 +362,13 @@ fi
 HOME_VOLUME_NAME="${OPENCLAW_HOME_VOLUME:-}"
 RAW_EXTRA_MOUNTS="${OPENCLAW_EXTRA_MOUNTS:-}"
 
-OPENCLAW_CONFIG_DIR="${OPENCLAW_CONFIG_DIR:-$HOME/.openclaw}"
-OPENCLAW_WORKSPACE_DIR="${OPENCLAW_WORKSPACE_DIR:-$HOME/.openclaw/workspace}"
-
-# 展开波浪号 Tilde (如果环境是从 .env 以字符串读入 '~' 的话)
-OPENCLAW_CONFIG_DIR="${OPENCLAW_CONFIG_DIR/#\~/$HOME}"
-OPENCLAW_WORKSPACE_DIR="${OPENCLAW_WORKSPACE_DIR/#\~/$HOME}"
+# Handle tilde expansion (POSIX compliant)
+case "$OPENCLAW_CONFIG_DIR" in
+    \~*) OPENCLAW_CONFIG_DIR="$HOME${OPENCLAW_CONFIG_DIR#\~}" ;;
+esac
+case "$OPENCLAW_WORKSPACE_DIR" in
+    \~*) OPENCLAW_WORKSPACE_DIR="$HOME${OPENCLAW_WORKSPACE_DIR#\~}" ;;
+esac
 OPENCLAW_GATEWAY_PORT="${OPENCLAW_GATEWAY_PORT:-18789}"
 OPENCLAW_BRIDGE_PORT="${OPENCLAW_BRIDGE_PORT:-18790}"
 
