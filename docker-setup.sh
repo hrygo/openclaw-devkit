@@ -25,6 +25,19 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; t
   IS_WINDOWS=true
 fi
 
+# Self-Healing: Fix CRLF line endings in docker-entrypoint.sh if on Windows
+# This prevents 'bash\r: No such file or directory' errors in Docker
+if [ -f "$ROOT_DIR/docker-entrypoint.sh" ]; then
+    if grep -q $'\r' "$ROOT_DIR/docker-entrypoint.sh"; then
+        echo "Detected CRLF line endings in docker-entrypoint.sh, converting to LF..."
+        if command -v sed >/dev/null 2>&1; then
+            sed -i 's/\r//g' "$ROOT_DIR/docker-entrypoint.sh"
+        elif command -v tr >/dev/null 2>&1; then
+            tr -d '\r' < "$ROOT_DIR/docker-entrypoint.sh" > "$ROOT_DIR/docker-entrypoint.sh.tmp" && mv "$ROOT_DIR/docker-entrypoint.sh.tmp" "$ROOT_DIR/docker-entrypoint.sh"
+        fi
+    fi
+fi
+
 # COMPOSE_FILE is managed by .env for flexibility
 # EXTRA_COMPOSE_FILE still used for on-the-fly mounts
 EXTRA_COMPOSE_FILE="$ROOT_DIR/docker-compose.dev.extra.yml"
