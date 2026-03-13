@@ -41,24 +41,44 @@ if [ -f "$CONFIG_FILE" ]; then
     
     # 深度净化逻辑：使用 Node.js 手术级移除可能导致 Zod 校验失败的过时节点
     # 相比 sed，Node.js 能百分之百保证 JSON 结构的合法性，不会产生语法错误
-    run_as_node node -e "
+        run_as_node node -e "
         const fs = require('fs');
         const path = '$CONFIG_FILE';
         try {
             const data = fs.readFileSync(path, 'utf8');
             const config = JSON.parse(data);
+            
+            // 1. Clean legacy schema nodes
             if (config.agents && config.agents.defaults) {
-                console.log('--> Cleaning agents.defaults.contextPruning...');
                 delete config.agents.defaults.contextPruning;
-                console.log('--> Cleaning agents.defaults.compaction...');
                 delete config.agents.defaults.compaction;
             }
-            // 确保 Gateway 绑定到 Lan (0.0.0.0)
-            if (config.gateway) {
-                console.log('--> Forcing gateway.bind to all...');
-                config.gateway.bind = 'all';
-            }
+            
+            // 2. Force DevKit Gateway Best-Practices
+            config.gateway = config.gateway || {};
+            config.gateway.bind = 'all';
+            config.gateway.mode = 'local';
+            config.gateway.controlUi = config.gateway.controlUi || {};
+            
+            // Comprehensive whitelist for Windows/WSL/Docker dev environments
+            const baseOrigins = [
+                'http://127.0.0.1:18789',
+                'http://localhost:18789',
+                'http://0.0.0.0:18789',
+                'http://host.docker.internal:18789'
+            ];
+            
+            // Add custom origins if provided via ENV
+            let customOrigins = [];
+            try {
+                const envOrigins = process.env.OPENCLAW_ALLOWED_ORIGINS;
+                if (envOrigins) customOrigins = JSON.parse(envOrigins);
+            } catch (e) {}
+            
+            config.gateway.controlUi.allowedOrigins = [...new Set([...baseOrigins, ...customOrigins])];
+            
             fs.writeFileSync(path, JSON.stringify(config, null, 2));
+            console.log('--> OpenClaw configuration surgically optimized for DevKit.');
         } catch (e) {
             console.error('Warning: Configuration surgery failed: ' + e.message);
         }
