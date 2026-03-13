@@ -255,10 +255,10 @@ clean-volumes: ## 清理所有数据卷
 # ============================================================
 
 logs: ## 查看 Gateway 日志
-	@docker compose logs -f openclaw-gateway
+	@LANG=C.UTF-8 LC_ALL=C.UTF-8 docker compose logs --tail 100 -f openclaw-gateway
 
 logs-all: ## 查看所有容器日志
-	@docker compose logs -f
+	@LANG=C.UTF-8 LC_ALL=C.UTF-8 docker compose logs --tail 100 -f
 
 shell: ## 进入 Gateway 容器
 	@docker compose exec openclaw-gateway bash
