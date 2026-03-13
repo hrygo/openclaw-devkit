@@ -100,7 +100,7 @@ fi
 # Run these as node to ensure generated metadata/temp files are owned correctly
 # Always set these values to ensure consistency across restarts and upgrades
 run_as_node openclaw config set gateway.mode local --strict-json >/dev/null 2>&1 || true
-run_as_node openclaw config set gateway.bind lan --strict-json >/dev/null 2>&1 || true
+run_as_node openclaw config set gateway.bind all --strict-json >/dev/null 2>&1 || true
 run_as_node openclaw config set gateway.controlUi.allowedOrigins '["http://127.0.0.1:18789"]' --strict-json >/dev/null 2>&1 || true
 
 # 4. Execute CMD
@@ -108,6 +108,8 @@ run_as_node openclaw config set gateway.controlUi.allowedOrigins '["http://127.0
 # This ensures all files created by the app (logs, sessions) belong to 'node'
 echo "==> Starting OpenClaw..."
 if [ "$(id -u)" = "0" ]; then
+    # Ensure HOME is correctly set for node before execution
+    export HOME=/home/node
     exec runuser -u node -m -- "$@"
 else
     exec "$@"
