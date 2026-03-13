@@ -146,6 +146,11 @@ fi
 # 3. Ensure Gateway safety & access for Docker
 # Run these as node to ensure generated metadata/temp files are owned correctly
 # Always set these values to ensure consistency across restarts and upgrades
+# Set UTF-8 locale for proper character encoding
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+export LANGUAGE=en_US:en
+
 run_as_node openclaw config set gateway.mode local --strict-json >/dev/null 2>&1 || true
 run_as_node openclaw config set gateway.bind lan --strict-json >/dev/null 2>&1 || true
 run_as_node openclaw config set gateway.controlUi.allowedOrigins '["http://127.0.0.1:18789"]' --strict-json >/dev/null 2>&1 || true
@@ -153,9 +158,10 @@ run_as_node openclaw config set gateway.controlUi.allowedOrigins '["http://127.0
 # 4. Execute CMD
 # If root, drop privileges to 'node' to avoid subsequent permission issues
 # This ensures all files created by the app (logs, sessions) belong to 'node'
+# Use 'exec env' to explicitly pass locale environment variables
 echo "==> Starting OpenClaw..."
 if [ "$(id -u)" = "0" ]; then
-    exec runuser -u node -m -- "$@"
+    exec runuser -u node -m -- env LANG=C.UTF-8 LC_ALL=C.UTF-8 LANGUAGE=en_US:en "$@"
 else
     exec "$@"
 fi

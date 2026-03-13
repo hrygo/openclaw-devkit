@@ -11,6 +11,9 @@ ARG NODE_VERSION=22
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PATH="/usr/local/bin:/root/.bun/bin:${PATH}"
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+ENV LANGUAGE=en_US:en
 
 # Configure Apt with retries and mirror
 RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries && \

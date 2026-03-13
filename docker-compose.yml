@@ -22,6 +22,12 @@ x-openclaw-common: &openclaw-common
   environment: &common-env
     HOST_UID: ${HOST_UID:-1000}
     # ─────────────────────────────────────────────────────────────────
+    # Locale Configuration (UTF-8 for Chinese character support)
+    # ─────────────────────────────────────────────────────────────────
+    LANG: C.UTF-8
+    LC_ALL: C.UTF-8
+    LANGUAGE: en_US:en
+    # ─────────────────────────────────────────────────────────────────
     # Proxy Configuration
     # ─────────────────────────────────────────────────────────────────
     # Required for accessing Google and Claude API from restricted network environments
