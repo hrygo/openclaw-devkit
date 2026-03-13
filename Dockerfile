@@ -16,16 +16,15 @@ RUN npm install -g openclaw@latest
 
 # Install Tier 3 Fast-Updating AI Agents
 # Positioned here so updating these tools doesn't trigger a rebuild of the entire app layer
+# We use root to install but ensure they are on path or globally accessible
 RUN npm install -g @anthropic-ai/claude-code@latest && \
-    # Install placeholder for OpenCode and Pi-Mono (using official scripts or binaries if known)
-    # Since these are often updated via their own CLIs or curl, we'll ensure the base paths exist
+    # Install placeholder for OpenCode and Pi-Mono
     echo "Installing AI Agents..." && \
-    curl -fsSL https://opencode.ai/install.sh | bash || true && \
-    curl -fsSL https://pimono.ai/install.sh | bash || true
+    curl -fsSL https://opencode.ai/install.sh | INSTALL_DIR=/usr/local/bin bash || true && \
+    curl -fsSL https://pimono.ai/install.sh | INSTALL_DIR=/usr/local/bin bash || true
 
 # Post-installation setup
-# Create non-root user if not already present (debian might have one)
-RUN useradd --create-home --shell /bin/bash node || true
+# (redundant user creation removed - now in base)
 
 # Set permissions for /app if it was created by the install script
 # The install script usually installs to a specific path, if it follows standard conventions

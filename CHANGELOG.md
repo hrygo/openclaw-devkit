@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.5.2] - 2026-03-13
+
+### Fixed
+- **Tool Permissions (Non-root Access)**: 
+    - Moved the `node` user creation to the base image to ensure availability across all build stages.
+    - Relocated **Bun** installation to `/usr/local` (global) to ensure it is executable by the `node` user.
+    - Updated **Go toolchain** installation to run under the `node` user with a correctly owned `GOPATH` (`/home/node/go`).
+    - Standardized global `PATH` and installation directories for AI Agents (Claude Code, OpenCode, Pi-Mono) to guarantee non-root accessibility.
+
 ## [v1.5.1] - 2026-03-13
 
 ### Added
