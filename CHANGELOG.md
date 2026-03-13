@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.5.7] - 2026-03-13
+
+### Fixed
+- **Gateway Security**: Updated `docker-entrypoint.sh` to prioritize the `OPENCLAW_ALLOWED_ORIGINS` environment variable for `allowedOrigins` configuration, defaulting to a secure set that includes `localhost` and `0.0.0.0`.
+
 ## [v1.5.6] - 2026-03-13
 
 ### Fixed

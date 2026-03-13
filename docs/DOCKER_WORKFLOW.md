@@ -80,7 +80,7 @@ RUN npm install -g openclaw
   ghcr.io/hrygo/openclaw-runtime:base
   ghcr.io/hrygo/openclaw-runtime:{go,java,office}
   ghcr.io/hrygo/openclaw-devkit:{latest,go,java,office}
-  ghcr.io/hrygo/openclaw-devkit:v1.5.6
+  ghcr.io/hrygo/openclaw-devkit:v1.5.7
 ```
 
 ---
