@@ -88,9 +88,9 @@ SETUP_SCRIPT := docker-setup.sh
 GATEWAY_PORT ?= $(if $(OPENCLAW_GATEWAY_PORT),$(OPENCLAW_GATEWAY_PORT),18789)
 OPENCLAW_BIN := openclaw
 
-# 镜像配置 (强制使用基准名，防止 .env 中的标签导致冗余:go:go)
+# 镜像配置
 INITIAL_IMAGE_NAME := ghcr.io/hrygo/openclaw-devkit
-IMAGE_NAME := $(INITIAL_IMAGE_NAME)
+IMAGE_NAME := $(if $(OPENCLAW_IMAGE),$(OPENCLAW_IMAGE),$(INITIAL_IMAGE_NAME):latest)
 
 # Docker 构建公共参数 (提供安全默认值以支持回退到原始源)
 DOCKER_BUILD_ARGS := --build-arg HTTP_PROXY=$(HTTP_PROXY) \
@@ -331,7 +331,8 @@ check-deps: ## 检查依赖
 # ============================================================
 
 define select_image
-$(eval IMAGE_NAME := $(INITIAL_IMAGE_NAME):$(if $(filter office %office,$(1)),office,$(if $(filter java %java,$(1)),java,$(if $(filter go %go,$(1)),go,latest))))
+$(eval _VARIANT := $(if $(filter office %office,$(1)),office,$(if $(filter java %java,$(1)),java,$(if $(filter go %go,$(1)),go,$(if $(filter dev %dev,$(1)),latest,)))))
+$(if $(_VARIANT),$(eval IMAGE_NAME := $(INITIAL_IMAGE_NAME):$(_VARIANT)),)
 endef
 
 define do_build

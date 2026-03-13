@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.5.4] - 2026-03-13
+
+### Fixed
+- **Makefile (Environment Priority)**: Fixed `make install` to correctly respect the `OPENCLAW_IMAGE` environment variable defined in `.env` or the shell, while maintaining the ability to explicitly switch variants (e.g., `make install go`).
+
 ## [v1.5.3] - 2026-03-13
 
 ### Fixed
