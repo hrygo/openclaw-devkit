@@ -6,6 +6,7 @@ on:
     paths:
       - 'Dockerfile*'
       - 'docker-entrypoint.sh'
+      - 'Makefile'
       - '.github/workflows/docker-publish.yml'
     tags: [ 'v*' ]
   repository_dispatch:

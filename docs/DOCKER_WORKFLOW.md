@@ -80,30 +80,29 @@ RUN npm install -g openclaw
   ghcr.io/hrygo/openclaw-runtime:base
   ghcr.io/hrygo/openclaw-runtime:{go,java,office}
   ghcr.io/hrygo/openclaw-devkit:{latest,go,java,office}
-  ghcr.io/hrygo/openclaw-devkit:v1.5.7
 ```
 
 ---
 
 ## 4. 构建参数
 
-| 参数 | 默认值 | 说明 |
-| :--- | :--- | :--- |
-| `HTTP_PROXY` | - | 网络代理 |
-| `APT_MIRROR` | `deb.debian.org` | Debian 镜像 |
-| `OPENCLAW_VERSION` | `latest` | OpenClaw 版本 |
-| `INSTALL_BROWSER` | `1` | 安装 Playwright |
+| 参数               | 默认值           | 说明            |
+| :----------------- | :--------------- | :-------------- |
+| `HTTP_PROXY`       | -                | 网络代理        |
+| `APT_MIRROR`       | `deb.debian.org` | Debian 镜像     |
+| `OPENCLAW_VERSION` | `latest`         | OpenClaw 版本   |
+| `INSTALL_BROWSER`  | `1`              | 安装 Playwright |
 
 ---
 
 ## 5. 运维变量
 
-| 变量 | 默认值 | 说明 |
-| :--- | :--- | :--- |
-| `OPENCLAW_CONFIG_DIR` | `~/.openclaw` | 配置目录 |
-| `OPENCLAW_WORKSPACE_DIR` | `~/.openclaw/workspace` | 工作区 |
-| `OPENCLAW_GATEWAY_PORT` | `18789` | Gateway 端口 |
-| `OPENCLAW_IMAGE` | `ghcr.io/hrygo/openclaw-devkit` | 镜像名 |
+| 变量                     | 默认值                          | 说明         |
+| :----------------------- | :------------------------------ | :----------- |
+| `OPENCLAW_CONFIG_DIR`    | `~/.openclaw`                   | 配置目录     |
+| `OPENCLAW_WORKSPACE_DIR` | `~/.openclaw/workspace`         | 工作区       |
+| `OPENCLAW_GATEWAY_PORT`  | `18789`                         | Gateway 端口 |
+| `OPENCLAW_IMAGE`         | `ghcr.io/hrygo/openclaw-devkit` | 镜像名       |
 
 ---
 
@@ -120,12 +119,12 @@ RUN npm install -g openclaw
    - 若远程有更新，自动下载并替换，随后重启容器。
 
 ### 6.2 常用方案
-| 场景 | 命令 | 行为 |
-| :--- | :--- | :--- |
-| **首次安装** | `make install` | 拉取镜像并初始化环境 |
-| **日常启动** | `make up` | 快速启动，无网络开销 |
-| **跟进新特性/修复** | `make rebuild` | **检测更新**、拉取并重启 |
-| **手动维护** | `docker pull <image>` | 仅手动更新镜像，不影响运行中的容器 |
+| 场景                | 命令                  | 行为                               |
+| :------------------ | :-------------------- | :--------------------------------- |
+| **首次安装**        | `make install`        | 拉取镜像并初始化环境               |
+| **日常启动**        | `make up`             | 快速启动，无网络开销               |
+| **跟进新特性/修复** | `make rebuild`        | **检测更新**、拉取并重启           |
+| **手动维护**        | `docker pull <image>` | 仅手动更新镜像，不影响运行中的容器 |
 
 ---
 

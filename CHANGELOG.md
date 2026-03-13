@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.5.8] - 2026-03-13
+
+### Optimized
+- **CI/CD Workflow**: Optimized GitHub Actions triggers to only build Docker images when necessary (e.g., changes to `Dockerfile`, `docker-entrypoint.sh`, or `Makefile`).
+
 ## [v1.5.7] - 2026-03-13
 
 ### Fixed
