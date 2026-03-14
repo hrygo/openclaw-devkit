@@ -1,0 +1,172 @@
+<svg width="940" height="1180" viewBox="0 0 940 1180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 
+    PREMIUM DESIGN SYSTEM (V22.4 - EXPANDED WIDTH):
+    - Overall Width: 940px (Increased from 840px)
+    - Phase Container Width: 780px (Increased from 680px)
+    - Global Margin (Left/Right): 80px
+    - Global Center X: 470px
+    - Container RX: 24px
+    - Node RX: 12px
+  -->
+
+  <rect width="940" height="1180" fill="#F8FAFC" rx="24"/>
+  
+  <defs>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="#0F172A" flood-opacity="0.08"/>
+    </filter>
+    
+    <marker id="arrow-neutral" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0 0L8 3L0 6" fill="#94A3B8"/>
+    </marker>
+    <marker id="arrow-teal" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0 0L8 3L0 6" fill="#0D9488"/>
+    </marker>
+    <marker id="arrow-indigo" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0 0L8 3L0 6" fill="#4F46E5"/>
+    </marker>
+  </defs>
+
+  <!-- TITLE SECTION (Centered 470) -->
+  <g transform="translate(80, 50)">
+    <rect x="-12" y="4" width="4" height="24" rx="2" fill="#4F46E5" />
+    <text font-family="'Inter', sans-serif" font-size="28" font-weight="950" fill="#0F172A">OpenClaw Advanced Architecture</text>
+    <text y="34" font-family="'Inter', sans-serif" font-size="14" font-weight="500" fill="#64748B">Standardized Full-Stack Lifecycle &amp; Infrastructure Design</text>
+  </g>
+
+  <!-- PHASE 1: OPERATION (y=140, Width 780, Center 390 in group, Global 470) -->
+  <g transform="translate(80, 140)">
+    <rect width="780" height="100" rx="24" fill="white" stroke="#E2E8F0" stroke-width="2" filter="url(#soft-shadow)"/>
+    <text x="20" y="-14" font-family="'Inter', sans-serif" font-size="11" font-weight="800" fill="#059669" letter-spacing="1px">PHASE 1: OPERATION ENTRY</text>
+    
+    <g transform="translate(40, 20)">
+      <rect width="160" height="60" rx="30" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1.5"/>
+      <text x="80" y="36" text-anchor="middle" font-family="'Inter', sans-serif" font-size="14" font-weight="800" fill="#334155">👨‍💻 Developer</text>
+    </g>
+
+    <g transform="translate(290, 20)">
+      <rect width="200" height="60" rx="12" fill="white" stroke="#94A3B8" stroke-width="1.5" filter="url(#soft-shadow)"/>
+      <text x="100" y="36" text-anchor="middle" font-family="'Inter', sans-serif" font-size="14" font-weight="900" fill="#0D9488">🛠️ Makefile</text>
+    </g>
+
+    <g transform="translate(580, 20)">
+      <rect width="160" height="60" rx="12" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.5"/>
+      <text x="80" y="36" text-anchor="middle" font-family="'Inter', sans-serif" font-size="14" font-weight="900" fill="#0369A1">🐳 Compose</text>
+    </g>
+
+    <path d="M200 50 H282" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-neutral)"/>
+    <path d="M490 50 H572" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-neutral)"/>
+  </g>
+
+  <!-- Lifecycle Connectors (Centered x=470) -->
+  <path d="M470 240 V292" stroke="#94A3B8" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrow-neutral)"/>
+  <text x="480" y="282" font-family="'Inter', sans-serif" font-size="11" font-weight="900" fill="#64748B">BUILD TRIGGER</text>
+
+  <!-- PHASE 2: BUILD ENGINE (y=300, Width 780) -->
+  <g transform="translate(80, 300)">
+    <rect width="780" height="140" rx="24" fill="#F0FDFA" stroke="#2DD4BF" stroke-width="2"/>
+    <text x="20" y="-14" font-family="'Inter', sans-serif" font-size="11" font-weight="800" fill="#0D9488" letter-spacing="1px">PHASE 2: DOCKER BUILD ENGINE</text>
+
+    <g transform="translate(40, 40)">
+      <rect width="210" height="60" rx="12" fill="white" stroke="#E2E8F0" stroke-width="1.5" filter="url(#soft-shadow)"/>
+      <text x="105" y="36" text-anchor="middle" font-family="'Inter', sans-serif" font-size="14" font-weight="700" fill="#1E293B">📄 Dockerfile.dev</text>
+    </g>
+
+    <g transform="translate(290, 40)">
+      <rect width="200" height="60" rx="12" fill="#F0FDFA" stroke="#14B8A6" stroke-width="2" filter="url(#soft-shadow)"/>
+      <text x="100" y="36" text-anchor="middle" font-family="'Inter', sans-serif" font-size="16" font-weight="950" fill="#0F766E">🏗️ docker build</text>
+    </g>
+
+    <g transform="translate(530, 40)">
+      <rect width="210" height="60" rx="12" fill="white" stroke="#0D9488" stroke-width="2" filter="url(#soft-shadow)"/>
+      <text x="105" y="36" text-anchor="middle" font-family="'Inter', sans-serif" font-size="14" font-weight="900" fill="#134E4A">📦 openclaw:dev</text>
+    </g>
+
+    <path d="M250 70 H282" stroke="#0D9488" stroke-width="1.5" opacity="0.6" marker-end="url(#arrow-teal)"/>
+    <path d="M490 70 H522" stroke="#0D9488" stroke-width="1.5" opacity="0.6" marker-end="url(#arrow-teal)"/>
+  </g>
+
+  <path d="M470 440 V502" stroke="#0EA5E9" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrow-indigo)"/>
+  <text x="480" y="475" font-family="'Inter', sans-serif" font-size="11" font-weight="900" fill="#0EA5E9">LOAD IMAGE</text>
+
+  <!-- PHASE 3: RUNTIME (y=510, Width 780) -->
+  <g transform="translate(80, 510)">
+    <rect width="780" height="440" rx="24" fill="white" stroke="#CBD5E1" stroke-width="2" filter="url(#soft-shadow)"/>
+    <text x="24" y="-14" font-family="'Inter', sans-serif" font-size="11" font-weight="800" fill="#4F46E5" letter-spacing="1px">PHASE 3: CONTAINERIZED RUNTIME</text>
+    
+    <!-- Gateway -->
+    <g transform="translate(40, 40)">
+      <rect width="700" height="100" rx="16" fill="#F8FAFC" stroke="#4F46E5" stroke-width="2"/>
+      <text x="350" y="32" text-anchor="middle" font-family="'Inter', sans-serif" font-size="15" font-weight="950" fill="#1E1B4B">🌐 Core Service: Gateway Hub</text>
+      <rect x="25" y="45" width="650" height="40" rx="12" fill="white" stroke="#E2E8F0" stroke-width="1.5" stroke-dasharray="4 2"/>
+      <text x="350" y="70" text-anchor="middle" font-family="'Inter', sans-serif" font-size="13" font-weight="800" fill="#4338CA">💻 Web Console  &amp;  🛡️ WebSocket API</text>
+    </g>
+
+    <!-- Branching -->
+    <path d="M390 140 V165 H205 V190" stroke="#94A3B8" stroke-width="1.5" fill="none" marker-end="url(#arrow-neutral)"/>
+    <path d="M390 165 H575 V190" stroke="#94A3B8" stroke-width="1.5" fill="none" marker-end="url(#arrow-neutral)"/>
+
+    <!-- Functional Units (EXPANDED TO PREVENT WRAP) -->
+    <g transform="translate(40, 190)">
+      <g>
+        <rect width="330" height="130" rx="16" fill="white" stroke="#E2E8F0" stroke-width="1.5" filter="url(#soft-shadow)"/>
+        <text x="20" y="25" font-family="'Inter', sans-serif" font-size="11" font-weight="900" fill="#7C3AED">🤖 AI ADAPTERS &amp; ⌨️ CLI</text>
+        
+        <rect x="20" y="45" width="135" height="65" rx="12" fill="#F5F3FF" stroke="#C4B5FD" stroke-width="1.5"/>
+        <text x="87.5" y="83" text-anchor="middle" font-family="'Inter', sans-serif" font-size="14" font-weight="900" fill="#5B21B6">🤖 Claude Code</text>
+        
+        <rect x="175" y="45" width="135" height="65" rx="12" fill="#F5F3FF" stroke="#C4B5FD" stroke-width="1.5"/>
+        <text x="242.5" y="83" text-anchor="middle" font-family="'Inter', sans-serif" font-size="13" font-weight="900" fill="#5B21B6">⚙️ openclaw-cli</text>
+      </g>
+      
+      <g transform="translate(370, 0)">
+        <rect width="330" height="130" rx="16" fill="white" stroke="#E2E8F0" stroke-width="1.5" filter="url(#soft-shadow)"/>
+        <text x="20" y="25" font-family="'Inter', sans-serif" font-size="11" font-weight="900" fill="#0D9488">🎬 AUTOMATION ENGINE</text>
+        <rect x="30" y="45" width="270" height="65" rx="12" fill="#F0FDFA" stroke="#99F6E4" stroke-width="1.5"/>
+        <text x="165" y="83" text-anchor="middle" font-family="'Inter', sans-serif" font-size="15" font-weight="950" fill="#0F766E">🎭 Playwright Cluster</text>
+      </g>
+    </g>
+
+    <!-- Convergence -->
+    <path d="M205 320 V340 H390" stroke="#94A3B8" stroke-width="1.5" fill="none"/>
+    <path d="M575 320 V340 H390" stroke="#94A3B8" stroke-width="1.5" fill="none"/>
+    <path d="M390 340 V355" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-neutral)"/>
+
+    <!-- Proxy -->
+    <g transform="translate(40, 340)">
+      <rect width="700" height="80" rx="20" fill="#FFFBEB" stroke="#FDE047" stroke-width="2" stroke-dasharray="6 3"/>
+      
+      <rect x="25" y="15" width="650" height="50" rx="12" fill="white" stroke="#F59E0B" stroke-width="2" filter="url(#soft-shadow)"/>
+      <text x="350" y="46" text-anchor="middle" font-family="'Inter', sans-serif" font-size="15" font-weight="900" fill="#92400E">🔌 Network Proxy (SOCKS5 / API Tunneling)</text>
+    </g>
+  </g>
+
+  <path d="M470 950 V1002" stroke="#94A3B8" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrow-neutral)"/>
+
+  <!-- PHASE 4: PERSISTENCE (y=1010, Width 780) -->
+  <g transform="translate(80, 1010)">
+    <rect width="780" height="120" rx="24" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2"/>
+    <text x="20" y="-14" font-family="'Inter', sans-serif" font-size="11" font-weight="800" fill="#0891B2" letter-spacing="1px">PHASE 4: VFS &amp; PERSISTENT STORAGE</text>
+    
+    <g transform="translate(280, 30)">
+      <rect width="220" height="70" rx="12" fill="white" stroke="#E2E8F0" stroke-width="1.5" filter="url(#soft-shadow)"/>
+      <text x="110" y="36" text-anchor="middle" font-family="'Inter', sans-serif" font-size="14" font-weight="900" fill="#334155">⚙️ ~/.openclaw</text>
+      <text x="110" y="54" text-anchor="middle" font-family="'Inter', sans-serif" font-size="10" font-weight="600" fill="#64748B">Persistent Config &amp; Logs</text>
+    </g>
+
+    <g transform="translate(525, 30)">
+      <rect width="220" height="70" rx="12" fill="white" stroke="#E2E8F0" stroke-width="1.5" filter="url(#soft-shadow)"/>
+      <text x="110" y="36" text-anchor="middle" font-family="'Inter', sans-serif" font-size="14" font-weight="900" fill="#334155">🔑 .env File</text>
+      <text x="110" y="54" text-anchor="middle" font-family="'Inter', sans-serif" font-size="10" font-weight="600" fill="#64748B">Environment Secrets</text>
+    </g>
+  </g>
+
+  <!-- MAINTENANCE PATH (Symmetrical with Center 470) -->
+  <!-- Makefile Bottom: x=290+100=390. Shift start to align with center axis logic if possible? 
+       No, keep it from Makefile. Makefile Center is 290+100=390. 
+       Path: M390 220 V260 H45 V1075 H115 
+  -->
+  <path d="M390 220 V260 H45 V1075 H115" fill="none" stroke="#0D9488" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#arrow-teal)"/>
+  <text x="55" y="252" font-family="'Inter', sans-serif" font-size="11" font-weight="950" fill="#0D9488">☁️ make update</text>
+
+</svg>
