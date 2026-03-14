@@ -66,11 +66,22 @@ make onboard
 
 | 指令 | 说明 |
 | :--- | :--- |
-| `make up` | 启动 openclaw-gateway 与 openclaw-cli |
-| `make down` | 移除容器，保留 Data Volumes |
+| `make start` / `make up` | 启动 openclaw-gateway 与 openclaw-cli |
+| `make stop` / `make down` | 移除容器，保留 Data Volumes |
 | `make logs` | 追踪任务分发、WebSocket 状态、错误堆栈 |
+| `make logs-all` | 查看所有容器日志 |
 | `make status` | 显示容器健康状态、运行时间、端口占用 |
 | `make restart` | 执行 down + up，刷新配置 |
+| `make shell` | 进入 Gateway 容器 |
+| `make run` | 交互式进入容器 |
+| `make exec CMD="..."` | 在容器中执行命令 |
+| `make cli CMD="..."` | 执行 OpenClaw CLI 命令 |
+| `make dashboard` | 一键直达仪表盘 |
+| `make health` | 检查健康状态 |
+| `make backup` | 备份配置文件 |
+| `make restore FILE=...` | 恢复配置文件 |
+| `make clean` | 清理容器和悬空镜像 |
+| `make clean-volumes` | 清理所有数据卷 |
 
 ---
 

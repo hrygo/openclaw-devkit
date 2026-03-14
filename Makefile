@@ -129,14 +129,15 @@ OPENCLAW_BIN := openclaw
 INITIAL_IMAGE_NAME := ghcr.io/hrygo/openclaw-devkit
 IMAGE_NAME := $(if $(OPENCLAW_IMAGE),$(OPENCLAW_IMAGE),$(INITIAL_IMAGE_NAME):latest)
 
-# Docker 构建公共参数 (提供安全默认值以支持回退到原始源)
+# Docker 构建公共参数
 DOCKER_BUILD_ARGS := --build-arg HTTP_PROXY=$(HTTP_PROXY) \
                      --build-arg HTTPS_PROXY=$(HTTPS_PROXY) \
                      --build-arg DOCKER_MIRROR=$(if $(DOCKER_MIRROR),$(DOCKER_MIRROR),docker.io) \
                      --build-arg APT_MIRROR=$(if $(APT_MIRROR),$(APT_MIRROR),mirrors.tuna.tsinghua.edu.cn) \
                      --build-arg NPM_MIRROR=$(NPM_MIRROR) \
                      --build-arg PYTHON_MIRROR=$(PYTHON_MIRROR) \
-                     --build-arg OPENCLAW_VERSION=$(if $(OPENCLAW_VERSION),$(OPENCLAW_VERSION),latest)
+                     --build-arg OPENCLAW_VERSION=$(if $(OPENCLAW_VERSION),$(OPENCLAW_VERSION),latest) \
+                     --build-arg INSTALL_BROWSER=$(if $(INSTALL_BROWSER),$(INSTALL_BROWSER),1)
 
 # ============================================================
 # 帮助信息 (现代分组版)
@@ -217,6 +218,8 @@ up: ## 启动服务
 	@echo "✓ 已启动 (Web: http://127.0.0.1:$(GATEWAY_PORT)/)"
 	@echo "  $(INFO) 提示: 执行 $(BOLD)make dashboard$(NC) 获取一键直通链接"
 
+start: up ## 启动服务 (别名)
+
 onboard: ## 启动交互式引导程序
 	@echo "$(INFO) 启动交互式引导程序..."
 	@docker compose run --rm -it -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 openclaw-cli openclaw onboard
@@ -228,6 +231,8 @@ onboard: ## 启动交互式引导程序
 down: ## 停止服务
 	@docker compose down
 	@echo "$(SUCCESS) $(GREEN)服务已停止$(NC)"
+
+stop: down ## 停止服务 (别名)
 
 restart: ## 重启服务
 	@$(MAKE) down && $(MAKE) up
@@ -294,7 +299,6 @@ clean-volumes: ## 清理所有数据卷
 		docker volume rm openclaw-node-modules openclaw-go-mod \
 		openclaw-playwright-cache openclaw-playwright-bin \
 		openclaw-state 2>/dev/null || true'
-	@echo "✓ 数据卷已清理"
 
 # ============================================================
 # 调试与诊断
@@ -341,17 +345,24 @@ verify: ## 验证镜像工具版本 (最佳实践检查)
 	@docker run --rm $(IMAGE_NAME) node -v | grep -q "v22" && echo "$(SUCCESS) Node.js v22 (LTS) OK" || echo "$(ERROR) Node.js version mismatch"
 	@docker run --rm $(IMAGE_NAME) go version 2>/dev/null | grep -q "1.2" && echo "$(SUCCESS) Go 1.2x" || echo "$(WARN) Go (Office版无)"
 
-exec: ## 执行命令
+exec: ## 执行命令 (需要 CMD="..." 参数)
 	@docker compose exec openclaw-gateway $(CMD)
 
-cli: ## 执行 OpenClaw CLI
+cli: ## 执行 OpenClaw CLI 命令 (需要 CMD="..." 参数)
 	@docker compose exec openclaw-gateway $(OPENCLAW_BIN) $(CMD)
+
+run: ## 交互式进入容器
+	@docker compose exec openclaw-gateway bash
 
 pairing: ## 频道配对
 	@docker compose exec openclaw-gateway $(OPENCLAW_BIN) pairing $(CMD)
 
+pair: pairing ## 频道配对 (别名)
+
 gateway-health: ## 检查健康状态
 	@curl -s http://127.0.0.1:$(GATEWAY_PORT)/ >/dev/null 2>&1 && echo "✓ Web UI 正常" || echo "✗ Web UI 不可用"
+
+health: gateway-health ## 检查健康状态 (别名)
 
 test-proxy: ## 测试代理连接
 	@echo "$(INFO) Google: "; docker compose exec -T openclaw-gateway \
@@ -373,7 +384,13 @@ backup-config: ## 备份配置
 		cp $(HOME_DIR)/.openclaw/openclaw.json $(BACKUP_DIR)/openclaw-$$TIM.json 2>/dev/null && echo "✓ config" || echo "⚠ config (无)"'
 	@echo "备份完成: $(BACKUP_DIR)"
 
+backup: backup-config ## 备份配置 (别名)
+
 restore-config: ## 恢复配置
+	@echo "用法: make restore FILE=<filename>"
+
+restore: restore-config ## 恢复配置 (别名)
+
 ifndef FILE
 	@echo "用法: make restore-config FILE=<filename>"
 	@sh -c 'ls -lt $(BACKUP_DIR) 2>/dev/null | head -5 || echo "  (无备份)"'

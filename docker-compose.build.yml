@@ -13,6 +13,7 @@ services:
       args:
         BASE_IMAGE: ${BASE_IMAGE:-openclaw-runtime:base}
         OPENCLAW_VERSION: ${OPENCLAW_VERSION:-latest}
+        INSTALL_BROWSER: ${INSTALL_BROWSER:-1}
         HTTP_PROXY: ${HTTP_PROXY:-}
         HTTPS_PROXY: ${HTTPS_PROXY:-}
         DOCKER_MIRROR: ${DOCKER_MIRROR:-docker.io}
@@ -27,6 +28,7 @@ services:
       args:
         BASE_IMAGE: ${BASE_IMAGE:-openclaw-runtime:base}
         OPENCLAW_VERSION: ${OPENCLAW_VERSION:-latest}
+        INSTALL_BROWSER: ${INSTALL_BROWSER:-1}
         HTTP_PROXY: ${HTTP_PROXY:-}
         HTTPS_PROXY: ${HTTPS_PROXY:-}
         DOCKER_MIRROR: ${DOCKER_MIRROR:-docker.io}

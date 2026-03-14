@@ -219,6 +219,7 @@ jobs:
           build-args: |
             BASE_IMAGE=${{ env.REGISTRY }}/${{ needs.prepare.outputs.repo_owner }}/${{ env.IMAGE_BASE }}:${{ matrix.stack }}
             OPENCLAW_VERSION=${{ needs.prepare.outputs.version }}
+            INSTALL_BROWSER=1
           tags: |
             ${{ env.REGISTRY }}/${{ needs.prepare.outputs.repo_owner }}/openclaw-devkit:${{ matrix.tag }}
             ${{ env.REGISTRY }}/${{ needs.prepare.outputs.repo_owner }}/openclaw-devkit:${{ needs.prepare.outputs.version }}${{ matrix.tag != 'latest' && format('-{0}', matrix.tag) || '' }}

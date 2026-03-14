@@ -23,30 +23,42 @@ openclaw-devkit/
 ```bash
 # 生命周期管理
 make install          # 首次安装/初始化环境
-make up               # 启动服务 (Web UI: http://127.0.0.1:18789)
-make down             # 停止服务
-make restart          # 重启服务
-make status           # 查看服务状态
+make start           # 启动服务 (make up 的别名)
+make stop            # 停止服务 (make down 的别名)
+make restart         # 重启服务
+make status          # 查看服务状态
 
 # 构建与更新
-make build            # 构建镜像 (无缓存)
-make rebuild          # 重建镜像并重启服务
+make build           # 构建镜像 (基于缓存)
+make build:go        # 构建 Go 版镜像
+make build:java      # 构建 Java 版镜像
+make build:office    # 构建 Office 版镜像
+make rebuild         # 重建镜像并重启服务
 
 # 调试诊断
-make logs             # 查看 Gateway 日志
-make logs-all         # 查看所有容器日志
-make shell            # 进入 Gateway 容器 (bash)
-make exec CMD="..."   # 在容器中执行命令
-make gateway-health   # 检查 Gateway 健康状态
-make test-proxy       # 测试代理连接 (Google, Claude API)
+make logs            # 查看 Gateway 日志
+make logs-all        # 查看所有容器日志
+make shell           # 进入 Gateway 容器 (bash)
+make run             # 交互式进入容器
+make exec CMD="..."  # 在容器中执行命令
+make cli CMD="..."   # 执行 OpenClaw CLI 命令
+make dashboard       # 一键直达仪表盘
+make devices         # 列举配对设备
+make approve         # 批准配对请求
+make pairing         # 频道配对
+make pair            # 频道配对 (别名)
+
+# 健康与测试
+make health          # 检查健康状态
+make test-proxy      # 测试代理连接
 
 # 备份恢复
-make backup-config    # 备份配置文件
-make restore-config FILE=<file>  # 恢复配置
+make backup          # 备份配置文件
+make restore FILE=<file>  # 恢复配置
 
 # 清理
-make clean            # 清理容器和悬空镜像
-make clean-volumes    # 清理所有数据卷 (危险!)
+make clean           # 清理容器和悬空镜像
+make clean-volumes   # 清理所有数据卷 (危险!)
 ```
 
 ## Key Services
