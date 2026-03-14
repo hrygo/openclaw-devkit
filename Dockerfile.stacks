@@ -25,17 +25,18 @@ RUN curl -sSfL "https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/in
 RUN mkdir -p /home/node/go && chown -R node:node /home/node/go
 
 USER node
+ENV GOPROXY=https://goproxy.cn,direct
+
 RUN go install golang.org/x/tools/gopls@latest && \
-    go install github.com/go-delve/delve/cmd/dlv@latest && \
-    go install honnef.co/go/tools/cmd/staticcheck@latest && \
-    go install github.com/securego/gosec/v2/cmd/gosec@latest && \
-    go install golang.org/x/tools/cmd/goimports@latest && \
-    go install github.com/air-verse/air@latest && \
-    go install github.com/golang/mock/mockgen@latest && \
+    go install github.com/go-delve/delve/cmd/dlv@latest
+RUN go install honnef.co/go/tools/cmd/staticcheck@latest && \
+    go install github.com/securego/gosec/v2/cmd/gosec@latest
+RUN go install golang.org/x/tools/cmd/goimports@latest && \
+    go install github.com/air-verse/air@latest
+RUN go install github.com/golang/mock/mockgen@latest && \
     go install github.com/google/wire/cmd/wire@latest && \
-    go install github.com/onsi/ginkgo/v2/ginkgo@latest && \
-    # Clean up GOPATH cache to keep image small
-    go clean -modcache
+    go install github.com/onsi/ginkgo/v2/ginkgo@latest
+RUN go clean -modcache
 
 USER root
 
