@@ -38,7 +38,7 @@ jobs:
   check-upstream:
     runs-on: ubuntu-latest
     permissions:
-      contents: read-write
+      contents: write
       statuses: read
     outputs:
       has_new_version: ${{ steps.check.outputs.has_new_version }}
@@ -244,23 +244,16 @@ jobs:
     steps:
       - name: Create issue comment on failure
         run: |
-          ISSUE_BODY="## 🚨 Docker Build Failed
-
-**Workflow:** [${{ github.workflow }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
-**Trigger:** ${{ github.event_name }}
-
-**Commit:** [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
-
-**Failed Jobs:**
-${{ join(needs.*.result, '\n') }}
-
-Please check the workflow logs for details."
-
-          # Create or find open issue
           gh issue create \
-            --title "🚨 Docker Build Failed - ${{ github.run_id }}" \
-            --body "$ISSUE_BODY" \
+            --title "Docker Build Failed - Run ${{ github.run_id }}" \
+            --body "## Docker Build Failed
+
+          **Workflow:** ${{ github.workflow }}
+          **Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          **Trigger:** ${{ github.event_name }}
+          **Commit:** ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+
+          Please check the workflow logs for details." \
             --label "bug,ci"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
