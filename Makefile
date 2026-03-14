@@ -41,17 +41,13 @@ endif
 export HOME := $(HOME_DIR)
 
 # Check shell environment on Windows
+# Detect MSYSTEM for Git Bash / MSYS2 / Cygwin
 ifeq ($(OS),Windows_NT)
-    # Detect if we are in a POSIX-compatible shell (Git Bash, MSYS2, Cygwin, etc.)
     ifeq ($(strip $(MSYSTEM)),)
-        ifeq ($(strip $(BASH_VERSION)),)
-            $(error $(shell echo 1>&2 " \
-                \n  [ ERROR ]  Unsupported Shell Environment (CMD/PowerShell detected)\n \
-                \n  OpenClaw DevKit requires a POSIX environment to run correctly.\n \
-                \n  FIX: Please use 'Git Bash' (included with Git for Windows).\n \
-                \n  1. Download: https://git-scm.com/download/win\n \
-                \n  2. Launch 'Git Bash' in this directory and run 'make' again.\n\n"))
-        endif
+        # Not in a POSIX environment - issue warning but continue
+        WINDOWS_POSIX := false
+    else
+        WINDOWS_POSIX := true
     endif
 endif
 
@@ -59,14 +55,41 @@ endif
 MKDIR := mkdir -p
 RM    := rm -rf
 
-# ANSI Colors (Now reliable via Git Bash/Unix)
-RED    := $(shell printf '\033[0;31m')
-GREEN  := $(shell printf '\033[0;32m')
-YELLOW := $(shell printf '\033[1;33m')
-BLUE   := $(shell printf '\033[0;34m')
-CYAN   := $(shell printf '\033[0;36m')
-BOLD   := $(shell printf '\033[1m')
-NC     := $(shell printf '\033[0m') # No Color
+# ANSI Colors - with Windows CMD/PowerShell compatibility
+# On Unix/Linux/macOS: use colors
+# On Windows with POSIX (Git Bash/MSYS2): use colors
+# On Windows CMD/PowerShell: no colors to avoid shell parsing issues
+ifneq ($(OS),Windows_NT)
+    # Unix-like systems: use ANSI colors
+    RED    := $(shell printf '\033[0;31m')
+    GREEN  := $(shell printf '\033[0;32m')
+    YELLOW := $(shell printf '\033[1;33m')
+    BLUE   := $(shell printf '\033[0;34m')
+    CYAN   := $(shell printf '\033[0;36m')
+    BOLD   := $(shell printf '\033[1m')
+    NC     := $(shell printf '\033[0m')
+else
+    # Windows: check if in POSIX environment
+    ifeq ($(WINDOWS_POSIX),true)
+        # Git Bash/MSYS2/Cygwin: use ANSI colors
+        RED    := $(shell printf '\033[0;31m')
+        GREEN  := $(shell printf '\033[0;32m')
+        YELLOW := $(shell printf '\033[1;33m')
+        BLUE   := $(shell printf '\033[0;34m')
+        CYAN   := $(shell printf '\033[0;36m')
+        BOLD   := $(shell printf '\033[1m')
+        NC     := $(shell printf '\033[0m')
+    else
+        # Windows CMD/PowerShell: no colors to avoid shell parsing issues
+        RED    :=
+        GREEN  :=
+        YELLOW :=
+        BLUE   :=
+        CYAN   :=
+        BOLD   :=
+        NC     :=
+    endif
+endif
 
 # Output Prefixes
 INFO    := $(BLUE)$(BOLD)==>$(NC)
