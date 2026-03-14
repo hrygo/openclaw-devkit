@@ -38,7 +38,7 @@ jobs:
   check-upstream:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: read-write
       statuses: read
     outputs:
       has_new_version: ${{ steps.check.outputs.has_new_version }}
@@ -148,6 +148,8 @@ jobs:
           file: Dockerfile.base
           push: true
           platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: ${{ env.REGISTRY }}/${{ needs.prepare.outputs.repo_owner }}/${{ env.IMAGE_BASE }}:base
 
   # Tier 2: Stacks
@@ -179,6 +181,8 @@ jobs:
           target: stack-${{ matrix.stack }}
           push: true
           platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           build-args: |
              BASE_IMAGE=${{ env.REGISTRY }}/${{ needs.prepare.outputs.repo_owner }}/${{ env.IMAGE_BASE }}:base
           tags: ${{ env.REGISTRY }}/${{ needs.prepare.outputs.repo_owner }}/${{ env.IMAGE_BASE }}:${{ matrix.stack }}
@@ -219,6 +223,8 @@ jobs:
           file: Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           build-args: |
             BASE_IMAGE=${{ env.REGISTRY }}/${{ needs.prepare.outputs.repo_owner }}/${{ env.IMAGE_BASE }}:${{ matrix.stack }}
             OPENCLAW_VERSION=${{ needs.prepare.outputs.version }}
@@ -226,3 +232,35 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ needs.prepare.outputs.repo_owner }}/openclaw-devkit:${{ matrix.tag }}
             ${{ env.REGISTRY }}/${{ needs.prepare.outputs.repo_owner }}/openclaw-devkit:${{ needs.prepare.outputs.version }}${{ matrix.tag != 'latest' && format('-{0}', matrix.tag) || '' }}
+
+  # Job: Notify on failure
+  notify-failure:
+    needs: [check-upstream, build-base, build-stacks, build-products]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Create issue comment on failure
+        run: |
+          ISSUE_BODY="## 🚨 Docker Build Failed
+
+**Workflow:** [${{ github.workflow }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+**Trigger:** ${{ github.event_name }}
+
+**Commit:** [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+
+**Failed Jobs:**
+${{ join(needs.*.result, '\n') }}
+
+Please check the workflow logs for details."
+
+          # Create or find open issue
+          gh issue create \
+            --title "🚨 Docker Build Failed - ${{ github.run_id }}" \
+            --body "$ISSUE_BODY" \
+            --label "bug,ci"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
