@@ -96,14 +96,6 @@ jobs:
 
           echo "should_publish=${SHOULD_PUBLISH}" >> $GITHUB_OUTPUT
 
-      # Update secret after successful publish
-      - name: Update version secret after publish
-        if: steps.check.outputs.should_publish == 'true'
-        run: |
-          echo "${{ steps.check.outputs.latest_version }}" | gh secret set OPENCLAW_VERSION
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   # Job 2: Prepare - fetch version info
   prepare:
     needs: check-upstream
@@ -242,6 +234,8 @@ jobs:
       contents: read
       issues: write
     steps:
+      - uses: actions/checkout@v4
+
       - name: Create issue comment on failure
         run: |
           gh issue create \
