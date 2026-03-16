@@ -15,70 +15,6 @@
 
 ## 快速开始
 
-```bash
-# 1. 宿主机安装 CLI 并登录
-pip install "notebooklm-py[browser]"
-notebooklm login
-
-# 2. 宿主机安装 Skill
-notebooklm skill install
-
-# 3. 启动容器
-make up
-
-# 4. 对话复制 Skill
-# 对 OpenClaw 说: "复制 notebooklm skill"
-```
-
----
-
-## 架构映射图
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        宿主机 (Host)                             │
-│                                                                 │
-│  ~/.notebooklm/                                                 │
-│  └── storage_state.json    ← Google 认证凭证                     │
-│                                                                 │
-│  ~/.claude/skills/                                              │
-│  └── notebooklm/           ← Claude Code Skill                  │
-│                                                                 │
-└─────────────────────────┬───────────────────────────────────────┘
-                          │
-              ┌───────────┴───────────┐
-              │                       │
-              │  Docker Compose       │
-              │  Bind Mounts (rw)     │
-              │                       │
-              ▼                       ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        容器 (Container)                          │
-│                                                                 │
-│  /home/node/.notebooklm/                                        │
-│  └── storage_state.json    ← 认证共享 ✓                          │
-│                                                                 │
-│  /home/node/.claude/skills/                                     │
-│  └── notebooklm/           ← Skill 挂载 ✓                        │
-│                                                                 │
-│  /usr/local/bin/notebooklm ← 容器启动时动态安装                   │
-│                             (PIP_TOOLS 环境变量)                  │
-│                                                                 │
-│  OpenClaw ~/.claude/skills/                                     │
-│  └── notebooklm/           ← 对话复制到此处                      │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-
-共享规则:
-  • 认证文件: 直接共享 (JSON 文件跨平台兼容)
-  • CLI 工具: 无法共享 (macOS/Windows 二进制 ≠ Linux)
-  • Skill 文件: 挂载 + 复制 (文本文件跨平台兼容)
-```
-
----
-
-## 分步配置
-
 ### Step 1: 宿主机安装 CLI
 
 ```bash
@@ -131,7 +67,7 @@ make up
 **验证:**
 ```bash
 make shell
-notebooklm auth check      # ✓ 认证共享成功
+notebooklm auth check          # ✓ 认证共享成功
 ls /home/node/.claude/skills/  # notebooklm 目录存在
 ```
 
@@ -141,7 +77,47 @@ ls /home/node/.claude/skills/  # notebooklm 目录存在
 
 > "复制 notebooklm skill"
 
-OpenClaw 会从挂载目录复制 Skill 到其配置目录。
+---
+
+## 架构映射图
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        宿主机 (Host)                             │
+│                                                                 │
+│  ~/.notebooklm/                                                 │
+│  └── storage_state.json    ← Google 认证凭证                     │
+│                                                                 │
+│  ~/.claude/skills/                                              │
+│  └── notebooklm/           ← Claude Code Skill                  │
+│                                                                 │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │
+              ┌───────────┴───────────┐
+              │  Docker Compose       │
+              │  Bind Mounts (rw)     │
+              ▼                       ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        容器 (Container)                          │
+│                                                                 │
+│  /home/node/.notebooklm/                                        │
+│  └── storage_state.json    ← 认证共享 ✓                          │
+│                                                                 │
+│  /home/node/.claude/skills/                                     │
+│  └── notebooklm/           ← Skill 挂载 ✓                        │
+│                                                                 │
+│  /usr/local/bin/notebooklm ← 容器启动时动态安装                   │
+│                                                                 │
+│  OpenClaw ~/.claude/skills/                                     │
+│  └── notebooklm/           ← 对话复制到此处                      │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+共享规则:
+  • 认证文件: 直接共享 (JSON 跨平台兼容)
+  • CLI 工具: 无法共享 (macOS/Windows 二进制 ≠ Linux)
+  • Skill 文件: 挂载 + 复制 (文本文件跨平台兼容)
+```
 
 ---
 

@@ -15,70 +15,6 @@ Control Google NotebookLM through natural language to create podcasts, videos, q
 
 ## Quick Start
 
-```bash
-# 1. Install CLI and login on host
-pip install "notebooklm-py[browser]"
-notebooklm login
-
-# 2. Install Skill on host
-notebooklm skill install
-
-# 3. Start container
-make up
-
-# 4. Copy skill via chat
-# Tell OpenClaw: "Copy notebooklm skill"
-```
-
----
-
-## Architecture Map
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Host Machine                              │
-│                                                                 │
-│  ~/.notebooklm/                                                 │
-│  └── storage_state.json    ← Google auth credentials            │
-│                                                                 │
-│  ~/.claude/skills/                                              │
-│  └── notebooklm/           ← Claude Code Skill                  │
-│                                                                 │
-└─────────────────────────┬───────────────────────────────────────┘
-                          │
-              ┌───────────┴───────────┐
-              │                       │
-              │  Docker Compose       │
-              │  Bind Mounts (rw)     │
-              │                       │
-              ▼                       ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        Container                                 │
-│                                                                 │
-│  /home/node/.notebooklm/                                        │
-│  └── storage_state.json    ← Auth shared ✓                      │
-│                                                                 │
-│  /home/node/.claude/skills/                                     │
-│  └── notebooklm/           ← Skill mounted ✓                    │
-│                                                                 │
-│  /usr/local/bin/notebooklm ← Dynamic install at startup         │
-│                             (PIP_TOOLS env var)                  │
-│                                                                 │
-│  OpenClaw ~/.claude/skills/                                     │
-│  └── notebooklm/           ← Copy via chat                      │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-
-Sharing Rules:
-  • Auth files: Direct share (JSON is cross-platform compatible)
-  • CLI tool: Cannot share (macOS/Windows binary ≠ Linux)
-  • Skill files: Mount + copy (text files are cross-platform compatible)
-```
-
----
-
-## Step-by-Step Configuration
-
 ### Step 1: Install CLI on Host
 
 ```bash
@@ -131,7 +67,7 @@ Container automatically:
 **Verify:**
 ```bash
 make shell
-notebooklm auth check      # ✓ Auth shared successfully
+notebooklm auth check          # ✓ Auth shared successfully
 ls /home/node/.claude/skills/  # notebooklm directory exists
 ```
 
@@ -141,7 +77,47 @@ Tell OpenClaw:
 
 > "Copy notebooklm skill"
 
-OpenClaw will copy the Skill from mounted directory to its config directory.
+---
+
+## Architecture Map
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Host Machine                              │
+│                                                                 │
+│  ~/.notebooklm/                                                 │
+│  └── storage_state.json    ← Google auth credentials            │
+│                                                                 │
+│  ~/.claude/skills/                                              │
+│  └── notebooklm/           ← Claude Code Skill                  │
+│                                                                 │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │
+              ┌───────────┴───────────┐
+              │  Docker Compose       │
+              │  Bind Mounts (rw)     │
+              ▼                       ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        Container                                 │
+│                                                                 │
+│  /home/node/.notebooklm/                                        │
+│  └── storage_state.json    ← Auth shared ✓                      │
+│                                                                 │
+│  /home/node/.claude/skills/                                     │
+│  └── notebooklm/           ← Skill mounted ✓                    │
+│                                                                 │
+│  /usr/local/bin/notebooklm ← Dynamic install at startup         │
+│                                                                 │
+│  OpenClaw ~/.claude/skills/                                     │
+│  └── notebooklm/           ← Copy via chat                      │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+Sharing Rules:
+  • Auth files: Direct share (JSON is cross-platform compatible)
+  • CLI tool: Cannot share (macOS/Windows binary ≠ Linux)
+  • Skill files: Mount + copy (text files are cross-platform compatible)
+```
 
 ---
 
