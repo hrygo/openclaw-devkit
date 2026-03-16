@@ -34,11 +34,6 @@ notebooklm login
 
 Browser opens automatically. After Google login, credentials save to `~/.notebooklm/`.
 
-**Enterprise Users (Edge SSO):**
-```bash
-notebooklm login --browser msedge
-```
-
 **Verify:**
 ```bash
 notebooklm auth check --test

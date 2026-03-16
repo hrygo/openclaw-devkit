@@ -34,11 +34,6 @@ notebooklm login
 
 浏览器自动打开，完成 Google 登录后认证保存到 `~/.notebooklm/`。
 
-**企业用户 (Edge SSO):**
-```bash
-notebooklm login --browser msedge
-```
-
 **验证:**
 ```bash
 notebooklm auth check --test
