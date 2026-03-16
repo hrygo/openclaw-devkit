@@ -18,14 +18,14 @@ This guide explains how to integrate and use the Google NotebookLM CLI skill in 
 
 **notebooklm-py** is an unofficial Python SDK and CLI tool for Google NotebookLM, providing:
 
-| Feature | Description |
-| :-------| :--------------------------------------------- |
-| 📓 Notebook Management | Create, list, rename, delete |
+| Feature                | Description                                         |
+| :--------------------- | :-------------------------------------------------- |
+| 📓 Notebook Management  | Create, list, rename, delete                        |
 | 📄 Multi-format Sources | URLs, YouTube, PDF, Word, audio/video, Google Drive |
-| 💬 Smart Chat | Source-based Q&A, custom personas |
-| 🔍 Research Agent | Web/Drive deep research, auto-import |
-| 🎙️ Content Generation | Podcasts, videos, slides, quizzes, mind maps, etc. |
-| 📥 Batch Export | MP3, MP4, PDF, PNG, CSV, JSON, Markdown |
+| 💬 Smart Chat           | Source-based Q&A, custom personas                   |
+| 🔍 Research Agent       | Web/Drive deep research, auto-import                |
+| 🎙️ Content Generation   | Podcasts, videos, slides, quizzes, mind maps, etc.  |
+| 📥 Batch Export         | MP3, MP4, PDF, PNG, CSV, JSON, Markdown             |
 
 > ⚠️ **Note**: This tool uses undocumented Google APIs that may change at any time. Suitable for prototyping, research, and personal projects.
 
@@ -101,11 +101,12 @@ make up
 Container automatically on startup:
 - Mounts auth directory → Shares Google authentication
 - Mounts Skills directory → Shares Skill files
-- Installs CLI tool → Via PIP_TOOLS environment variable
+- notebooklm CLI → **Built-in in image** (no dynamic install needed)
 
 **Verify Container Configuration:**
 ```bash
 make shell
+which notebooklm               # ✓ CLI is built-in
 notebooklm auth check          # ✓ Auth shared successfully
 ls /home/node/.claude/skills/  # notebooklm directory exists
 ```
@@ -145,7 +146,7 @@ Tell OpenClaw:
 │  /home/node/.claude/skills/                                     │
 │  └── notebooklm/           ← Skill mounted ✓                     │
 │                                                                 │
-│  /usr/local/bin/notebooklm ← Dynamic install at startup         │
+│  /usr/local/bin/notebooklm ← Built-in in image ✓                 │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
         │
@@ -162,7 +163,7 @@ Tell OpenClaw:
 
 Sharing Rules:
   • Auth files: Direct share (JSON is cross-platform compatible)
-  • CLI tool: Cannot share (macOS/Windows binary ≠ Linux)
+  • CLI tool: Built-in in image (no longer needs to be shared)
   • Skill files: Mount + copy (text files are cross-platform compatible)
 ```
 
@@ -201,17 +202,17 @@ Sharing Rules:
 
 ## Supported Content Types
 
-| Type | Options | Export Formats |
-| :--- | :------- | :-------------- |
-| **Audio Overview** | 4 styles (deep-dive/brief/critique/debate), 3 durations, 50+ languages | MP3/MP4 |
-| **Video Overview** | 3 styles (explainer/brief/cinematic), 9 visual styles, separate `cinematic-video` alias | MP4 |
-| **Slide Deck** | Detailed/presentation version, adjustable length | PDF, PPTX |
-| **Infographic** | 3 orientations, 3 detail levels | PNG |
-| **Quiz** | Configurable quantity and difficulty | JSON, Markdown, HTML |
-| **Flashcards** | Configurable quantity and difficulty | JSON, Markdown, HTML |
-| **Report** | Brief/study guide/blog post/custom prompts | Markdown |
-| **Data Table** | Natural language structure definition | CSV |
-| **Mind Map** | Interactive hierarchical visualization | JSON |
+| Type               | Options                                                                                 | Export Formats       |
+| :----------------- | :-------------------------------------------------------------------------------------- | :------------------- |
+| **Audio Overview** | 4 styles (deep-dive/brief/critique/debate), 3 durations, 50+ languages                  | MP3/MP4              |
+| **Video Overview** | 3 styles (explainer/brief/cinematic), 9 visual styles, separate `cinematic-video` alias | MP4                  |
+| **Slide Deck**     | Detailed/presentation version, adjustable length                                        | PDF, PPTX            |
+| **Infographic**    | 3 orientations, 3 detail levels                                                         | PNG                  |
+| **Quiz**           | Configurable quantity and difficulty                                                    | JSON, Markdown, HTML |
+| **Flashcards**     | Configurable quantity and difficulty                                                    | JSON, Markdown, HTML |
+| **Report**         | Brief/study guide/blog post/custom prompts                                              | Markdown             |
+| **Data Table**     | Natural language structure definition                                                   | CSV                  |
+| **Mind Map**       | Interactive hierarchical visualization                                                  | JSON                 |
 
 ---
 
@@ -269,12 +270,9 @@ notebooklm login
 
 ### CLI Not Found in Container
 
+> Note: notebooklm CLI is now built-in in the image. If not found, try rebuilding the image:
 ```bash
-# Check if installed
-which notebooklm
-
-# Manual installation (if PIP_TOOLS not configured)
-uv pip install --system --break-system-packages notebooklm-py
+make rebuild
 ```
 
 ### Skill Not Working

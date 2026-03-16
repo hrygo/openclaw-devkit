@@ -67,6 +67,7 @@ ifneq ($(OS),Windows_NT)
     BLUE   := $(shell printf '\033[0;34m')
     CYAN   := $(shell printf '\033[0;36m')
     BOLD   := $(shell printf '\033[1m')
+    DIM    := $(shell printf '\033[2m')
     NC     := $(shell printf '\033[0m')
 else
     # Windows: check if in POSIX environment
@@ -213,11 +214,63 @@ install: ## 首次安装/初始化环境
 	@echo "    1. 执行 $(BOLD)make onboard$(NC) 配置核心模型"
 	@echo "    2. 执行 $(BOLD)make dashboard$(NC) 直接打开 Web UI"
 
+# ============================================================
+# 服务启动辅助函数
+# ============================================================
+
+# 等待服务就绪 (带超时、可视化进度条和实时日志)
+# 用法: $(call wait-for-healthy,timeout_seconds)
+define wait-for-healthy
+	@echo "$(INFO) 等待服务就绪..."; \
+	PROGRESS_BAR_WIDTH=40; \
+	for i in $$(seq 1 $(1)); do \
+		STATUS=$$(docker inspect --format='{{.State.Health.Status}}' openclaw-gateway 2>/dev/null || echo "starting"); \
+		if [ "$$STATUS" = "healthy" ]; then \
+			echo ""; \
+			FILLED=$$((PROGRESS_BAR_WIDTH)); \
+			BAR=$$(printf '█%.0s' $$(seq 1 $$FILLED))$$(printf '░%.0s' $$(seq 1 $$((PROGRESS_BAR_WIDTH - FILLED)))); \
+			PCT=100; \
+			printf "\r$(GREEN)[$$BAR]$(NC) $(BOLD)%3d%%$(NC) $(GREEN)✓ Ready!$(NC) ($${i}s)\n" "$$PCT"; \
+			exit 0; \
+		elif [ "$$STATUS" = "unhealthy" ]; then \
+			echo ""; \
+			printf "\r$(RED)[✗ Service Failed]$(NC) unhealthy status detected\n"; \
+			echo "  执行 $(BOLD)make logs$(NC) 查看详细日志"; \
+			exit 1; \
+		fi; \
+		PCT=$$((i * 100 / $(1))); \
+		FILLED=$$((i * PROGRESS_BAR_WIDTH / $(1))); \
+		BAR=$$(printf '█%.0s' $$(seq 1 $$FILLED 2>/dev/null))$$(printf '░%.0s' $$(seq 1 $$((PROGRESS_BAR_WIDTH - FILLED)) 2>/dev/null)); \
+		STATUS_ICON="⏳"; \
+		[ "$$STATUS" = "starting" ] && STATUS_ICON="🔄"; \
+		[ "$$STATUS" = "healthy" ] && STATUS_ICON="✅"; \
+		printf "\r$(CYAN)[$$BAR]$(NC) $(BOLD)%3d%%$(NC) $$STATUS_ICON %ds/$(1)s [$$STATUS]   " "$$PCT" "$$i"; \
+		if [ $$((i % 8)) -eq 0 ]; then \
+			LOG_LINE="$$(docker compose logs --tail 1 openclaw-gateway 2>/dev/null | sed 's/^openclaw-gateway  | //' | head -c 60)"; \
+			[ -n "$$LOG_LINE" ] && printf "\n  $(DIM)%s...$(NC)\n" "$$LOG_LINE"; \
+		fi; \
+		sleep 1; \
+	done; \
+	echo ""; \
+	printf "\r$(YELLOW)[░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] Timeout$(NC)\n"; \
+	echo "$(WARN) 服务启动超时，请检查日志: $(BOLD)make logs$(NC)"; \
+	exit 1
+endef
+
+# ============================================================
+# 生命周期管理
+# ============================================================
+
 up: ## 启动服务
 	@mkdir -p "$(HOME)/.agents/skills"
+	@echo "$(INFO) 启动 OpenClaw 服务..."
 	@docker compose up -d
-	@echo "✓ 已启动 (Web: http://127.0.0.1:$(GATEWAY_PORT)/)"
-	@echo "  $(INFO) 提示: 执行 $(BOLD)make dashboard$(NC) 获取一键直通链接"
+	@echo ""
+	$(call wait-for-healthy,120)
+	@echo ""
+	@echo "$(SUCCESS) 访问地址: $(BOLD)http://127.0.0.1:$(GATEWAY_PORT)/$(NC)"
+	@echo "  $(INFO) 仪表盘: 执行 $(BOLD)make dashboard$(NC) 获取一键直通链接"
+	@echo "  $(INFO) 实时日志: 执行 $(BOLD)make logs$(NC)"
 
 start: up ## 启动服务 (别名)
 
@@ -230,13 +283,20 @@ onboard: ## 启动交互式引导程序
 	@echo "  🔒 $(BOLD)方法 B (安全)$(NC): 访问网页后执行 $(CYAN)make approve$(NC) 自动授权"
 
 down: ## 停止服务
+	@echo "$(INFO) 停止服务..."
 	@docker compose down
-	@echo "$(SUCCESS) $(GREEN)服务已停止$(NC)"
+	@echo "$(SUCCESS) 服务已停止"
 
 stop: down ## 停止服务 (别名)
 
 restart: ## 重启服务
-	@$(MAKE) down && $(MAKE) up
+	@echo "$(INFO) 重启服务..."
+	@docker compose down 2>/dev/null || true
+	@docker compose up -d
+	@echo ""
+	$(call wait-for-healthy,90)
+	@echo ""
+	@echo "$(SUCCESS) 访问地址: $(BOLD)http://127.0.0.1:$(GATEWAY_PORT)/$(NC)"
 
 status: ## 查看服务状态
 	@echo "【容器】"
@@ -344,7 +404,7 @@ approve: ## 🔐 一键批准最新的配对请求
 verify: ## 验证镜像工具版本 (最佳实践检查)
 	@echo "$(INFO) 验证目标镜像: $(BOLD)$(YELLOW)$(IMAGE_NAME)$(NC)"
 	@docker run --rm $(IMAGE_NAME) node -v | grep -q "v22" && echo "$(SUCCESS) Node.js v22 (LTS) OK" || echo "$(ERROR) Node.js version mismatch"
-	@docker run --rm $(IMAGE_NAME) go version 2>/dev/null | grep -q "1.2" && echo "$(SUCCESS) Go 1.2x" || echo "$(WARN) Go (Office版无)"
+	@docker run --rm $(IMAGE_NAME) go version 2>/dev/null | grep -qE "^go1\.[2-9][0-9]" && echo "$(SUCCESS) Go 1.2x OK" || echo "$(WARN) Go (Office版无)"
 
 exec: ## 执行命令 (需要 CMD="..." 参数)
 	@docker compose exec openclaw-gateway $(CMD)
@@ -365,10 +425,10 @@ gateway-health: ## 检查健康状态
 
 health: gateway-health ## 检查健康状态 (别名)
 
-test-proxy: ## 测试代理连接
-	@echo "$(INFO) Google: "; docker compose exec -T openclaw-gateway \
+test-proxy: ## 测试代理连接 (默认端口: HTTP=7897, Claude API=15721)
+	@echo "$(INFO) Google (proxy: http://host.docker.internal:7897): "; docker compose exec -T openclaw-gateway \
 		curl -s --proxy http://host.docker.internal:7897 --connect-timeout 3 https://www.google.com >/dev/null 2>&1 && echo "$(SUCCESS)" || echo "$(ERROR)"
-	@echo "$(INFO) Claude API: "; docker compose exec -T openclaw-gateway \
+	@echo "$(INFO) Claude API (proxy: http://host.docker.internal:15721): "; docker compose exec -T openclaw-gateway \
 		curl -s --proxy http://host.docker.internal:15721 --connect-timeout 3 https://api.anthropic.com >/dev/null 2>&1 && echo "$(SUCCESS)" || echo "$(ERROR)"
 
 # ============================================================

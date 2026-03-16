@@ -110,13 +110,10 @@
     <g transform="translate(40, 190)">
       <g>
         <rect width="330" height="130" rx="16" fill="white" stroke="#E2E8F0" stroke-width="1.5" filter="url(#soft-shadow)"/>
-        <text x="20" y="25" font-family="'Inter', sans-serif" font-size="11" font-weight="900" fill="#7C3AED">🤖 AI ADAPTERS &amp; ⌨️ CLI</text>
-        
-        <rect x="20" y="45" width="135" height="65" rx="12" fill="#F5F3FF" stroke="#C4B5FD" stroke-width="1.5"/>
-        <text x="87.5" y="83" text-anchor="middle" font-family="'Inter', sans-serif" font-size="14" font-weight="900" fill="#5B21B6">🤖 Claude Code</text>
-        
-        <rect x="175" y="45" width="135" height="65" rx="12" fill="#F5F3FF" stroke="#C4B5FD" stroke-width="1.5"/>
-        <text x="242.5" y="83" text-anchor="middle" font-family="'Inter', sans-serif" font-size="13" font-weight="900" fill="#5B21B6">⚙️ openclaw-cli</text>
+        <text x="20" y="25" font-family="'Inter', sans-serif" font-size="11" font-weight="900" fill="#7C3AED">🤖 AI ADAPTERS</text>
+
+        <rect x="45" y="45" width="240" height="65" rx="12" fill="#F5F3FF" stroke="#C4B5FD" stroke-width="1.5"/>
+        <text x="165" y="83" text-anchor="middle" font-family="'Inter', sans-serif" font-size="14" font-weight="900" fill="#5B21B6">🤖 Claude Code</text>
       </g>
       
       <g transform="translate(370, 0)">

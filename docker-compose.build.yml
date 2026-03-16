@@ -20,18 +20,3 @@ services:
         APT_MIRROR: ${APT_MIRROR:-deb.debian.org}
         NPM_MIRROR: ${NPM_MIRROR:-}
         PYTHON_MIRROR: ${PYTHON_MIRROR:-}
-
-  openclaw-cli:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        BASE_IMAGE: ${BASE_IMAGE:-openclaw-runtime:base}
-        OPENCLAW_VERSION: ${OPENCLAW_VERSION:-latest}
-        INSTALL_BROWSER: ${INSTALL_BROWSER:-0}
-        HTTP_PROXY: ${HTTP_PROXY:-}
-        HTTPS_PROXY: ${HTTPS_PROXY:-}
-        DOCKER_MIRROR: ${DOCKER_MIRROR:-docker.io}
-        APT_MIRROR: ${APT_MIRROR:-deb.debian.org}
-        NPM_MIRROR: ${NPM_MIRROR:-}
-        PYTHON_MIRROR: ${PYTHON_MIRROR:-}

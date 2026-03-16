@@ -42,16 +42,6 @@ x-openclaw-common: &openclaw-common
     # Runtime Configuration
     # ─────────────────────────────────────────────────────────────────
     PLAYWRIGHT_BROWSERS_PATH: /home/node/.cache/ms-playwright
-    HOME: /home/node
-    # Fallback for host HOME to satisfy docker-compose volume interpolation on Windows
-    HOST_HOME: ${HOME:-${USERPROFILE:-/tmp}}
-    TERM: xterm-256color
-    # ─────────────────────────────────────────────────────────────────
-    # Python Tools Auto-Install (space-separated, format: pkg[:bin])
-    # Examples: "notebooklm", "pandas", "black:blackd"
-    # Tools are installed to system Python via uv on first startup
-    # ─────────────────────────────────────────────────────────────────
-    PIP_TOOLS: ${PIP_TOOLS:-notebooklm-py:notebooklm}
     # NotebookLM config path (shared with host via bind mount)
     NOTEBOOKLM_STORAGE: /home/node/.notebooklm/storage_state.json
   extra_hosts:

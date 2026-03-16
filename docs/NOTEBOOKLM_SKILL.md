@@ -100,11 +100,12 @@ make up
 容器启动时自动：
 - 挂载认证目录 → 共享 Google 认证
 - 挂载 Skills 目录 → 共享 Skill 文件
-- 安装 CLI 工具 → 通过 PIP_TOOLS 环境变量
+- notebooklm CLI → **已内置于镜像中**（无需动态安装）
 
 **验证容器配置:**
 ```bash
 make shell
+which notebooklm               # ✓ CLI 已内置
 notebooklm auth check          # ✓ 认证共享成功
 ls /home/node/.claude/skills/  # notebooklm 目录存在
 ```
@@ -144,7 +145,7 @@ ls /home/node/.claude/skills/  # notebooklm 目录存在
 │  /home/node/.claude/skills/                                     │
 │  └── notebooklm/           ← Skill 挂载 ✓                        │
 │                                                                 │
-│  /usr/local/bin/notebooklm ← 容器启动时动态安装                   │
+│  /usr/local/bin/notebooklm ← 镜像内置 ✓                          │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
         │
@@ -161,7 +162,7 @@ ls /home/node/.claude/skills/  # notebooklm 目录存在
 
 共享规则:
   • 认证文件: 直接共享 (JSON 跨平台兼容)
-  • CLI 工具: 无法共享 (macOS/Windows 二进制 ≠ Linux)
+  • CLI 工具: 镜像内置 (不再需要共享)
   • Skill 文件: 挂载 + 复制 (文本文件跨平台兼容)
 ```
 
@@ -270,12 +271,9 @@ notebooklm login
 
 ### 容器内找不到 CLI
 
+> 注意：notebooklm CLI 已内置于镜像中。如果找不到，请尝试重建镜像：
 ```bash
-# 检查是否安装
-which notebooklm
-
-# 手动安装（如果 PIP_TOOLS 未配置）
-uv pip install --system --break-system-packages notebooklm-py
+make rebuild
 ```
 
 ### Skill 未生效

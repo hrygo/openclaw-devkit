@@ -255,22 +255,6 @@ YAML
     printf '      - %s\n' "$mount" >>"$EXTRA_COMPOSE_FILE"
   done
 
-  cat >>"$EXTRA_COMPOSE_FILE" <<'YAML'
-  openclaw-cli:
-    volumes:
-YAML
-
-  if [[ -n "$home_volume" ]]; then
-    printf '      - %s\n' "$gateway_home_mount" >>"$EXTRA_COMPOSE_FILE"
-    printf '      - %s\n' "$gateway_config_mount" >>"$EXTRA_COMPOSE_FILE"
-    printf '      - %s\n' "$gateway_workspace_mount" >>"$EXTRA_COMPOSE_FILE"
-  fi
-
-  for mount in "$@"; do
-    validate_mount_spec "$mount"
-    printf '      - %s\n' "$mount" >>"$EXTRA_COMPOSE_FILE"
-  done
-
   if [[ -n "$home_volume" && "$home_volume" != *"/"* ]]; then
     validate_named_volume "$home_volume"
     cat >>"$EXTRA_COMPOSE_FILE" <<YAML
@@ -544,18 +528,10 @@ echo ""
 # 修复数据目录权限
 if [[ "$IS_WINDOWS" == "false" ]]; then
   # Use -xdev to restrict chown to the config-dir mount only
-  # 使用 root 用户修复权限，限制由于 openclaw-cli 仅挂载了 .openclaw 且为统一存储池
-  docker compose run --rm --user root --entrypoint sh openclaw-cli -c \
+  # 使用 root 用户修复权限
+  docker compose run --rm --user root --entrypoint sh openclaw-gateway -c \
     'find /home/node/.openclaw -xdev -exec chown node:node {} + 2>/dev/null || true'
 fi
-
-# ============================================================
-# 辅助函数：运行 CLI 命令
-# ============================================================
-
-run_cli() {
-  docker compose run --rm --entrypoint "" openclaw-cli node dist/index.js "$@"
-}
 
 # ============================================================
 # 配置 Gateway
