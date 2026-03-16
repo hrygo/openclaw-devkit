@@ -70,7 +70,7 @@ ls /home/node/.claude/skills/  # notebooklm directory exists
 
 Tell OpenClaw:
 
-> Please copy the skill from /home/node/.claude/skills/notebooklm/ to your skills directory, then verify the copy succeeded and tell me what capabilities you learned from this skill
+> Copy the notebooklm skill from ~/.claude/skills to your skills directory, then verify and tell me what capabilities you learned
 
 ---
 
@@ -98,14 +98,22 @@ Tell OpenClaw:
 │  /home/node/.notebooklm/                                        │
 │  └── storage_state.json    ← Auth shared ✓                      │
 │                                                                 │
-│  /home/node/.claude/skills/                                     │
-│  └── notebooklm/           ← Skill mounted ✓                    │
+│  /home/node/.claude/skills/notebooklm/                          │
+│  └── skill.md              ← Skill mounted ✓                    │
 │                                                                 │
 │  /usr/local/bin/notebooklm ← Dynamic install at startup         │
 │                                                                 │
-│  OpenClaw ~/.claude/skills/                                     │
-│  └── notebooklm/           ← Copy via chat                      │
+└─────────────────────────────────────────────────────────────────┘
+        │
+        │  Step 5: Copy via chat
+        ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    OpenClaw Config Directory                      │
 │                                                                 │
+│  ~/.claude/skills/notebooklm/                                   │
+│  └── skill.md              ← Copied from mounted directory       │
+│                                                                 │
+│  After copy, OpenClaw gains NotebookLM control capabilities      │
 └─────────────────────────────────────────────────────────────────┘
 
 Sharing Rules:
@@ -118,23 +126,27 @@ Sharing Rules:
 
 ## Usage Examples
 
-### Create a Podcast
+### Example 1: Research Agent Skills Best Practices
+
+**Scenario**: Research Claude Agent Skills best practices, generate podcast for commute listening.
 
 **Natural Language (Recommended):**
 
-> Create a NotebookLM notebook, add source https://example.com/article, generate a deep-dive style podcast and download it
+> Create a NotebookLM notebook "Agent Skills Best Practices", add source https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices, generate deep-dive style podcast and download as agent-skills-podcast.mp3
 
 **Equivalent CLI:**
 
 ```bash
-notebooklm create "My Notebook"
+notebooklm create "Agent Skills Best Practices"
 notebooklm use <id>
-notebooklm source add "https://example.com/article" --wait
+notebooklm source add "https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices" --wait
 notebooklm generate audio --wait
-notebooklm download audio podcast.mp3
+notebooklm download audio agent-skills-podcast.mp3
 ```
 
-### Generate Quiz
+### Example 2: Batch Generate Learning Materials
+
+**Scenario**: Generate quiz and flashcards for a course.
 
 > Generate 20 quiz questions from current notebook, export as Markdown
 
@@ -143,12 +155,25 @@ notebooklm generate quiz --quantity more
 notebooklm download quiz --format markdown quiz.md
 ```
 
-### Research and Import
+### Example 3: Research and Auto-Import
+
+**Scenario**: Auto-search and import relevant materials.
 
 > Research "LLM Function Calling", search web resources and import into notebook
 
 ```bash
 notebooklm source add-research "LLM Function Calling"
+```
+
+### Example 4: Generate Mind Map
+
+**Scenario**: Visualize knowledge structure.
+
+> Generate mind map of current notebook, export as JSON
+
+```bash
+notebooklm generate mind-map
+notebooklm download mind-map mindmap.json
 ```
 
 ---
