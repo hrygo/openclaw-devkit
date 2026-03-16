@@ -50,11 +50,27 @@ playwright install chromium
 notebooklm login
 ```
 
-This will automatically open a browser window:
+A browser window will open automatically.
 
-1. Log in to your Google account
-2. Complete authentication
-3. Credentials are automatically saved to `~/.notebooklm/storage_state.json`
+#### ⚠️ Login Flow - Follow This Sequence
+
+```
+1. Browser opens   → Complete Google login in the browser
+2. Wait            → Until you see NotebookLM homepage (not just Google login success)
+3. Return to terminal → Press ENTER to save authentication
+4. Done            → Browser closes automatically
+```
+
+```
+❌ WRONG: Login in browser → Close browser → Try to press ENTER
+   → Error: storage_state save fails, cookies not written
+
+✅ CORRECT: Login in browser → Wait for NotebookLM homepage → Press ENTER in terminal → Browser closes automatically
+```
+
+**Why this matters:** Authentication cookies are only saved AFTER you press ENTER. Closing the browser early interrupts the save process, causing "Missing required cookies" errors on subsequent commands.
+
+---
 
 **Verify Authentication:**
 ```bash

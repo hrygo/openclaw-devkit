@@ -49,11 +49,27 @@ playwright install chromium
 notebooklm login
 ```
 
-执行后会自动打开浏览器窗口：
+执行后会自动打开浏览器窗口。
 
-1. 登录你的 Google 账号
-2. 完成身份验证
-3. 认证信息自动保存到 `~/.notebooklm/storage_state.json`
+#### ⚠️ 登录流程 - 务必按顺序操作
+
+```
+1. 浏览器打开 → 在浏览器中完成 Google 登录
+2. 等待      → 看到 NotebookLM 首页（不是 Google 登录成功页面）
+3. 回终端    → 按 ENTER 键保存认证
+4. 完成      → 此时才能关闭浏览器
+```
+
+```
+❌ 错误: 浏览器登录 → 关闭浏览器 → 尝试按 ENTER
+   → 报错: storage_state 保存失败，cookies 未写入
+
+✅ 正确: 浏览器登录 → 等待 NotebookLM 首页 → 在终端按 ENTER → 浏览器自动关闭
+```
+
+**为什么这很重要**: 认证 cookies 只有在你按 ENTER **之后**才会保存。提前关闭浏览器会中断保存过程，导致后续命令报 "Missing required cookies" 错误。
+
+---
 
 **验证认证:**
 ```bash
