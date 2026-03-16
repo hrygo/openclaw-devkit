@@ -79,7 +79,7 @@ Expected output:
 
 ---
 
-## Container Environment Auto-Configuration
+## Container Environment Configuration
 
 OpenClaw DevKit is pre-configured for NotebookLM support, sharing host authentication with the container.
 
@@ -92,6 +92,9 @@ OpenClaw DevKit is pre-configured for NotebookLM support, sharing host authentic
 │  ~/.notebooklm/                                             │
 │  └── storage_state.json  ←── Google auth credentials        │
 │                                                             │
+│  ~/.claude/skills/                                          │
+│  └── notebooklm/         ←── Claude Code Skill              │
+│                                                             │
 └────────────────────┬────────────────────────────────────────┘
                      │ bind mount (rw)
                      ▼
@@ -103,67 +106,72 @@ OpenClaw DevKit is pre-configured for NotebookLM support, sharing host authentic
 │                                                             │
 │  /root/.notebooklm → /home/node/.notebooklm  (symlink)      │
 │                                                             │
+│  ~/.claude/skills/        ←── Copy skill here via chat       │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Environment Variable Configuration
+### Install Skill on Host Machine
 
-Configure auto-installation in `.env` file:
+After completing CLI installation and authentication, install the Claude Code skill on your **host machine**:
 
 ```bash
-# Python tool auto-installation
-# Format: "package_name[:command_name]" (space-separated for multiple)
-PIP_TOOLS=notebooklm-py:notebooklm
+# Run on host machine
+notebooklm skill install
 ```
 
-**Explanation**:
-- `notebooklm-py` is the PyPI package name
-- `notebooklm` is the CLI command after installation
-- Auto-installed via `uv pip install --system` on container startup
+This installs the skill to `~/.claude/skills/notebooklm/` directory.
 
-### Verify Container Configuration
+### Copy Skill to Container via Chat
+
+After starting the container, simply tell OpenClaw:
+
+> "Find and copy the notebooklm skill from host's ~/.claude/skills/ directory into the container"
+
+Or more concisely:
+
+> "Copy notebooklm skill from host machine for me"
+
+OpenClaw will automatically copy the skill—no need to reinstall CLI and skill inside the container.
+
+### Verify Configuration
 
 ```bash
 # Enter container
 make shell
 
-# Check if CLI is available
+# Check if CLI is available (shared via volume mount)
 notebooklm auth check
 
-# List notebooks
-notebooklm list
+# Check if skill exists
+ls ~/.claude/skills/notebooklm/
 ```
 
 ---
 
-## Installing Skill via Natural Language
+## Using Skill in Container
 
-### Method 1: CLI Installation
+### Confirm Skill is Ready
 
-Execute inside the container:
-
-```bash
-notebooklm skill install
-```
-
-### Method 2: Natural Language Installation
-
-Simply tell OpenClaw:
-
-> "帮我安装 tiangong-notebooklm 技能，这样我就可以通过自然语言操控 NotebookLM 了"
-
-Or:
-
-> "Install the notebooklm skill so I can manage my Google NotebookLM notebooks"
-
-OpenClaw will automatically execute the installation process.
-
-### Verify Skill Installation
+If you've copied the skill from host machine as described above, verify directly:
 
 ```bash
 # Check skill status
 notebooklm skill status
 ```
+
+### Fallback: Direct Installation in Container
+
+If not copied from host, you can also install directly inside the container:
+
+```bash
+# CLI installation
+notebooklm skill install
+```
+
+Or via natural language:
+
+> "Install the notebooklm skill so I can manage my Google NotebookLM notebooks"
 
 ---
 
