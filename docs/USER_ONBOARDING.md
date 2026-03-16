@@ -1,6 +1,6 @@
 # OpenClaw DevKit 用户安装手册
 
-本文档描述了新用户从克隆仓库到完成配置的完整执行流程。
+本文档描述了从克隆仓库到完成配置的完整执行流程。
 
 ## 1. 极速起步
 
@@ -12,7 +12,7 @@ make install
 make onboard
 ```
 
-> **提示**: 首次安装后，每天启动只需执行 `make up`
+> **提示**: 首次安装后，日常启动只需执行 `make up`
 
 ---
 
@@ -36,12 +36,12 @@ make install [flavor]
 
 ## 3. 版本选择
 
-| 版本 | 镜像标签 | 适用场景 |
-| :--- | :--- | :--- |
-| 标准版 | `latest` | Web 开发 |
-| Go 版 | `go` | Go 后端开发 |
-| Java 版 | `java` | Java 后端开发 |
-| Office 版 | `office` | 文档处理/RAG |
+| 版本      | 镜像标签 | 适用场景      |
+| :-------- | :------- | :------------ |
+| 标准版    | `latest` | Web 开发      |
+| Go 版     | `go`     | Go 后端开发   |
+| Java 版   | `java`   | Java 后端开发 |
+| Office 版 | `office` | 文档处理/RAG  |
 
 ```bash
 # 安装指定版本
@@ -113,24 +113,46 @@ make install / make up
 
 ### 5.2 端口说明
 
-| 端口 | 服务 | 说明 |
-| :--- | :--- | :--- |
-| 18789 | Gateway Web UI | HTTP 访问 |
-| 18790 | Bridge | WebSocket 桥接 |
-| 7897 | HTTP Proxy | 代理服务（可选） |
+| 端口  | 服务             | 说明             |
+| :---- | :--------------- | :--------------- |
+| 18789 | Gateway Web UI   | HTTP 访问        |
+| 18790 | Bridge           | WebSocket 桥接   |
+| 7897  | HTTP Proxy       | 代理服务（可选） |
 | 15721 | Claude API Proxy | API 代理（可选） |
 
 ### 5.3 数据持久化
 
-| 数据类型 | 存储位置 |
-| :--- | :--- |
+| 数据类型 | 存储位置                    |
+| :------- | :-------------------------- |
 | 配置文件 | `~/.openclaw/openclaw.json` |
-| 会话数据 | Docker 卷 `openclaw-state` |
-| 工作区 | `~/.openclaw/workspace` |
+| 会话数据 | Docker 卷 `openclaw-state`  |
+| 工作区   | `~/.openclaw/workspace`     |
 
 ---
 
-## 6. 常见问题
+## 6. Cockpit 运维引擎
+
+### 6.1 一键直达 (Dashboard)
+- **命令**：`make dashboard`
+- **逻辑**：自动获取容器内 Gateway Token 并生成带身份的 URL。
+- **效果**：绕过 `pairing required` 拦截，一键直达仪表盘。
+
+### 6.2 自动化配对 (Approve)
+- **命令**：`make approve`
+- **逻辑**：自动识别 Web UI 发出的最新 `pending` 请求 ID 并批准。
+
+---
+
+## 7. Windows / WSL 适配
+
+Windows / WSL 环境的 Docker 健康检查配置：
+- **宽限期 (`start_period`)**：60s
+- **重试 (`retries`)**：10 次
+- **自愈**：容器入口脚本启动时自动执行 `doctor --fix`
+
+---
+
+## 8. 常见问题
 
 ### Q: 启动失败显示 "container is unhealthy"？
 

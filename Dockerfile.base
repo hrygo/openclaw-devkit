@@ -10,7 +10,7 @@ ARG APT_MIRROR=deb.debian.org
 ARG NODE_VERSION=22
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV PATH="/usr/local/bin:/root/.bun/bin:${PATH}"
+ENV PATH="/usr/local/bin:${PATH}"
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 ENV LANGUAGE=en_US:en
@@ -49,8 +49,8 @@ RUN mkdir -p /etc/apt/keyrings && \
     npm install -g pnpm@latest && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Bun
-RUN curl -fsSL https://bun.sh/install | bash
+# Install Bun (global installation)
+RUN curl -fsSL https://bun.sh/install | BUN_INSTALL=/usr/local bash
 
 # Install uv (Python package manager)
 RUN curl -fsSL https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
@@ -63,6 +63,9 @@ RUN if [ "$BROWSER_DEPS" = "1" ]; then \
     libdbus-1-3 libgtk-3-0 fonts-liberation fonts-noto-color-emoji && \
     apt-get clean && rm -rf /var/lib/apt/lists/*; \
     fi
+
+# Create non-root user (Standard UID 1000)
+RUN useradd --create-home --shell /bin/bash node || true
 
 WORKDIR /app
 CMD ["bash"]

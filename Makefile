@@ -37,28 +37,58 @@ else
     HOME_DIR := $(HOME)
 endif
 
-# Common Commands (Platform Neutral)
+# Export HOME for docker compose visibility on Windows
+export HOME := $(HOME_DIR)
+
+# Check shell environment on Windows
+# Detect MSYSTEM for Git Bash / MSYS2 / Cygwin
+ifeq ($(OS),Windows_NT)
+    ifeq ($(strip $(MSYSTEM)),)
+        # Not in a POSIX environment - issue warning but continue
+        WINDOWS_POSIX := false
+    else
+        WINDOWS_POSIX := true
+    endif
+endif
+
+# Common Commands (POSIX-Standard)
 MKDIR := mkdir -p
 RM    := rm -rf
 
-# ANSI Colors (Calculated for portability)
-ifeq ($(PLATFORM),Windows)
-    # Windows cmd.exe fallbacks
-    RED    :=
-    GREEN  :=
-    YELLOW :=
-    BLUE   :=
-    CYAN   :=
-    BOLD   :=
-    NC     :=
-else
+# ANSI Colors - with Windows CMD/PowerShell compatibility
+# On Unix/Linux/macOS: use colors
+# On Windows with POSIX (Git Bash/MSYS2): use colors
+# On Windows CMD/PowerShell: no colors to avoid shell parsing issues
+ifneq ($(OS),Windows_NT)
+    # Unix-like systems: use ANSI colors
     RED    := $(shell printf '\033[0;31m')
     GREEN  := $(shell printf '\033[0;32m')
     YELLOW := $(shell printf '\033[1;33m')
     BLUE   := $(shell printf '\033[0;34m')
     CYAN   := $(shell printf '\033[0;36m')
     BOLD   := $(shell printf '\033[1m')
-    NC     := $(shell printf '\033[0m') # No Color
+    NC     := $(shell printf '\033[0m')
+else
+    # Windows: check if in POSIX environment
+    ifeq ($(WINDOWS_POSIX),true)
+        # Git Bash/MSYS2/Cygwin: use ANSI colors
+        RED    := $(shell printf '\033[0;31m')
+        GREEN  := $(shell printf '\033[0;32m')
+        YELLOW := $(shell printf '\033[1;33m')
+        BLUE   := $(shell printf '\033[0;34m')
+        CYAN   := $(shell printf '\033[0;36m')
+        BOLD   := $(shell printf '\033[1m')
+        NC     := $(shell printf '\033[0m')
+    else
+        # Windows CMD/PowerShell: no colors to avoid shell parsing issues
+        RED    :=
+        GREEN  :=
+        YELLOW :=
+        BLUE   :=
+        CYAN   :=
+        BOLD   :=
+        NC     :=
+    endif
 endif
 
 # Output Prefixes
@@ -73,6 +103,20 @@ ERROR   := $(RED)$(BOLD)✖$(NC)
 -include .env
 
 # ============================================================
+# 环境变量自动导出 (Ensure Docker Compose receives variables)
+# ============================================================
+export OPENCLAW_IMAGE
+export OPENCLAW_CONFIG_DIR
+export OPENCLAW_WORKSPACE_DIR
+export OPENCLAW_GATEWAY_PORT
+export OPENCLAW_BRIDGE_PORT
+export OPENCLAW_GATEWAY_TOKEN
+export HTTP_PROXY
+export HTTPS_PROXY
+export ANTHROPIC_AUTH_TOKEN
+export ANTHROPIC_BASE_URL
+
+# ============================================================
 # 变量定义
 # ============================================================
 
@@ -81,59 +125,63 @@ SETUP_SCRIPT := docker-setup.sh
 GATEWAY_PORT ?= $(if $(OPENCLAW_GATEWAY_PORT),$(OPENCLAW_GATEWAY_PORT),18789)
 OPENCLAW_BIN := openclaw
 
-# 镜像配置 (强制使用基准名，防止 .env 中的标签导致冗余:go:go)
+# 镜像配置
 INITIAL_IMAGE_NAME := ghcr.io/hrygo/openclaw-devkit
-IMAGE_NAME := $(INITIAL_IMAGE_NAME)
+IMAGE_NAME := $(if $(OPENCLAW_IMAGE),$(OPENCLAW_IMAGE),$(INITIAL_IMAGE_NAME):latest)
 
-# Docker 构建公共参数 (提供安全默认值以支持回退到原始源)
+# Docker 构建公共参数
 DOCKER_BUILD_ARGS := --build-arg HTTP_PROXY=$(HTTP_PROXY) \
                      --build-arg HTTPS_PROXY=$(HTTPS_PROXY) \
                      --build-arg DOCKER_MIRROR=$(if $(DOCKER_MIRROR),$(DOCKER_MIRROR),docker.io) \
                      --build-arg APT_MIRROR=$(if $(APT_MIRROR),$(APT_MIRROR),mirrors.tuna.tsinghua.edu.cn) \
                      --build-arg NPM_MIRROR=$(NPM_MIRROR) \
                      --build-arg PYTHON_MIRROR=$(PYTHON_MIRROR) \
-                     --build-arg OPENCLAW_VERSION=$(if $(OPENCLAW_VERSION),$(OPENCLAW_VERSION),latest)
+                     --build-arg OPENCLAW_VERSION=$(if $(OPENCLAW_VERSION),$(OPENCLAW_VERSION),latest) \
+                     --build-arg INSTALL_BROWSER=$(if $(INSTALL_BROWSER),$(INSTALL_BROWSER),0)
 
 # ============================================================
 # 帮助信息 (现代分组版)
 # ============================================================
 
-help: ## 显示完整命令列表
-	@echo ""
-	@echo "  $(INFO)  $(CYAN)$(BOLD)OpenClaw DevKit  v2.0$(NC)  |  $(BOLD)终端运维蓝图$(NC)"
-	@echo "  ══════════════════════════════════════════════════════════"
-	@echo ""
-	@echo "  $(BOLD)⚡  快速开始 (Zero-Friction)$(NC)"
-	@printf "    $(CYAN)%-22s$(NC) %s\n" "make install" "一键适配、生成及安装"
-	@printf "    $(CYAN)%-22s$(NC) %s\n" "make onboard" "交互式灵魂配置 (LLM/API)"
-	@printf "    $(CYAN)%-22s$(NC) %s\n" "make up" "启动服务"
-	@printf "    $(CYAN)%-22s$(NC) %s\n" "make down" "停止服务"
-	@echo ""
-	@echo "  $(BOLD)🔄  生命周期管理$(NC)"
-	@printf "    %-22s %s\n" "make restart" "服务重启"
-	@printf "    %-22s %s\n" "make status" "查看分层编排状态"
-	@echo ""
-	@echo "  $(BOLD)🔧  构建引擎 (Version: dev|go|java|office)$(NC)"
-	@printf "    %-22s %s\n" "make build" "感知式构建 (根据 SKIP_BUILD)"
-	@printf "    %-22s %s\n" "make rebuild" "强制更新镜像并重启"
-	@echo ""
-	@echo "  $(BOLD)🐛  调试与诊断$(NC)"
-	@printf "    %-22s %s\n" "make logs" "查看 Gateway 实时日志"
-	@printf "    %-22s %s\n" "make shell" "进入隔离沙盒 Shell"
-	@printf "    %-22s %s\n" "make test-proxy" "黑盒代理通配性测试"
-	@printf "    %-22s %s\n" "make verify" "工具链合规检查"
-	@echo ""
-	@echo "  $(BOLD)💾  持久化维护$(NC)"
-	@printf "    %-22s %s\n" "make backup-config" "配置全量备份"
-	@printf "    %-22s %s\n" "make update" "从 GH 同步最新逻辑基因"
-	@echo ""
-	@echo "  ══════════════════════════════════════════════════════════"
-	@echo "  $(BOLD)分级调用:$(NC) make <cmd> <version>"
-	@echo "  $(INFO)  $(YELLOW)dev$(NC) (标准) | $(YELLOW)go$(NC) (Go) | $(YELLOW)java$(NC) (Java) | $(YELLOW)office$(NC) (办公)"
-	@echo ""
-	@echo "  $(BOLD)示例:$(NC) ${CYAN}make install go${NC}"
-	@echo "  ══════════════════════════════════════════════════════════"
-	@echo ""
+help: ## 显示帮助信息
+	@printf "\n"
+	@printf "  $(BOLD)$(CYAN)==>   OpenClaw DevKit   |  终端运维蓝图 $(NC)\n"
+	@printf "  $(BOLD)══════════════════════════════════════════════════════════$(NC)\n"
+	@printf "\n"
+	@printf "  $(BOLD)$(CYAN)⚡  快速开始 (Zero-Friction) $(NC)\n"
+	@printf "    $(BOLD)make install$(NC)            一键适配、生成及安装\n"
+	@printf "    $(BOLD)make onboard$(NC)            交互式灵魂配置 (LLM/API)\n"
+	@printf "    $(BOLD)make up$(NC)                 启动服务\n"
+	@printf "    $(BOLD)make down$(NC)               停止服务\n"
+	@printf "\n"
+	@printf "  $(BOLD)$(CYAN)🔄  生命周期管理 $(NC)\n"
+	@printf "    $(BOLD)make restart$(NC)           服务重启\n"
+	@printf "    $(BOLD)make status$(NC)            查看分层编排状态\n"
+	@printf "\n"
+	@printf "  $(BOLD)$(CYAN)🔧  构建引擎 (Version: dev|go|java|office) $(NC)\n"
+	@printf "    $(BOLD)make build$(NC)             感知式构建 (根据 SKIP_BUILD)\n"
+	@printf "    $(BOLD)make rebuild$(NC)           强制更新镜像并重启\n"
+	@printf "\n"
+	@printf "  $(BOLD)$(CYAN)🐛  调试与诊断 $(NC)\n"
+	@printf "    $(BOLD)make logs$(NC)              查看 Gateway 实时日志\n"
+	@printf "    $(BOLD)make dashboard$(NC)         🚀 一键直达仪表盘 (免配对)\n"
+	@printf "    $(BOLD)make approve$(NC)           🔐 一键批准配对请求\n"
+	@printf "    $(BOLD)make devices$(NC)           查看已配对设备及请求\n"
+	@printf "    $(BOLD)make shell$(NC)             进入隔离沙盒 Shell\n"
+	@printf "    $(BOLD)make test-proxy$(NC)        黑盒代理通配性测试\n"
+	@printf "    $(BOLD)make verify$(NC)            工具链合规检查\n"
+	@printf "\n"
+	@printf "  $(BOLD)$(CYAN)💾  持久化维护 $(NC)\n"
+	@printf "    $(BOLD)make backup-config$(NC)     配置全量备份\n"
+	@printf "    $(BOLD)make update$(NC)            从 GH 同步最新逻辑基因\n"
+	@printf "\n"
+	@printf "  $(BOLD)══════════════════════════════════════════════════════════$(NC)\n"
+	@printf "  分级调用:  make <cmd> <version>\n"
+	@printf "  ==>   dev  (标准) | go  (Go) | java  (Java) | office  (办公)\n"
+	@printf "\n"
+	@printf "  示例:  make install go \n"
+	@printf "  $(BOLD)══════════════════════════════════════════════════════════$(NC)\n"
+	@printf "\n"
 
 # ============================================================
 # 版本选择 (伪目标)
@@ -156,12 +204,14 @@ dev: ## 内部: 选择标准版
 # ============================================================
 
 install: ## 首次安装/初始化环境
-	@$(if $(filter Unix,$(PLATFORM)),chmod +x $(SETUP_SCRIPT),)
+	@$(if $(filter Unix,$(PLATFORM)),chmod +x "$(SETUP_SCRIPT)",)
 	@$(call select_image,$(MAKECMDGOALS))
 	@echo "$(INFO) 目标环境: $(BOLD)$(YELLOW)$(IMAGE_NAME)$(NC)"
-	@OPENCLAW_IMAGE=$(IMAGE_NAME) sh $(SETUP_SCRIPT)
+	@OPENCLAW_IMAGE="$(IMAGE_NAME)" bash "$(SETUP_SCRIPT)"
 	@echo "$(SUCCESS) $(GREEN)环境安装完毕!$(NC)"
-	@echo "  $(INFO) 提示: 首次安装后，请执行 $(BOLD)make onboard$(NC) 以交互式引导配置 LLM 与 聊天应用。"
+	@echo "  $(INFO) 🚀 下一步:"
+	@echo "    1. 执行 $(BOLD)make onboard$(NC) 配置核心模型"
+	@echo "    2. 执行 $(BOLD)make dashboard$(NC) 直接打开 Web UI"
 
 up: ## 启动服务
 	@# 检查并创建必要的目录（如果不存在）
@@ -169,15 +219,23 @@ up: ## 启动服务
 	@mkdir -p "$(OPENCLAW_TEAM_SKILLS_DIR)" 2>/dev/null || true
 	@docker compose up -d
 	@echo "✓ 已启动 (Web: http://127.0.0.1:$(GATEWAY_PORT)/)"
-	@echo "提示：初次使用建议运行 'make onboard' 进行交互式配置。"
+	@echo "  $(INFO) 提示: 执行 $(BOLD)make dashboard$(NC) 获取一键直通链接"
 
-onboard: ## 交互式引导设置 (LLM, 飞书, 频道等)
-	@echo "==> 启动交互式引导程序..."
-	@docker compose run --rm openclaw-cli openclaw onboard
+start: up ## 启动服务 (别名)
+
+onboard: ## 启动交互式引导程序
+	@echo "$(INFO) 启动交互式引导程序..."
+	@docker compose run --rm -it -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 openclaw-cli openclaw onboard
+	@echo ""
+	@echo "$(SUCCESS) 配对就绪! 您可以通过以下方式访问 Web UI:"
+	@echo "  ⚡ $(BOLD)方法 A (推荐)$(NC): 执行 $(CYAN)make dashboard$(NC) 一键免密直达"
+	@echo "  🔒 $(BOLD)方法 B (安全)$(NC): 访问网页后执行 $(CYAN)make approve$(NC) 自动授权"
 
 down: ## 停止服务
 	@docker compose down
 	@echo "$(SUCCESS) $(GREEN)服务已停止$(NC)"
+
+stop: down ## 停止服务 (别名)
 
 restart: ## 重启服务
 	@$(MAKE) down && $(MAKE) up
@@ -187,7 +245,7 @@ status: ## 查看服务状态
 	@docker ps --filter "name=openclaw" --format "  {{.Names}}: {{.Status}}" 2>/dev/null || echo "  (无运行中的容器)"
 	@echo ""
 	@echo "【镜像】"
-	@docker images $(IMAGE_NAME) --format "  {{.Repository}}:{{.Tag}} ({{.Size}})" 2>/dev/null || echo "  (未构建)"
+	@docker images "$(IMAGE_NAME)" --format "  {{.Repository}}:{{.Tag}} ({{.Size}})" 2>/dev/null || echo "  (未构建)"
 	@echo ""
 	@echo "【访问】 http://127.0.0.1:$(GATEWAY_PORT)/"
 
@@ -244,37 +302,70 @@ clean-volumes: ## 清理所有数据卷
 		docker volume rm openclaw-node-modules openclaw-go-mod \
 		openclaw-playwright-cache openclaw-playwright-bin \
 		openclaw-state 2>/dev/null || true'
-	@echo "✓ 数据卷已清理"
 
 # ============================================================
 # 调试与诊断
 # ============================================================
 
 logs: ## 查看 Gateway 日志
-	@docker compose logs -f openclaw-gateway
+	@LANG=C.UTF-8 LC_ALL=C.UTF-8 docker compose logs --tail 100 -f openclaw-gateway
 
 logs-all: ## 查看所有容器日志
-	@docker compose logs -f
+	@LANG=C.UTF-8 LC_ALL=C.UTF-8 docker compose logs --tail 100 -f
 
 shell: ## 进入 Gateway 容器
 	@docker compose exec openclaw-gateway bash
+
+dashboard: ## 🚀 一键直达仪表盘 (免配对直通链接)
+	@echo "$(INFO) 正在生成直通链接..."
+	@URL=$$(docker compose exec -T openclaw-gateway openclaw dashboard --no-open | grep "Dashboard URL:" | cut -d' ' -f3); \
+	if [ -n "$$URL" ]; then \
+		echo "$(SUCCESS) 仪表盘已就绪:"; \
+		echo "  $(BOLD)$(CYAN)$$URL$(NC)"; \
+		echo ""; \
+		echo "提示: 点击上方链接可直接进入，无需手动配对。"; \
+	else \
+		echo "$(ERROR) 无法获取 URL，请确保容器正在运行。"; \
+	fi
+
+devices: ## 列举所有配对设备及请求
+	@docker compose exec -T openclaw-gateway openclaw devices list
+
+approve: ## 🔐 一键批准最新的配对请求
+	@echo "$(INFO) 正在全自动识别待处理请求..."
+	@REQ_ID=$$(docker compose exec -T openclaw-gateway openclaw devices list --json | jq -r '.pending[0].requestId // empty'); \
+	if [ -n "$$REQ_ID" ]; then \
+		echo "$(INFO) 检测到请求 ID: $$REQ_ID"; \
+		docker compose exec -T openclaw-gateway openclaw devices approve "$$REQ_ID"; \
+		echo "$(SUCCESS) 已自动批准！现在请返回浏览器刷新页面。"; \
+	else \
+		echo "$(WARN) 未发现待处理请求。"; \
+		echo "提示: 请先在浏览器访问 http://127.0.0.1:$(GATEWAY_PORT)/ 触发配对提示。"; \
+	fi
 
 verify: ## 验证镜像工具版本 (最佳实践检查)
 	@echo "$(INFO) 验证目标镜像: $(BOLD)$(YELLOW)$(IMAGE_NAME)$(NC)"
 	@docker run --rm $(IMAGE_NAME) node -v | grep -q "v22" && echo "$(SUCCESS) Node.js v22 (LTS) OK" || echo "$(ERROR) Node.js version mismatch"
 	@docker run --rm $(IMAGE_NAME) go version 2>/dev/null | grep -q "1.2" && echo "$(SUCCESS) Go 1.2x" || echo "$(WARN) Go (Office版无)"
 
-exec: ## 执行命令
+exec: ## 执行命令 (需要 CMD="..." 参数)
 	@docker compose exec openclaw-gateway $(CMD)
 
-cli: ## 执行 OpenClaw CLI
+cli: ## 执行 OpenClaw CLI 命令 (需要 CMD="..." 参数)
 	@docker compose exec openclaw-gateway $(OPENCLAW_BIN) $(CMD)
+
+run: ## 交互式进入容器
+	@docker compose exec openclaw-gateway bash
 
 pairing: ## 频道配对
 	@docker compose exec openclaw-gateway $(OPENCLAW_BIN) pairing $(CMD)
 
+pair: pairing ## 频道配对 (别名)
+
 gateway-health: ## 检查健康状态
 	@curl -s http://127.0.0.1:$(GATEWAY_PORT)/ >/dev/null 2>&1 && echo "✓ Web UI 正常" || echo "✗ Web UI 不可用"
+
+health: gateway-health ## 检查健康状态 (别名)
 
 test-proxy: ## 测试代理连接
 	@echo "$(INFO) Google: "; docker compose exec -T openclaw-gateway \
@@ -296,7 +387,13 @@ backup-config: ## 备份配置
 		cp $(HOME_DIR)/.openclaw/openclaw.json $(BACKUP_DIR)/openclaw-$$TIM.json 2>/dev/null && echo "✓ config" || echo "⚠ config (无)"'
 	@echo "备份完成: $(BACKUP_DIR)"
 
+backup: backup-config ## 备份配置 (别名)
+
 restore-config: ## 恢复配置
+	@echo "用法: make restore FILE=<filename>"
+
+restore: restore-config ## 恢复配置 (别名)
+
 ifndef FILE
 	@echo "用法: make restore-config FILE=<filename>"
 	@sh -c 'ls -lt $(BACKUP_DIR) 2>/dev/null | head -5 || echo "  (无备份)"'
@@ -314,6 +411,33 @@ endif
 			echo "✓ 已恢复 config"; \
 		fi'
 
+update: ## 从 GitHub 同步最新代码
+	@echo "$(INFO) 正在从 GitHub 同步最新代码..."
+	@if ! git diff --quiet 2>/dev/null; then \
+		echo "$(WARNING) 存在未暂存的更改，请先提交或暂存"; \
+		git status -s; \
+		exit 1; \
+	fi
+	@git fetch origin
+	@git status -sb | head -1
+	@echo ""
+	@BEHIND=$$(git rev-list --count HEAD..origin/$(shell git rev-parse --abbrev-ref HEAD) 2>/dev/null); \
+	AHEAD=$$(git rev-list --count origin/$(shell git rev-parse --abbrev-ref HEAD)..HEAD 2>/dev/null); \
+	if [ "$$BEHIND" -eq 0 ] && [ "$$AHEAD" -eq 0 ]; then \
+		echo "$(SUCCESS) 已是最新版本"; \
+	elif [ "$$BEHIND" -gt 0 ] && [ "$$AHEAD" -eq 0 ]; then \
+		echo "$(INFO) 落后远程 $$BEHIND 个提交，正在拉取..."; \
+		git pull --rebase; \
+		echo ""; \
+		echo "$(SUCCESS) 更新完成! 如需应用镜像更新，请执行:$(BOLD) make rebuild$(NC)"; \
+	elif [ "$$AHEAD" -gt 0 ] && [ "$$BEHIND" -eq 0 ]; then \
+		echo "$(INFO) 本地领先远程 $$AHEAD 个提交，无需更新"; \
+		echo "$(INFO) 如需推送，请执行:$(BOLD) git push$(NC)"; \
+	else \
+		echo "$(WARNING) 本地与远程已分叉 (领先 $$AHEAD，落后 $$BEHIND)"; \
+		echo "$(INFO) 请手动解决:$(BOLD) git rebase origin/$(shell git rev-parse --abbrev-ref HEAD)$(NC)"; \
+	fi
+
 # ============================================================
 # 维护
 # ============================================================
@@ -327,7 +451,8 @@ check-deps: ## 检查依赖
 # ============================================================
 
 define select_image
-$(eval IMAGE_NAME := $(INITIAL_IMAGE_NAME):$(if $(filter office %office,$(1)),office,$(if $(filter java %java,$(1)),java,$(if $(filter go %go,$(1)),go,latest))))
+$(eval _VARIANT := $(if $(filter office %office,$(1)),office,$(if $(filter java %java,$(1)),java,$(if $(filter go %go,$(1)),go,$(if $(filter dev %dev,$(1)),latest,)))))
+$(if $(_VARIANT),$(eval IMAGE_NAME := $(INITIAL_IMAGE_NAME):$(_VARIANT)),)
 endef
 
 define do_build

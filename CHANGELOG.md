@@ -2,6 +2,87 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.6.2] - 2026-03-13
+
+### Optimized
+- **Docker Orchestration**: Consolidated `openclaw-init` logic into the main entrypoint to reduce container clutter and dependency chain.
+- **Windows Reliability**: Significantly relaxed Docker healthcheck parameters (longer `start_period`, more `retries`) to accommodate slow IO performance on Windows/WSL2 systems.
+- **Self-Healing**: Changed configuration seed mount to `rw` and integrated `openclaw doctor --fix` into the primary startup flow for more robust automatic configuration repair.
+
+## [v1.6.1] - 2026-03-13
+
+### Fixed
+- **Container Runtime**: Resolved `Permission denied` error when setting Git identity in entrypoint. Modified `run_as_node` helper to explicitly set `HOME=/home/node`, preventing attempts to write to `/root/.gitconfig`.
+
+## [v1.6.0] - 2026-03-13
+
+### Fixed
+- **Build System**: Resolved issue where environment variables from `.env` were not propagated to `docker compose` in MINGW64/Windows environments. Added explicit `export` statements in `Makefile` for all critical configuration variables.
+
+## [v1.5.9] - 2026-03-13
+
+### Optimized
+- **CI/CD Configuration**: Opted into the Node.js 24 runtime for JavaScript-based GitHub Actions by setting `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true`, resolving deprecation warnings for Node.js 20 and future-proofing the build pipeline.
+
+## [v1.5.8] - 2026-03-13
+
+### Optimized
+- **CI/CD Workflow**: Optimized GitHub Actions triggers to only build Docker images when necessary (e.g., changes to `Dockerfile`, `docker-entrypoint.sh`, or `Makefile`).
+
+## [v1.5.7] - 2026-03-13
+
+### Fixed
+- **Gateway Security**: Updated `docker-entrypoint.sh` to prioritize the `OPENCLAW_ALLOWED_ORIGINS` environment variable for `allowedOrigins` configuration, defaulting to a secure set that includes `localhost` and `0.0.0.0`.
+
+## [v1.5.6] - 2026-03-13
+
+### Fixed
+- **Gateway Access Control**: Relaxed `allowedOrigins` in `docker-entrypoint.sh` to include `http://localhost:18789` and `http://0.0.0.0:18789`, resolving "Origin not allowed" errors when accessing the Control UI via common local addresses.
+
+## [v1.5.5] - 2026-03-13
+
+### Fixed
+- **Gateway Network Configuration**: Updated `docker-entrypoint.sh` to use `lan` bind mode by default instead of `all`, respecting existing configurations while ensuring host accessibility.
+
+## [v1.5.4] - 2026-03-13
+
+### Fixed
+- **Makefile (Environment Priority)**: Fixed `make install` to correctly respect the `OPENCLAW_IMAGE` environment variable defined in `.env` or the shell, while maintaining the ability to explicitly switch variants (e.g., `make install go`).
+
+## [v1.5.3] - 2026-03-13
+
+### Fixed
+- **Docker Build (Go Stack)**: Replaced `rm -rf` with `go clean -modcache` to resolve permission denied errors during image construction as non-root user.
+
+## [v1.5.2] - 2026-03-13
+
+### Fixed
+- **Tool Permissions (Non-root Access)**: 
+    - Moved the `node` user creation to the base image to ensure availability across all build stages.
+    - Relocated **Bun** installation to `/usr/local` (global) to ensure it is executable by the `node` user.
+    - Updated **Go toolchain** installation to run under the `node` user with a correctly owned `GOPATH` (`/home/node/go`).
+    - Standardized global `PATH` and installation directories for AI Agents (Claude Code, OpenCode, Pi-Mono) to guarantee non-root accessibility.
+
+## [v1.5.1] - 2026-03-13
+
+### Added
+- **Image Update Strategy**: Clearly defined the difference between `make install` (fast/local-first) and `make rebuild` (force sync/update) in documentation and FAQ.
+- **Image Update FAQ**: Added troubleshooting entries for forcing image updates to the latest remote version.
+
+### Fixed
+- **Windows Bulletproof Compatibility**: 
+    - Forced UTF-8 encoding across `Makefile` and interactive `onboard` sessions to prevent mojibake/encoding issues.
+    - Automated LF line-ending normalization for shell scripts via `.gitattributes` and self-healing scripts.
+    - Improved shell environment detection (recommending Git Bash) and enhanced tilde expansion robustness.
+    - Resolved `EACCES /Users` permission errors on Windows by switching from host-paths to container-relative paths in `.env` where necessary.
+- **Container Resilience**:
+    - Forced `0.0.0.0` binding for the gateway to ensure accessible networking across all environments.
+    - Fixed `HOME` directory handling for the `node` user in specialized image variants.
+    - Improved `onboard` target to be more resilient to non-fatal errors by restoring missing command prefixes.
+- **Documentation Integrity**:
+    - Audited and removed several "hallucinated" or obsolete commands (e.g., `make update`) from documentation.
+    - Synchronized documentation parity between Chinese and English versions.
+
 ## [v1.5.0] - 2026-03-12
 
 ### Added

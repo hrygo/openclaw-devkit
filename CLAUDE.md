@@ -21,28 +21,51 @@ openclaw-devkit/
 ## Common Commands (Makefile)
 
 ```bash
-# 生命周期管理
+# 快速开始
 make install          # 首次安装/初始化环境
-make up               # 启动服务 (Web UI: http://127.0.0.1:18789)
+make onboard          # 交互式配置 (LLM/API)
+
+# 生命周期管理
+make up               # 启动服务
+make start            # 启动服务 (make up 的别名)
 make down             # 停止服务
+make stop             # 停止服务 (make down 的别名)
 make restart          # 重启服务
 make status           # 查看服务状态
 
 # 构建与更新
-make build            # 构建镜像 (无缓存)
+make build            # 构建标准版镜像
+make build-go         # 构建 Go 版镜像
+make build-java       # 构建 Java 版镜像
+make build-office     # 构建 Office 版镜像
 make rebuild          # 重建镜像并重启服务
+make rebuild-go       # 重建 Go 版并重启
+make rebuild-java     # 重建 Java 版并重启
+make rebuild-office   # 重建 Office 版并重启
+make update           # 从 GitHub 同步最新代码
 
 # 调试诊断
 make logs             # 查看 Gateway 日志
 make logs-all         # 查看所有容器日志
 make shell            # 进入 Gateway 容器 (bash)
+make run              # 交互式进入容器
 make exec CMD="..."   # 在容器中执行命令
-make gateway-health   # 检查 Gateway 健康状态
-make test-proxy       # 测试代理连接 (Google, Claude API)
+make cli CMD="..."    # 执行 OpenClaw CLI 命令
+make dashboard        # 一键直达仪表盘
+make devices          # 列举配对设备
+make approve          # 批准配对请求
+make pairing          # 频道配对
+make pair             # 频道配对 (别名)
+make verify           # 验证镜像工具版本
+
+# 健康与测试
+make health           # 检查健康状态
+make test-proxy       # 测试代理连接
 
 # 备份恢复
-make backup-config    # 备份配置文件
-make restore-config FILE=<file>  # 恢复配置
+make backup           # 备份配置文件
+make backup-config    # 备份配置 (同上)
+make restore FILE=<file>  # 恢复配置
 
 # 清理
 make clean            # 清理容器和悬空镜像
@@ -59,12 +82,12 @@ make clean-volumes    # 清理所有数据卷 (危险!)
 
 ## Docker Image Variants
 
-| Variant | Image               | Use Case                    |
-|---------|---------------------|------------------------------|
-| latest  | openclaw-devkit:latest | 标准开发版 (Node.js + Python) |
-| go      | openclaw-devkit:go    | Go 开发版 (包含 Go 1.26 + 工具) |
-| java    | openclaw-devkit:java  | Java 支持 (包含 JDK 21)       |
-| office  | openclaw-devkit:office | 办公环境集成 (PDF/OCR)    |
+| Variant | Image                      | Use Case                    |
+|---------|----------------------------|-----------------------------|
+| latest  | ghcr.io/hrygo/openclaw-devkit:latest | 标准开发版 (Node.js + Python) |
+| go      | ghcr.io/hrygo/openclaw-devkit:go    | Go 开发版 (包含 Go 1.26 + 工具) |
+| java    | ghcr.io/hrygo/openclaw-devkit:java  | Java 支持 (包含 JDK 21)       |
+| office  | ghcr.io/hrygo/openclaw-devkit:office | 办公环境集成 (PDF/OCR)    |
 
 选择版本: `make install <variant>` 或 `make rebuild <variant>`
 
@@ -87,9 +110,10 @@ make clean-volumes    # 清理所有数据卷 (危险!)
 ## Development Workflow
 
 1. 首次设置: `make install`
-2. 启动服务: `make up`
-3. 访问 Web UI: http://127.0.0.1:18789
-4. 查看日志: `make logs`
+2. 交互式配置: `make onboard`
+3. 启动服务: `make up`
+4. 访问仪表盘: `make dashboard`
+5. 查看日志: `make logs`
 
 ## Environment Variables
 

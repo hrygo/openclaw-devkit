@@ -19,11 +19,11 @@
 ## ✨ Key Features
 
 - 📦 **One-Click Ready**: Based on Docker Compose, no more messy dependency installation
+- 🧩 **1+3 Tier Architecture**: Efficient "1 base + 3 stacks" design,极致 DRY
 - 🧠 **AI-Native Integration**: Built-in Claude Code, OpenCode, Pi-Mono
 - 🔧 **Out-of-the-Box**: Pre-configured development environment, no manual setup needed
 - 🚀 **Rapid Startup**: One-click deployment, start the full development stack in seconds
 - 🔒 **Secure Isolation**: Containerized execution, secure and controllable environment isolation
-- 📱 **Multi-Platform**: Support for macOS, Windows, and Linux
 - 💾 **Data Persistence**: Sessions and configs auto-saved, survive restarts
 
 ---
@@ -60,26 +60,25 @@
 Suitable for most users, pulls optimized pre-built images from the GitHub Registry—**no local compilation required**.
 
 ```bash
-# 1. Clone project
-git clone https://github.com/hrygo/openclaw-devkit.git
-cd openclaw-devkit
-
-# 2. One-click install & initialize (Fast Mode)
+# 1. Download & Install (Fast Mode)
+git clone https://github.com/hrygo/openclaw-devkit.git && cd openclaw-devkit
 make install
 
-# 3. First-time setup (Required)
+# 2. Interactive Setup (First-time)
 make onboard
 
-# 4. Access Web UI
-# Open http://127.0.0.1:18789 in browser
+# 3. Direct Access (Recommended)
+make dashboard
+
+# 4. Approve Pairing Request (First-time Web UI Access)
+make approve
 ```
 
 > [!NOTE]
-> `make install` automates: directory creation, `.env` config generation, pulling the latest images, and fixing host permissions.
+> `make install` automates: directory creation, `.env` config generation, image synchronization, and fixing host permissions.
+> **Note**: To ensure installation speed, `make install` prioritizes existing local images. **If this is not your first installation, it is recommended to run `make rebuild` to pull the latest image version.**
 
----
-
-### 2. Version Choice
+### Version Choice
 
 Choose the right version for your development needs:
 
@@ -90,50 +89,26 @@ Choose the right version for your development needs:
 | **Java** | `java` | Java backend development | Standard + JDK 21, Gradle, Maven |
 | **Office** | `office` | Document processing/RAG | Standard + LibreOffice, pandoc, LaTeX, Docling, Marker-PDF |
 
-**Install specific version:**
-
 ```bash
-# Standard (default)
-make install
-
-# Go edition
+# Install specific version
 make install go
-
-# Java edition
 make install java
-
-# Office edition
 make install office
 ```
 
-**Switch version:** After initial install, modify `OPENCLAW_IMAGE` in `.env`, then run `make rebuild`
+After initial install, modify `OPENCLAW_IMAGE` in `.env`, then run `make rebuild` to switch versions.
 
-Available image tags: `latest`, `go`, `java`, `office`
+### Daily Operations
 
----
-
-### After Startup
-
-| Step        | Command                                          | Description                                 |
-| :---------- | :----------------------------------------------- | :------------------------------------------ |
-| 1️⃣ Start     | `make up`                                        | Start container services                    |
-| 2️⃣ Configure | `make onboard`                                   | Interactive setup for LLM, Feishu, channels |
-| 3️⃣ Access    | [http://127.0.0.1:18789](http://127.0.0.1:18789) | Web console                                 |
-
----
-
-## 🛠️ Common Commands
-
-| Command            | Description              |
-| :----------------- | :----------------------- |
-| `make up` / `down` | Start / Stop services    |
-| `make restart`    | Restart services (down + up) |
-| `make onboard`     | Interactive setup wizard (LLM, Feishu, Slack) |
-| `make status`      | View runtime status      |
-| `make logs`        | View real-time logs      |
-| `make shell`       | Enter container shell    |
-
-> 📖 Complete command reference → [Detailed Reference Manual](./docs/REFERENCE.md)
+| Scenario | Command |
+| :--- | :--- |
+| Start services | `make up` |
+| Stop services | `make down` |
+| Restart services | `make restart` |
+| View status | `make status` |
+| View logs | `make logs` |
+| Enter container | `make shell` |
+| Force update image | `make rebuild` |
 
 ---
 
@@ -146,18 +121,19 @@ Ensure your proxy has "Allow LAN Connections" enabled. Run `make test-proxy` to 
 </details>
 
 <details>
+<summary><b>Q: How to force update images to the latest version?</b></summary>
+
+`make install` uses local cache by default. To detect and update remote images, run:
+```bash
+make rebuild
+```
+Or manually execute `docker pull ghcr.io/hrygo/openclaw-devkit:latest`.
+</details>
+
+<details>
 <summary><b>Q: How to switch versions?</b></summary>
 
-```bash
-# Go edition
-make rebuild go
-
-# Java edition
-make rebuild java
-
-# Office edition
-make rebuild office
-```
+Modify `OPENCLAW_IMAGE` in `.env`, then execute `make rebuild <variant>`.
 </details>
 
 <details>
@@ -168,8 +144,6 @@ In container at `~/.openclaw/`, persisted on host via `openclaw-state` volume.
 
 ---
 
----
-
 ## 📚 Technical Documentation
 
 | Document | Description | Key Points |
@@ -177,8 +151,12 @@ In container at `~/.openclaw/`, persisted on host via `openclaw-state` volume.
 | [Image Variants](./docs/IMAGE_VARIANTS.md) | 1+3 architecture and version differences | `latest`, `go`, `java`, `office` tags |
 | [Docker Workflow](./docs/DOCKER_WORKFLOW.md) | Local development and CI/CD process | `make` commands, GitHub Actions logic |
 | [Quick Start Guide](./docs/USER_ONBOARDING.md) | Configuration and environment variables | `.env` setup, Claude API configuration |
-| [Feishu/Slack Setup](./docs/FEISHU_SETUP_BEGINNER_en.md) | Chat app and AI Agent integration | Bot creation, Webhook configuration |
+| [Feishu Setup](./docs/FEISHU_SETUP_en.md) | Feishu chat app integration | Bot creation, Webhook configuration |
+| [Slack Setup](./docs/SLACK_SETUP_BEGINNER_en.md) | Slack integration with OpenClaw | Bot creation, Socket Mode setup |
+| [NotebookLM Skill](./docs/NOTEBOOKLM_SKILL_en.md) | NotebookLM CLI integration guide | Podcast generation, source management, export |
 | [Reference Manual](./docs/REFERENCE_en.md) | Detailed Makefile command reference | Advanced ops, Troubleshooting |
+
+**External Resources**: [OpenClaw Docs](https://docs.openclaw.ai) | [Claude Code Docs](https://docs.anthropic.com/en/docs/claude-code) | [notebooklm-py GitHub](https://github.com/teng-lin/notebooklm-py)
 
 ---
 

@@ -11,18 +11,39 @@ SEED_DIR="/home/node/.openclaw-seed"
 # Helper to run commands as the node user if currently root
 run_as_node() {
     if [ "$(id -u)" = "0" ]; then
-        runuser -u node -m -- "$@"
+        runuser -u node -m -- env HOME=/home/node "$@"
     else
         "$@"
     fi
 }
 
-# 1. Fix Permissions (if running as root)
-# This solves the EACCES issue with host-mounted volumes
 if [ "$(id -u)" = "0" ]; then
-    echo "--> Fixing permissions for $CONFIG_DIR..."
-    chown -R node:node "$CONFIG_DIR" 2>/dev/null || true
+    echo "--> Optimizing file access policy for $CONFIG_DIR..."
+    chown -R node:node -- "$CONFIG_DIR" 2>/dev/null || true
+    # Also ensure seed directory is writable if we want to fix host config
+    if [ -d "$SEED_DIR" ]; then
+        chown -R node:node -- "$SEED_DIR" 2>/dev/null || true
+    fi
+    # Fix Go module cache permissions (Docker volume may be owned by root)
+    if [ -d "/home/node/go" ]; then
+        echo "--> Fixing Go module cache permissions..."
+        chown -R node:node /home/node/go 2>/dev/null || true
+    fi
+    # Fix pip packages directory permissions (for PIP_TOOLS persistence)
+    if [ -d "/home/node/.local" ]; then
+        echo "--> Fixing pip packages permissions..."
+        chown -R node:node /home/node/.local 2>/dev/null || true
+    fi
+    # Fix notebooklm directory permissions (shared with host)
+    if [ -d "/home/node/.notebooklm" ]; then
+        echo "--> Fixing notebooklm permissions..."
+        chown -R node:node /home/node/.notebooklm 2>/dev/null || true
+    fi
 fi
+
+# 1.8 Direct Initialization Check (Consolidated from openclaw-init)
+echo "--> Pre-checking configuration health..."
+run_as_node openclaw doctor --fix >/dev/null 2>&1 || true
 
 # 1.5 Surgical Config Repair (Resilience)
 # 针对配置文件版本过旧导致的局部 Schema 崩溃（如：windowSize, contextPruning 等）
@@ -35,19 +56,44 @@ if [ -f "$CONFIG_FILE" ]; then
     
     # 深度净化逻辑：使用 Node.js 手术级移除可能导致 Zod 校验失败的过时节点
     # 相比 sed，Node.js 能百分之百保证 JSON 结构的合法性，不会产生语法错误
-    run_as_node node -e "
+        run_as_node node -e "
         const fs = require('fs');
         const path = '$CONFIG_FILE';
         try {
             const data = fs.readFileSync(path, 'utf8');
             const config = JSON.parse(data);
+
+            // 1. Clean legacy schema nodes
             if (config.agents && config.agents.defaults) {
-                console.log('--> Cleaning agents.defaults.contextPruning...');
                 delete config.agents.defaults.contextPruning;
-                console.log('--> Cleaning agents.defaults.compaction...');
                 delete config.agents.defaults.compaction;
             }
+
+            // 2. Force DevKit Gateway Best-Practices
+            config.gateway = config.gateway || {};
+            config.gateway.bind = 'lan';
+            config.gateway.mode = 'local';
+            config.gateway.controlUi = config.gateway.controlUi || {};
+
+            // Comprehensive whitelist for Windows/WSL/Docker dev environments
+            const baseOrigins = [
+                'http://127.0.0.1:18789',
+                'http://localhost:18789',
+                'http://0.0.0.0:18789',
+                'http://host.docker.internal:18789'
+            ];
+
+            // Add custom origins if provided via ENV
+            let customOrigins = [];
+            try {
+                const envOrigins = process.env.OPENCLAW_ALLOWED_ORIGINS;
+                if (envOrigins) customOrigins = JSON.parse(envOrigins);
+            } catch (e) {}
+
+            config.gateway.controlUi.allowedOrigins = [...new Set([...baseOrigins, ...customOrigins])];
+
             fs.writeFileSync(path, JSON.stringify(config, null, 2));
+            console.log('--> OpenClaw configuration surgically optimized for DevKit.');
         } catch (e) {
             console.error('Warning: Configuration surgery failed: ' + e.message);
         }
@@ -134,6 +180,38 @@ if [ -d "$CLAUDE_SEED" ]; then
     run_as_node cp -Rn "$CLAUDE_SEED"/* "$CLAUDE_DIR/" 2>/dev/null || true
 fi
 
+# 2.6 Auto-install pip tools (reinstalled on rebuild via entrypoint)
+# Set PIP_TOOLS env var to install additional packages, e.g., PIP_TOOLS="notebooklm pandas"
+if [ -n "${PIP_TOOLS:-}" ]; then
+    echo "--> Checking pip tools: $PIP_TOOLS"
+
+    for tool in $PIP_TOOLS; do
+        # Extract package name (before :) and binary name (after :) if specified
+        pkg_name="${tool%%:*}"
+        bin_name="${tool#*:}"
+        [ "$bin_name" = "$pkg_name" ] && bin_name="$pkg_name"
+
+        # Check if binary exists
+        if ! command -v "$bin_name" >/dev/null 2>&1; then
+            echo "--> Installing $pkg_name..."
+            # Use uv for fast installation (available in DevKit images)
+            if command -v uv >/dev/null 2>&1; then
+                uv pip install --system --break-system-packages --no-cache "$pkg_name" 2>/dev/null || true
+            else
+                echo "--> Warning: uv not available, skipping $pkg_name"
+            fi
+        else
+            echo "--> $bin_name already installed, skipping."
+        fi
+    done
+
+    # Create symlink for notebooklm config (CLI looks in /root/.notebooklm)
+    if [ -d "/home/node/.notebooklm" ] && [ ! -d "/root/.notebooklm" ]; then
+        ln -sf /home/node/.notebooklm /root/.notebooklm
+        echo "--> Linked /root/.notebooklm -> /home/node/.notebooklm"
+    fi
+fi
+
 # 2.8 Identity Injection: Configure Git if environment variables are provided
 if [ -n "${GIT_USER_NAME:-}" ]; then
     echo "--> Setting Git identity: $GIT_USER_NAME"
@@ -153,7 +231,7 @@ export LANGUAGE=en_US:en
 
 run_as_node openclaw config set gateway.mode local --strict-json >/dev/null 2>&1 || true
 run_as_node openclaw config set gateway.bind lan --strict-json >/dev/null 2>&1 || true
-run_as_node openclaw config set gateway.controlUi.allowedOrigins '["http://127.0.0.1:18789"]' --strict-json >/dev/null 2>&1 || true
+run_as_node openclaw config set gateway.controlUi.allowedOrigins "${OPENCLAW_ALLOWED_ORIGINS:-[\"http://127.0.0.1:18789\", \"http://localhost:18789\", \"http://0.0.0.0:18789\"]}" --strict-json >/dev/null 2>&1 || true
 
 # 4. Execute CMD
 # If root, drop privileges to 'node' to avoid subsequent permission issues
@@ -161,6 +239,8 @@ run_as_node openclaw config set gateway.controlUi.allowedOrigins '["http://127.0
 # Use 'exec env' to explicitly pass locale environment variables
 echo "==> Starting OpenClaw..."
 if [ "$(id -u)" = "0" ]; then
+    # Ensure HOME is correctly set for node before execution
+    export HOME=/home/node
     exec runuser -u node -m -- env LANG=C.UTF-8 LC_ALL=C.UTF-8 LANGUAGE=en_US:en "$@"
 else
     exec "$@"

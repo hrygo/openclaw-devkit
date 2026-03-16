@@ -1,28 +1,34 @@
-#!/usr/bin/env bash
-# OpenClaw 开发环境 Docker 部署脚本
-#
-# 用法:
-#   ./docker-setup.sh [选项]
-#
-# 选项:
-#   --no-browser    跳过浏览器安装（减少约 300MB）
-#   --help          显示帮助信息
-#
-# 环境变量:
-#   OPENCLAW_CONFIG_DIR     配置目录 (默认: ~/.openclaw)
-#   OPENCLAW_WORKSPACE_DIR  工作区目录 (默认: ~/.openclaw/workspace)
-#   OPENCLAW_EXTRA_MOUNTS   额外挂载点 (格式: src:dst[:ro],src2:dst2)
-#   OPENCLAW_HOME_VOLUME    命名卷名称 (可选，用于持久化整个 home)
+# Hard Check: Ensure we are running in Bash
+if [ -z "$BASH_VERSION" ]; then
+  echo "Error: This script requires a Bash-compatible shell."
+  case "$OSTYPE" in
+    msys*|cygwin*|win32*)
+      echo "Recommendation: Please use 'Git Bash' (included with Git for Windows) or another POSIX environment."
+      ;;
+  esac
+  exit 1
+fi
 
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-IMAGE_NAME="${OPENCLAW_IMAGE:-openclaw-devkit}"
+IMAGE_NAME="${OPENCLAW_IMAGE:-ghcr.io/hrygo/openclaw-devkit:latest}"
 
 # OS Detection
 IS_WINDOWS=false
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
-  IS_WINDOWS=true
+[[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]] && IS_WINDOWS=true
+
+# Self-Healing: Fix CRLF line endings in docker-entrypoint.sh if on Windows
+if [ -f "$ROOT_DIR/docker-entrypoint.sh" ]; then
+    if grep -q $'\r' "$ROOT_DIR/docker-entrypoint.sh" 2>/dev/null; then
+        echo "Detected CRLF line endings in docker-entrypoint.sh, converting to LF..."
+        if command -v sed >/dev/null 2>&1; then
+            sed -i 's/\r//g' "$ROOT_DIR/docker-entrypoint.sh"
+        else
+            tr -d '\r' < "$ROOT_DIR/docker-entrypoint.sh" > "$ROOT_DIR/docker-entrypoint.sh.tmp" && \
+            mv "$ROOT_DIR/docker-entrypoint.sh.tmp" "$ROOT_DIR/docker-entrypoint.sh"
+        fi
+    fi
 fi
 
 # COMPOSE_FILE is managed by .env for flexibility
@@ -58,11 +64,11 @@ warn() {
 }
 
 success() {
-  echo -e "${SUCCESS}${GREEN}$*${NC}"
+  echo "${SUCCESS}${GREEN}$*${NC}"
 }
 
 info() {
-  echo -e "${INFO} $*"
+  echo "${INFO} $*"
 }
 
 require_cmd() {
@@ -170,32 +176,47 @@ NODE
 upsert_env() {
   local file="$1"
   shift
-  local -a keys=("$@")
+  # We use a temporary file to avoid partial writes
   local tmp
-  tmp="$(mktemp)"
+  if command -v mktemp >/dev/null 2>&1; then
+    tmp="$(mktemp)"
+  else
+    tmp="${file}.tmp.$$"
+  fi
+
   local seen=" "
 
-  if [[ -f "$file" ]]; then
-    while IFS= read -r line || [[ -n "$line" ]]; do
+  if [ -f "$file" ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
       local key="${line%%=*}"
-      local replaced=false
-      for k in "${keys[@]}"; do
-        if [[ "$key" == "$k" ]]; then
-          printf '%s=%s\n' "$k" "${!k-}" >>"$tmp"
+      local found=false
+      for k in "$@"; do
+        if [ "$key" = "$k" ]; then
+          # Evaluate current value of the variable named 'k'
+          eval "val=\${$k-}"
+          if [ -n "$val" ]; then
+            printf '%s=%s\n' "$k" "$val" >>"$tmp"
+          else
+            # Keep original line if new value is empty
+            printf '%s\n' "$line" >>"$tmp"
+          fi
           seen="$seen$k "
-          replaced=true
+          found=true
           break
         fi
       done
-      if [[ "$replaced" == false ]]; then
+      if [ "$found" = false ]; then
         printf '%s\n' "$line" >>"$tmp"
       fi
     done <"$file"
   fi
 
-  for k in "${keys[@]}"; do
+  for k in "$@"; do
     if [[ "$seen" != *" $k "* ]]; then
-      printf '%s=%s\n' "$k" "${!k-}" >>"$tmp"
+      eval "val=\${$k-}"
+      if [ -n "$val" ]; then
+        printf '%s=%s\n' "$k" "$val" >>"$tmp"
+      fi
     fi
   done
 
@@ -263,7 +284,7 @@ YAML
 # 参数解析
 # ============================================================
 
-INSTALL_BROWSER=1
+INSTALL_BROWSER=0
 while [[ $# -gt 0 ]]; do
   case $1 in
     --no-browser)
@@ -327,18 +348,25 @@ fi
 HOME_VOLUME_NAME="${OPENCLAW_HOME_VOLUME:-}"
 RAW_EXTRA_MOUNTS="${OPENCLAW_EXTRA_MOUNTS:-}"
 
+# Initialize variables with defaults (handled before tilde expansion)
 OPENCLAW_CONFIG_DIR="${OPENCLAW_CONFIG_DIR:-$HOME/.openclaw}"
 OPENCLAW_WORKSPACE_DIR="${OPENCLAW_WORKSPACE_DIR:-$HOME/.openclaw/workspace}"
 OPENCLAW_CUSTOM_SKILLS_DIR="${OPENCLAW_CUSTOM_SKILLS_DIR:-$HOME/skills/custom-skills}"
 OPENCLAW_TEAM_SKILLS_DIR="${OPENCLAW_TEAM_SKILLS_DIR:-$HOME/skills/team-skills/v1.1}"
 
 # 展开波浪号 Tilde (如果环境是从 .env 以字符串读入 '~' 的话)
-OPENCLAW_CONFIG_DIR="${OPENCLAW_CONFIG_DIR/#\~/$HOME}"
-OPENCLAW_WORKSPACE_DIR="${OPENCLAW_WORKSPACE_DIR/#\~/$HOME}"
 OPENCLAW_CUSTOM_SKILLS_DIR="${OPENCLAW_CUSTOM_SKILLS_DIR/#\~/$HOME}"
 OPENCLAW_TEAM_SKILLS_DIR="${OPENCLAW_TEAM_SKILLS_DIR/#\~/$HOME}"
 OPENCLAW_GATEWAY_PORT="${OPENCLAW_GATEWAY_PORT:-18789}"
 OPENCLAW_BRIDGE_PORT="${OPENCLAW_BRIDGE_PORT:-18790}"
+
+# Handle tilde expansion (POSIX compliant)
+case "$OPENCLAW_CONFIG_DIR" in
+    \~*) OPENCLAW_CONFIG_DIR="$HOME${OPENCLAW_CONFIG_DIR#\~}" ;;
+esac
+case "$OPENCLAW_WORKSPACE_DIR" in
+    \~*) OPENCLAW_WORKSPACE_DIR="$HOME${OPENCLAW_WORKSPACE_DIR#\~}" ;;
+esac
 
 # 验证路径
 validate_mount_path_value "OPENCLAW_CONFIG_DIR" "$OPENCLAW_CONFIG_DIR"
@@ -375,7 +403,7 @@ repair_host_permissions() {
         dir_owner=$(stat -c '%u' "$dir" 2>/dev/null || stat -f '%u' "$dir" 2>/dev/null || echo "0")
 
         if [[ "$dir_owner" != "$(id -u)" ]]; then
-            echo "  --> 发现目录 $dir 属于其他用户 (UID: $dir_owner)，尝试修复..."
+            echo "  --> 正在优化宿主机目录 $dir 的访问策略 (当前所有者 UID: $dir_owner)..."
 
             # 方案1: 尝试用 docker run 修复（需要 docker 权限）
             if docker info >/dev/null 2>&1; then
@@ -405,8 +433,6 @@ repair_host_permissions "$OPENCLAW_CONFIG_DIR"
 
 mkdir -p "$OPENCLAW_CONFIG_DIR"
 mkdir -p "$OPENCLAW_WORKSPACE_DIR"
-mkdir -p "$OPENCLAW_CUSTOM_SKILLS_DIR"
-mkdir -p "$OPENCLAW_TEAM_SKILLS_DIR"
 # Seed directory tree eagerly so bind mounts work even on Docker Desktop/Windows
 # where the container (even as root) cannot create new host subdirectories.
 mkdir -p "$OPENCLAW_CONFIG_DIR/identity"
@@ -496,6 +522,8 @@ if [[ ! -f "$ENV_FILE" ]]; then
 fi
 
 info "同步环境变量文件: ${CYAN}$ENV_FILE${NC}"
+# Use host paths for .env (required for docker-compose volume mounting)
+# The application inside will still use the internal paths via compose environment overrides.
 upsert_env "$ENV_FILE" \
   OPENCLAW_CONFIG_DIR \
   OPENCLAW_WORKSPACE_DIR \
@@ -507,6 +535,9 @@ upsert_env "$ENV_FILE" \
   OPENCLAW_IMAGE \
   OPENCLAW_EXTRA_MOUNTS \
   OPENCLAW_HOME_VOLUME \
+  HTTP_PROXY \
+  HTTPS_PROXY \
+  NO_PROXY \
   OPENCLAW_SKIP_BUILD \
   COMPOSE_FILE \
   GIT_USER_NAME \
@@ -539,7 +570,7 @@ run_cli() {
 # ============================================================
 
 echo ""
-info "部署网络服务..."
+info "正在调度 Docker 引擎启动服务容器..."
 docker compose up -d openclaw-gateway
 
 # 清理一次性的 init 容器

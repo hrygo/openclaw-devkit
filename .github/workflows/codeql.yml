@@ -19,6 +19,9 @@ on:
   schedule:
     - cron: '40 6 * * 2'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
@@ -50,7 +53,7 @@ jobs:
         # Only GitHub Actions workflows are scanned for security issues
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     # Add any setup steps before running the `github/codeql-action/init` action.
     # This includes steps like installing compilers or runtimes (`actions/setup-node`

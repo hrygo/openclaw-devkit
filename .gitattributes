@@ -1,0 +1,4 @@
+# Force LF for shell scripts and Makefile to prevent Docker mounting issues on Windows
+*.sh text eol=lf
+Makefile text eol=lf
+.env.example text eol=lf

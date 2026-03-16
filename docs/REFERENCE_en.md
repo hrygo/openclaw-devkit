@@ -1,213 +1,224 @@
-# OpenClaw DevKit Technical Whitepaper & User Manual
+# OpenClaw DevKit Technical Specification & Operation Guide
 
-This manual is the definitive technical specification and operational guide for the OpenClaw DevKit. It provides a zero-friction entry path for **beginners** and documents the underlying logic, security models, and high-performance orchestration mechanisms designed for **architects and senior developers**.
-
----
-
-## 📖 Core Blueprint (Quick Navigation)
-
-### 🟢 Beginner Tier: Fast Start & Onboarding
-- [1. Fast Mode: 3-Minute Automated Deployment](#1-fast-mode-fully-automated-deployment) - Recommended for first-time setup.
-- [2. Interactive Onboarding](#2-interactive-onboarding-config-guide) - Essential step to acquire AI "Soul".
-- [3. Common Operation Commands](#3-common-operation-commands) - Full command table from start to hot-restart.
-
-### 🔵 Power User Tier: Productivity Tuning & Flavor Switching
-- [4. One-Click Flavor Switching](#4-one-click-version-switching) - Standard vs. Java vs. Office technical specs.
-- [5. Data Persistence Deep Dive](#5-deep-dive-data-mounting--persistence) - Understanding Host Binds vs. Named Volumes.
-- [6. Roles & Dev flow Optimization](#6-roles--dev-flow-optimization) - Git workflow best practices with symlinks.
-- [7. Advanced Usage: Custom Images & Composability](#7-advanced-usage-custom-images--composability) - Deep insights on seamless architectural extensibility.
-- [Appx: Slack Setup Beginner Guide](SLACK_SETUP_BEGINNER_en.md) | [Feishu (Lark) Guide](FEISHU_SETUP_BEGINNER_en.md)
-
-### 🔴 Architect Tier: Core Logic & Security Foundation
-- [8. Layered Orchestration Analysis](#8-core-logic-layered-orchestration) - The mechanics of `docker-compose.build.yml` dynamic injection.
-- [9. Initialization Lifecycle](#9-initialization-lifecycle-deep-trace) - 5 phases of permission fixing and seed populating.
-- [10. Security Sandbox & Network Borders](#10-security-whitepaper-sandbox--network-binding) - Capabilities, isolation, and LAN binding.
+This document serves as the definitive technical specification and operational guide for OpenClaw DevKit, providing an entry path for beginners and documenting underlying logic, security models, and orchestration mechanisms for architects and senior developers.
 
 ---
 
-## 🟢 Beginner Tier: Seamless Start
+## Core Navigation
 
-### 1. Fast Mode (Fully Automated Deployment) ⭐
-Fast Mode is the core capability of DevKit, leveraging pre-built images from GitHub Packages (GHCR) to skip the cumbersome compilation process.
+### Beginner Tier: Quick Start
+- [1. Fast Mode](#1-fast-mode) - 3-minute automated deployment
+- [2. Interactive Configuration](#2-interactive-configuration) - Acquire AI credentials
+- [3. Common Commands](#3-common-commands) - Complete command reference
+
+### Power User Tier: Productivity
+- [4. Version Switching](#4-version-switching) - Standard vs. Java vs. Office specs
+- [5. Data Persistence](#5-data-persistence) - Bind Mount vs. Named Volumes
+- [6. Roles Workflow](#6-roles-workflow) - Symlink isolation best practices
+- [7. Custom Images](#7-custom-images) - Non-intrusive extensibility
+- [Appendix: Slack Setup](SLACK_SETUP_BEGINNER_en.md) | [Feishu Setup](FEISHU_SETUP_BEGINNER_en.md)
+
+### Architect Tier: Architecture
+- [8. Layered Orchestration](#8-layered-orchestration) - Docker Compose dynamic injection
+- [9. Initialization Lifecycle](#9-initialization-lifecycle) - Permission fixing and seed population
+- [10. Security](#10-security) - Sandbox and network isolation
+
+---
+
+## 1. Fast Mode
+
+Fast Mode leverages GitHub Packages (GHCR) pre-built images for rapid deployment.
 
 **Installation Logic**:
-When executing `make install`, the system automatically performs several atomic operations:
-1. **Environment Audit**: Verifies that Docker and the Compose plugin are installed and healthy.
-2. **Seed Population**: If the host lacks a [`.env`](.env) file, it idempotently initializes one from [`.env.example`](.env.example) and generates a 32-digit high-entropy Gateway Token.
-3. **Hardware Detection**: Identifies your architecture (x86/ARM) and pulls the corresponding pre-built layers (approx. 2GB).
+Executing `make install` triggers the following operations:
+1. **Environment Check**: Verify Docker and Compose plugin availability
+2. **Config Initialization**: If `.env` is missing, initialize from `.env.example` and generate 32-digit Gateway Token
+3. **Architecture Detection**: Identify hardware (x86/ARM) and pull corresponding pre-built layers
 
 ```bash
-# 1. Clone Source (Orchestration Layer only)
+# Clone source
 git clone https://github.com/hrygo/openclaw-devkit.git && cd openclaw-devkit
 
-# 2. Intelligent Installation
+# One-command install
 make install
 ```
 
-### 2. Interactive Onboarding (Config Guide)
-After deployment, OpenClaw remains in "Standby". You must inject credentials for LLM providers (e.g., Anthropic, OpenAI) and communication platforms (e.g., Feishu, Slack).
+---
+
+## 2. Interactive Configuration
+
+After deployment, OpenClaw remains in standby. Inject credentials for LLM providers and communication platforms.
 
 ```bash
 make onboard
 ```
-**Pre-Onboarding Check**:
-- **LLM API Key**: Your primary compute source.
-- **App Token**: Required if integrating with enterprise chat bots.
-- **Workspace ID**: Required if the AI needs to be aware of specific collaborative spaces.
-> [!TIP]
-> Once completed, `openclaw.json` is securely stored in `~/.openclaw` and hot-loaded by the container on startup.
 
-### 3. Common Operation Commands
-| Command | Goal | Technical Detail |
-| :--- | :--- | :--- |
-| `make up` | Start Services | Runs `openclaw-gateway` and `openclaw-cli` in the background. |
-| `make down` | Graceful Stop | Removes containers but preserves Data Volumes and Network definitions. |
-| `make logs` | Real-time Audit | Traces task distribution, WebSocket states, and error stacks. |
-| `make status` | Health Probe | Displays container health, uptime, and port occupancy. |
-| `make restart` | Environment Flush | Combined `down` + `up` to force config refreshes. |
+**Configuration Checklist**:
+- **LLM API Key**: Primary compute source
+- **App Token**: Required for enterprise chat bot integration
+- **Workspace ID**: Required if AI needs awareness of specific collaborative spaces
+
+> Once complete, `openclaw.json` is stored in `~/.openclaw` and hot-loaded on container startup.
 
 ---
 
-## 🔵 Power User Tier: Productivity Scaling
+## 3. Common Commands
 
-### 4. Flavor Switching (Technical Matrix)
-DevKit offers four curated toolchains to handle different development scenarios:
+| Command | Description |
+| :--- | :--- |
+| `make up` | Start openclaw-gateway and openclaw-cli |
+| `make down` | Remove containers, preserve Data Volumes |
+| `make logs` | Trace task distribution, WebSocket states, error stacks |
+| `make status` | Display container health, uptime, port occupancy |
+| `make restart` | Execute down + up, refresh configuration |
 
-| Flavor Name | Image Size (Compressed) | Software Stack (Baseline) | Core use Case |
-| :--- | :--- | :--- | :--- |
-| **Standard** | **~2.21 GB** | Node 22, Go 1.26, Python 3.12, Bun | Full-stack dev, AI plugin writing, automation scripts. |
-| **Go** | **~2.30 GB** | Standard + Go 1.26, golangci-lint, Go tools | Go backend dev, debugging with dlv, static analysis. |
-| **Java** | **~2.20 GB** | Standard + JDK 21, Gradle 8.x, Maven | Enterprise Java dev, large project building & debugging. |
-| **Office** | **~4.04 GB** | Standard + LibreOffice, Tesseract OCR, PDF tools | Doc conversion, web scraping, OCR, office automation. |
+---
 
-**Initial Installation** (run once):
-```bash
-# First-time install with specific flavor
-make install go        # Go edition
-make install java     # Java edition
-make install office   # Office edition
-```
+## 4. Version Switching
 
-**Switching Images Later** (no need to re-run install):
-```bash
-# Modify OPENCLAW_IMAGE in .env, then:
-make rebuild go       # pull/build and restart
-make rebuild java     # pull/build and restart
-make rebuild office   # pull/build and restart
-```
+DevKit offers four vertical toolchains:
 
-| Operation | Command | When to Use |
+| Flavor | Image Size | Core Use Case |
 | :--- | :--- | :--- |
-| **First Install** | `make install <variant>` | Initial deployment, creates data dirs & config |
-| **Switch Image** | `make rebuild <variant>` | Already installed, need to switch versions |
+| **Standard** | ~2.21 GB | Full-stack dev, AI plugins, automation |
+| **Go** | ~2.30 GB | Go backend, dlv debugging, static analysis |
+| **Java** | ~2.20 GB | Enterprise Java, Gradle/Maven builds |
+| **Office** | ~4.04 GB | Document conversion, OCR, office automation |
 
-> **Tip**: `make install` is for **first-time setup only**. To switch flavors later, just modify `.env` and use `make build/rebuild`. Data directories are preserved.
->
-> Available variants: `go`, `java`, `office` (default: standard)
+```bash
+# First-time install
+make install go
+make install java
+make install office
 
-### 5. Deep Dive: Data Mounting & Persistence
-To ensure AI containers are "non-volatile," we designed a dual-track persistence model:
+# Switch later
+make rebuild go
+make rebuild java
+make rebuild office
+```
 
-1. **Configuration Backbone (Bind Mount)**:
+| Operation | Command | When |
+| :--- | :--- | :--- |
+| First Install | `make install <variant>` | Create data dirs and config |
+| Switch Version | `make rebuild <variant>` | Already installed, need different flavor |
+
+---
+
+## 5. Data Persistence
+
+Dual-track persistence ensures container non-volatility:
+
+1. **Configuration (Bind Mount)**
    - Path: `~/.openclaw/`
-   - Purpose: Stores `openclaw.json`. This is the Agent's "Identity Card," allowing direct JSON editing from the host.
-2. **Workspace (Bi-directional Sync)**:
+   - Purpose: Stores `openclaw.json`, enables direct host editing
+
+2. **Workspace (Bidirectional Sync)**
    - Path: `~/.openclaw/workspace/`
-   - Purpose: Your development workbench. All file changes are synced between host and container in milliseconds.
-3. **State Isolation (Named Volume)**:
-   - `.openclaw-state`: Stores DB snapshots and session persistence, preventing memory loss during image updates.
+   - Purpose: Development workbench, millisecond-level sync between host and container
 
-### 6. Roles & Dev flow Optimization
-For team collaboration or Git management, we recommend the **"Symlink Isolation Method"**:
-1. Set the `roles` directory as a symbolic link to your project: `ln -s ./my-private-roles ./roles`.
-2. Add the actual path or the link to [`.gitignore`](.gitignore) to keep architectures public and credentials hidden.
-
-### 7. Advanced Usage: Custom Images & Composability
-When the pre-built toolchains cannot meet specific business requirements, DevKit provides exceptionally flexible extension capabilities. The best practice is **absolutely not** to modify the official `Dockerfile` or `docker-compose.yml` directly, but to seamlessly leverage its designed extensibility.
-
-**Best Practice A: Securely Tailoring Business Images (Custom Image)**
-If you need to install specific system packages (like `ffmpeg`) or inject corporate internal certificates:
-1. **Inheritance Model**: Create a brand new `Dockerfile.custom` and utilize the official image as the Base Image.
-   ```dockerfile
-   FROM ghcr.io/hrygo/openclaw-devkit:dev
-   USER root
-   RUN apt-get update && apt-get install -y ffmpeg
-   USER node
-   ```
-2. **Seamless Integration**: Once your bespoke image is built, simply declare `OPENCLAW_IMAGE=my-custom-openclaw:dev` in your `.env`. You can securely switch environments without dismantling any official startup scripts, guaranteeing you effortlessly receive future framework updates.
-
-**Best Practice B: Non-Intrusive Orchestration Enhancement (Compose Override)**
-When you need to hook specialized business persistence directories to the gateway container, or inject a sidecar service locally (such as an ephemeral Redis Server):
-1. **Establish an Override File**: Scaffold a `docker-compose.override.yml` inside the root directory. The Docker Compose engine natively honors this file to merge, augment, and override the primary configuration (`docker-compose.yml`) securely. This completely evades Git conflict hazards.
-2. **Inject Volumes Elegantly**: Decouple logic cleanly by defining your custom Volumes and extra parameters natively inside the override file, enabling true segregation of configuration overrides from your core tracked codebase.
+3. **State (Named Volume)**
+   - `.openclaw-state`
+   - Purpose: DB snapshots, session persistence prevents memory loss during image updates
 
 ---
 
-## ⚡ Extension: Third-party Communication Platforms
-OpenClaw supports connecting to various office platforms via Socket Mode.
+## 6. Roles Workflow
 
-> 💡 **Why specifically Slack and Feishu (Lark)?**
-> For code-assist scenarios, **convenience** and **expressiveness** are paramount. Unlike standard chat apps, Slack and Feishu offer **advanced rich text capabilities** (flawless Markdown rendering, highlighted code blocks, key interaction) that makes reading code and confirming diffs feel as natural as within an IDE. Furthermore, their native support for **persistent connections (Socket Mode / WebSocket)** drastically lowers the barrier to entry—even without a public IP or when deep inside an intranet firewall, it completely eliminates the headache of configuring complex Webhook tunnels, offering a truly "plug-and-play" seamless connection setup.
+For team collaboration or Git management, use symlink isolation to protect private tokens:
 
-- **Slack (Recommended)**: Refer to the [Slack Setup Beginner Guide](SLACK_SETUP_BEGINNER_en.md).
-- **Feishu (Lark)**: Refer to the [Feishu (Lark) Guide](FEISHU_SETUP_BEGINNER_en.md).
+```bash
+# Create symlink
+ln -s ./my-private-roles ./roles
 
----
-
-## 🔴 Architect Tier: Deep Architectural Insights
-
-### 8. Core Logic: Layered Orchestration
-The DevKit `Makefile` is a precision engine that dynamically reassembles Compose files based on environment variables:
-- **Static Layer** (`docker-compose.yml`): Defines the topology.
-- **Enhancement Layer** (`docker-compose.build.yml`): Activated when `OPENCLAW_SKIP_BUILD=false`, injecting Dockerfile paths and build-time proxies.
-- **Dynamic Overrides**: `docker-setup.sh` generates `docker-compose.dev.extra.yml` at runtime to handle custom user mounts (`OPENCLAW_EXTRA_MOUNTS`).
-
-### 9. Initialization Lifecycle (Deep Trace)
-When you start a container, `docker-entrypoint.sh` takes over for the first 5 seconds:
-1. **UID Adaptation**: Detects the host User ID and performs `chown` to fix permissions on mounted volumes, eliminating `EACCES` errors.
-2. **Seed Injection**: If the workspace is empty, it automatically populates it from the internal `/home/node/.openclaw-seed`.
-3. **Network Alignment**: Locks the gateway port and sets the bind address to `lan` to bypass Docker bridge network isolation (`loopback` mode would prevent host access).
-
-
-### 10. Security Whitepaper: Sandbox & Network Binding
-> [!IMPORTANT]
-> **Least Privilege Principle**:
-> - Containers have `NET_RAW` and `NET_ADMIN` capabilities dropped to prevent AI agents from probing host LANs.
-> - `no-new-privileges` flag is enabled to cut off privilege escalation paths.
-> - **Network Binding**: All Web UIs listen on `127.0.0.1` internally and are exposed via Docker port mapping to minimize the public attack surface.
+# Add to .gitignore
+```
 
 ---
 
-## ❓ Troubleshooting (QA / FAQ)
+## 7. Custom Images
 
-<details>
-<summary><b>Q: curl inside container timed out or SSL handshake failed?</b></summary>
-1. Check if <code>HTTPS_PROXY</code> in <code>.env</code> points to <code>http://host.docker.internal:[PORT]</code>.
-2. Ensure your host proxy software has <b>"Allow LAN"</b> enabled.
-</details>
+### Approach A: Extend Official Image
 
-<details>
-<summary><b>Q: Why is my agent.json config file missing?</b></summary>
-A: Please verify the actual mount path of <code>OPENCLAW_CONFIG_DIR</code>. It defaults to <code>~/.openclaw</code>. You can verify by searching for the file directly on the host.
-</details>
+Create `Dockerfile.custom` based on official image:
+
+```dockerfile
+FROM ghcr.io/hrygo/openclaw-devkit:latest
+USER root
+RUN apt-get update && apt-get install -y ffmpeg
+USER node
+```
+
+Declare `OPENCLAW_IMAGE=my-custom-openclaw:dev` in `.env` to switch.
+
+### Approach B: Compose Override
+
+Create `docker-compose.override.yml` to add volumes and parameters without modifying core configuration.
 
 ---
 
-## ⚙️ Full Technical Parameter Matrix (Advanced Tuning)
+## 8. Layered Orchestration
 
-| Category | Variable | Recommended | Architectural Purpose |
+Makefile dynamically reassembles Compose files based on environment variables:
+
+- **Static Layer** (`docker-compose.yml`): Defines topology
+- **Enhancement Layer** (`docker-compose.build.yml`): Activates when `OPENCLAW_SKIP_BUILD=false`, injects build parameters
+- **Dynamic Overrides**: `docker-setup.sh` generates `docker-compose.dev.extra.yml` at runtime to handle custom mounts
+
+---
+
+## 9. Initialization Lifecycle
+
+On container start, `docker-entrypoint.sh` executes:
+
+1. **UID Adaptation**: Detect host User ID, execute `chown` to fix mounted directory permissions
+2. **Seed Population**: If workspace is empty, automatically populate from `/home/node/.openclaw-seed`
+3. **Network Binding**: Lock gateway port, set bind address to `lan` to bypass Docker bridge isolation
+
+---
+
+## 10. Security
+
+**Least Privilege Principle**:
+- Containers drop `NET_RAW` and `NET_ADMIN` capabilities to prevent AI from probing host LAN
+- Enable `no-new-privileges` flag to block privilege escalation paths
+- Web UI listens only on `127.0.0.1`, exposed via Docker port mapping
+
+---
+
+## Troubleshooting
+
+### Q: curl inside container timed out or SSL handshake failed?
+1. Check if `HTTPS_PROXY` in `.env` points to `http://host.docker.internal:[PORT]`
+2. Verify proxy software has "Allow LAN" enabled
+
+### Q: Why is my agent.json config file missing?
+Verify actual mount path of `OPENCLAW_CONFIG_DIR`, defaults to `~/.openclaw`
+
+---
+
+## Technical Parameters
+
+| Category | Variable | Default | Description |
 | :--- | :--- | :--- | :--- |
-| **Orchestration** | `COMPOSE_FILE` | `docker-compose.yml` | Defines orchestration layers. Append `:docker-compose.build.yml` for local building. |
-| | `OPENCLAW_SKIP_BUILD`| `true` | `true` for Pull mode, `false` for Build mode. |
-| | `OPENCLAW_IMAGE` | `...:latest` | Full Tag of the target Docker image. |
-| **Path Audit** | `OPENCLAW_CONFIG_DIR`| `~/.openclaw` | Path for `openclaw.json` and identity data. |
-| | `OPENCLAW_WORKSPACE_DIR`| `~/path/to/ws` | The physical workbench for AI agents. |
-| **Network** | `OPENCLAW_GATEWAY_TOKEN`| (Hex Token) | The unique digital handshake credential connecting CLI and Gateway. |
-| **Performance** | `deploy.resources` | (Limits: 4G RAM) | Hardcoded in YAML to prevent AI agents from crashing the system via OOM. |
+| **Orchestration** | `COMPOSE_FILE` | `docker-compose.yml` | Defines orchestration layers |
+| | `OPENCLAW_SKIP_BUILD`| `true` | true=pull, false=build |
+| | `OPENCLAW_IMAGE` | `...:latest` | Docker image tag |
+| **Paths** | `OPENCLAW_CONFIG_DIR`| `~/.openclaw` | Config directory |
+| | `OPENCLAW_WORKSPACE_DIR`| `.../workspace` | Workspace |
+| **Network** | `OPENCLAW_GATEWAY_PORT`| `18789` | Gateway port |
+| | `OPENCLAW_GATEWAY_TOKEN`| (Hex) | CLI-Gateway handshake |
+| | `HTTP[S]_PROXY` | - | Container outbound proxy |
+| **Acceleration** | `DOCKER_MIRROR` | `docker.io` | Docker Hub mirror |
+| | `APT_MIRROR` | `ustc` | Debian mirror |
+| | `NPM_MIRROR` | - | pnpm mirror |
+| | `PYTHON_MIRROR` | - | pip mirror |
+| **Extension** | `OPENCLAW_HOME_VOLUME`| - | Named volume for `/home/node` |
+| | `OPENCLAW_EXTRA_MOUNTS`| - | Extra mounts `src:dst[:ro]` |
+| **Resources** | `deploy.resources` | 4G RAM | Memory limit |
 
 ---
 
 <p align="center">
-  <b>OpenClaw Team | Technical Whitepaper</b><br>
+  <b>OpenClaw Team | Technical Specification</b><br>
   <i>Empowering Human-AI Symbiosis Through Precise Engineering</i>
 </p>

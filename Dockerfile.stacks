@@ -21,17 +21,24 @@ RUN curl -sSfL "https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/in
     sh -s -- -b /usr/local/bin "v${GOLANGCI_LINT_VERSION}"
 
 # Install Tier 2 Go Developer Tools
+# Create GOPATH and set ownership BEFORE installation
+RUN mkdir -p /home/node/go && chown -R node:node /home/node/go
+
+USER node
+ENV GOPROXY=https://goproxy.cn,direct
+
 RUN go install golang.org/x/tools/gopls@latest && \
-    go install github.com/go-delve/delve/cmd/dlv@latest && \
-    go install honnef.co/go/tools/cmd/staticcheck@latest && \
-    go install github.com/securego/gosec/v2/cmd/gosec@latest && \
-    go install golang.org/x/tools/cmd/goimports@latest && \
-    go install github.com/air-verse/air@latest && \
-    go install github.com/golang/mock/mockgen@latest && \
+    go install github.com/go-delve/delve/cmd/dlv@latest
+RUN go install honnef.co/go/tools/cmd/staticcheck@latest && \
+    go install github.com/securego/gosec/v2/cmd/gosec@latest
+RUN go install golang.org/x/tools/cmd/goimports@latest && \
+    go install github.com/air-verse/air@latest
+RUN go install github.com/golang/mock/mockgen@latest && \
     go install github.com/google/wire/cmd/wire@latest && \
-    go install github.com/onsi/ginkgo/v2/ginkgo@latest && \
-    # Clean up GOPATH cache to keep image small
-    rm -rf /home/node/go/pkg/mod/*
+    go install github.com/onsi/ginkgo/v2/ginkgo@latest
+RUN go clean -modcache
+
+USER root
 
 # ============================================================
 # Stage: stack-java
