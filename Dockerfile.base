@@ -42,6 +42,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
 # Install just (command runner) - locked version with retry
 RUN ARCH=$(dpkg --print-architecture) && \
     JUST_ARCH="${ARCH}" && \
+    [ "$ARCH" = "amd64" ] && JUST_ARCH="x86_64" && \
     [ "$ARCH" = "arm64" ] && JUST_ARCH="aarch64" && \
     curl --retry 3 --retry-delay 2 -fsSL \
     "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-${JUST_ARCH}-unknown-linux-musl.tar.gz" \
