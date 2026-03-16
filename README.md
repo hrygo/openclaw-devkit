@@ -67,16 +67,30 @@ make install
 # 2. 交互式配置 (初次使用)
 make onboard
 
-# 3. 开启全人工直联 (推荐)
+# 3. 启动服务
+make up
+
+# 4. 一键直达仪表盘 (自动带 token)
 make dashboard
 
-# 4. 批准配对请求 (首次访问 Web UI)
+# 5. 如显示 "pairing required"，批准配对
 make approve
 ```
 
 > [!NOTE]
 > `make install` 会自动完成：创建数据目录、生成 `.env` 配置、同步镜像以及修复宿主机权限。
 > **注意**：为了保证安装速度，`make install` 优先使用本地已有的镜像。**如果您不是首次安装，建议执行 `make rebuild` 以拉取最新镜像版本。**
+
+### 首次访问 UI 认证流程
+
+OpenClaw 使用 token 认证保护 Gateway。首次访问 UI 时：
+
+| 步骤 | 命令 | 说明 |
+| :--- | :--- | :--- |
+| 1 | `make dashboard` | 生成带 token 的直通链接，自动打开浏览器 |
+| 2 | 刷新页面 | 如显示 "pairing required"，继续下一步 |
+| 3 | `make approve` | 批准配对请求 |
+| 4 | 刷新页面 | 完成认证，正常使用 |
 
 ### 版本选择
 

@@ -130,12 +130,45 @@ make install / make up
 
 ### 6.1 一键直达 (Dashboard)
 - **命令**：`make dashboard`
-- **逻辑**：自动获取容器内 Gateway Token 并生成带身份的 URL。
-- **效果**：绕过 `pairing required` 拦截，一键直达仪表盘。
+- **功能**：
+  - 自动从环境变量 `OPENCLAW_GATEWAY_TOKEN` 获取 token
+  - 生成带身份认证的直通 URL（格式：`http://127.0.0.1:18789/#token=xxx`）
+  - 自动打开浏览器访问
+- **效果**：绕过 `gateway token missing` 拦截，一键直达仪表盘
 
 ### 6.2 自动化配对 (Approve)
 - **命令**：`make approve`
-- **逻辑**：自动识别 Web UI 发出的最新 `pending` 请求 ID 并批准。
+- **逻辑**：自动识别 Web UI 发出的最新 `pending` 请求 ID 并批准
+- **使用场景**：首次访问 UI 时如显示 "pairing required"
+
+### 6.3 Token 认证机制
+
+Gateway token 由以下机制自动管理：
+
+| 组件 | 说明 |
+| :--- | :--- |
+| 环境变量 | `OPENCLAW_GATEWAY_TOKEN`（自动生成） |
+| 配置文件 | `~/.openclaw/openclaw.json` 中的 `gateway.auth.token` |
+| 同步机制 | `docker-entrypoint.sh` 启动时自动同步环境变量到配置文件 |
+
+**认证流程**：
+```
+make dashboard
+      │
+      ▼
+生成带 token 的 URL ──► 浏览器打开 ──► token 保存到 localStorage
+                                              │
+                                              ▼
+                                        认证成功 ✓
+```
+
+**常见问题**：
+
+| 错误信息 | 原因 | 解决方案 |
+| :--- | :--- | :--- |
+| `gateway token missing` | 浏览器未保存 token | 使用 `make dashboard` 获取带 token 的链接 |
+| `gateway token mismatch` | token 不一致 | 重启服务：`make restart`，再执行 `make dashboard` |
+| `pairing required` | 需要配对授权 | 执行 `make approve` |
 
 ---
 

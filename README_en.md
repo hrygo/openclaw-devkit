@@ -67,16 +67,30 @@ make install
 # 2. Interactive Setup (First-time)
 make onboard
 
-# 3. Direct Access (Recommended)
+# 3. Start Service
+make up
+
+# 4. Direct Access Dashboard (auto with token)
 make dashboard
 
-# 4. Approve Pairing Request (First-time Web UI Access)
+# 5. If "pairing required" shown, approve pairing
 make approve
 ```
 
 > [!NOTE]
 > `make install` automates: directory creation, `.env` config generation, image synchronization, and fixing host permissions.
 > **Note**: To ensure installation speed, `make install` prioritizes existing local images. **If this is not your first installation, it is recommended to run `make rebuild` to pull the latest image version.**
+
+### First-time UI Authentication Flow
+
+OpenClaw uses token authentication to protect the Gateway. On first UI access:
+
+| Step | Command | Description |
+| :--- | :--- | :--- |
+| 1 | `make dashboard` | Generate direct link with token, auto-open browser |
+| 2 | Refresh page | If "pairing required" shown, continue to next step |
+| 3 | `make approve` | Approve pairing request |
+| 4 | Refresh page | Authentication complete, ready to use |
 
 ### Version Choice
 
