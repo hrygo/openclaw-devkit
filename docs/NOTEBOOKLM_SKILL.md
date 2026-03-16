@@ -2,6 +2,17 @@
 
 本指南介绍如何在 OpenClaw DevKit 中集成和使用 Google NotebookLM CLI 技能，实现通过自然语言操控 NotebookLM 的全部功能。
 
+## 目录
+
+- [功能一览](#功能一览)
+- [快速开始](#快速开始)
+- [架构映射图](#架构映射图)
+- [使用示例](#使用示例)
+- [常用命令](#常用命令)
+- [故障排除](#故障排除)
+
+---
+
 ## 功能一览
 
 **notebooklm-py** 是 Google NotebookLM 的非官方 Python SDK 和 CLI 工具，提供：
@@ -38,12 +49,27 @@ playwright install chromium
 notebooklm login
 ```
 
-浏览器自动打开，完成 Google 登录后认证保存到 `~/.notebooklm/`。
+执行后会自动打开浏览器窗口：
 
-**验证:**
+1. 登录你的 Google 账号
+2. 完成身份验证
+3. 认证信息自动保存到 `~/.notebooklm/storage_state.json`
+
+**企业用户（Edge SSO）:**
+```bash
+notebooklm login --browser msedge
+```
+
+**验证认证:**
 ```bash
 notebooklm auth check --test
-# ✓ Authentication valid
+```
+
+输出示例:
+```
+✓ Storage file exists: /Users/you/.notebooklm/storage_state.json
+✓ Authentication valid
+✓ API access confirmed
 ```
 
 ### Step 3: 宿主机安装 Skill
@@ -52,7 +78,7 @@ notebooklm auth check --test
 notebooklm skill install
 ```
 
-Skill 安装到 `~/.claude/skills/notebooklm/`。
+Skill 安装到 `~/.claude/skills/notebooklm/` 目录。
 
 ### Step 4: 启动容器
 
@@ -65,7 +91,7 @@ make up
 - 挂载 Skills 目录 → 共享 Skill 文件
 - 安装 CLI 工具 → 通过 PIP_TOOLS 环境变量
 
-**验证:**
+**验证容器配置:**
 ```bash
 make shell
 notebooklm auth check          # ✓ 认证共享成功
@@ -76,7 +102,7 @@ ls /home/node/.claude/skills/  # notebooklm 目录存在
 
 对 OpenClaw 说：
 
-> 从 ~/.claude/skills 复制 notebooklm skill 到你的 skills 目录，然后告诉我学习到了什么能力?
+> 请从 /home/node/.claude/skills/notebooklm/ 复制 skill 到你的 skills 目录，然后验证复制成功，告诉我你通过这个 skill 学习到了什么能力
 
 ---
 
@@ -104,8 +130,8 @@ ls /home/node/.claude/skills/  # notebooklm 目录存在
 │  /home/node/.notebooklm/                                        │
 │  └── storage_state.json    ← 认证共享 ✓                          │
 │                                                                 │
-│  /home/node/.claude/skills/notebooklm/                          │
-│  └── skill.md              ← Skill 挂载 ✓                        │
+│  /home/node/.claude/skills/                                     │
+│  └── notebooklm/           ← Skill 挂载 ✓                        │
 │                                                                 │
 │  /usr/local/bin/notebooklm ← 容器启动时动态安装                   │
 │                                                                 │
@@ -125,7 +151,7 @@ ls /home/node/.claude/skills/  # notebooklm 目录存在
 共享规则:
   • 认证文件: 直接共享 (JSON 跨平台兼容)
   • CLI 工具: 无法共享 (macOS/Windows 二进制 ≠ Linux)
-  • Skill 文件: 挂载 → 复制 (文本文件跨平台兼容)
+  • Skill 文件: 挂载 + 复制 (文本文件跨平台兼容)
 ```
 
 ---
@@ -138,18 +164,43 @@ ls /home/node/.claude/skills/  # notebooklm 目录存在
 
 **自然语言（推荐）:**
 
-> 创建一个 Notebook "Agent Skills 最佳实践"，添加来源 https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
-> 生成深入讨论风格的播客并下载为 agent-skills-podcast.mp3
+> 创建一个 Notebook "Agent Skills 最佳实践"，添加来源 https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices，生成深入讨论风格的播客并下载为 agent-skills-podcast.mp3
 
 **等效 CLI:**
 
 ```bash
+# Step 1: 创建 notebook
 notebooklm create "Agent Skills 最佳实践"
-notebooklm use <id>
+# 输出: Created notebook: <notebook_id>
+
+# Step 2: 切换到该 notebook
+notebooklm use <notebook_id>
+
+# Step 3: 添加来源（--wait 确保处理完成）
 notebooklm source add "https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices" --wait
+
+# Step 4: 验证来源状态
+notebooklm source list
+# 确认所有来源状态为 "completed"
+
+# Step 5: 生成播客（--wait 阻塞直到完成）
 notebooklm generate audio --wait
+
+# Step 6: 下载
 notebooklm download audio agent-skills-podcast.mp3
+
+# Step 7: 验证文件
+ls -la agent-skills-podcast.mp3
 ```
+
+**关键要点:**
+
+| 要点         | 说明                                                         |
+| :----------- | :----------------------------------------------------------- |
+| **简洁指令** | 单句包含完整意图，OpenClaw 自动分解步骤                      |
+| **进度验证** | `--wait` 标志确保异步操作完成后再继续                        |
+| **错误预防** | 生成前验证 source 状态，避免空播客                           |
+| **自由度**   | 自然语言=高自由度（OpenClaw 决策）；CLI=低自由度（精确控制） |
 
 ### 案例 2：批量生成学习材料
 
@@ -168,7 +219,7 @@ notebooklm download flashcards --format markdown flashcards.md
 
 **场景**: 自动搜索并导入相关资料。
 
-> 帮我研究 "LLM Function Calling"，搜索网页资料并自动导入到当前笔记本
+> 帮我研究 "LLM Function Calling"，搜索网页资料并导入笔记本
 
 ```bash
 notebooklm source add-research "LLM Function Calling"
@@ -189,15 +240,17 @@ notebooklm download mind-map mindmap.json
 
 ## 支持的内容类型
 
-| 类型     | 选项                         | 导出格式       |
-| -------- | ---------------------------- | -------------- |
-| 播客     | 4 种风格、3 种时长、50+ 语言 | MP3/MP4        |
-| 视频     | 白板/纪录片等 9 种风格       | MP4            |
-| 幻灯片   | 详细版/演讲版                | PDF, PPTX      |
-| 测验     | 可调难度和数量               | Markdown, JSON |
-| 闪卡     | 可调数量                     | Markdown, JSON |
-| 思维导图 | 知识结构可视化               | JSON           |
-| 信息图   | 3 种方向、3 种细节级别       | PNG            |
+| 类型               | 选项                                                                            | 导出格式             |
+| :----------------- | :------------------------------------------------------------------------------ | :------------------- |
+| **Audio Overview** | 4 种风格 (deep-dive/brief/critique/debate)、3 种时长、50+ 语言                  | MP3/MP4              |
+| **Video Overview** | 3 种风格 (explainer/brief/cinematic)、9 种视觉风格、独立 `cinematic-video` 别名 | MP4                  |
+| **Slide Deck**     | 详细版/演讲版、可调长度                                                         | PDF, PPTX            |
+| **Infographic**    | 3 种方向、3 种细节级别                                                          | PNG                  |
+| **Quiz**           | 可配置数量和难度                                                                | JSON, Markdown, HTML |
+| **Flashcards**     | 可配置数量和难度                                                                | JSON, Markdown, HTML |
+| **Report**         | 简报/学习指南/博客文章/自定义提示词                                             | Markdown             |
+| **Data Table**     | 自然语言定义结构                                                                | CSV                  |
+| **Mind Map**       | 交互式层级可视化                                                                | JSON                 |
 
 ---
 
@@ -205,42 +258,101 @@ notebooklm download mind-map mindmap.json
 
 ```bash
 # 认证
-notebooklm login                    # 登录
-notebooklm auth check               # 检查状态
+notebooklm login                    # 浏览器登录
+notebooklm auth check --test        # 检查认证
 
-# 笔记本
-notebooklm list                     # 列出
-notebooklm create "名称"            # 创建
-notebooklm use <id>                 # 切换
+# Notebook 管理
+notebooklm list                     # 列出所有 notebooks
+notebooklm create "名称"            # 创建新 notebook
+notebooklm use <id>                 # 切换当前 notebook
+notebooklm metadata --json          # 导出元数据
 
-# 来源
-notebooklm source add <url>         # 添加
-notebooklm source list              # 列出
+# 来源管理
+notebooklm source add <url|文件>    # 添加来源
+notebooklm source list              # 列出来源
+notebooklm source add-research "主题" # 研究并导入
 
-# 生成
-notebooklm generate audio           # 播客
-notebooklm generate video           # 视频
-notebooklm generate quiz            # 测验
+# 问答
+notebooklm ask "问题"               # 提问
+
+# 内容生成
+notebooklm generate audio           # 生成播客
+notebooklm generate video           # 生成视频
+notebooklm generate cinematic-video # 生成纪录片风格视频
+notebooklm generate quiz            # 生成测验
+notebooklm generate flashcards      # 生成闪卡
+notebooklm generate slide-deck      # 生成幻灯片
+notebooklm generate infographic     # 生成信息图
+notebooklm generate mind-map        # 生成思维导图
 
 # 下载
-notebooklm download audio ./x.mp3
-notebooklm download quiz --format markdown ./quiz.md
+notebooklm download audio ./x.mp3   # 下载音频
+notebooklm download video ./x.mp4   # 下载视频
+notebooklm download cinematic-video ./x.mp4  # 下载纪录片视频
+notebooklm download quiz --format markdown ./x.md  # 下载测验
 ```
 
 ---
 
 ## 故障排除
 
-| 问题         | 解决方案                                                       |
-| ------------ | -------------------------------------------------------------- |
-| 认证失败     | `notebooklm login` 重新登录                                    |
-| 容器无 CLI   | `uv pip install --system notebooklm-py`                        |
-| Skill 未生效 | `cp -r /home/node/.claude/skills/notebooklm ~/.claude/skills/` |
-| API 限流     | 减少并发，等待后重试                                           |
+### 认证失败
+
+```bash
+# 检查认证状态
+notebooklm auth check --test
+
+# 重新登录（在宿主机执行）
+notebooklm login
+```
+
+### 容器内找不到 CLI
+
+```bash
+# 检查是否安装
+which notebooklm
+
+# 手动安装（如果 PIP_TOOLS 未配置）
+uv pip install --system --break-system-packages notebooklm-py
+```
+
+### Skill 未生效
+
+```bash
+# 检查挂载目录
+ls /home/node/.claude/skills/
+
+# 检查 OpenClaw 的 skills 目录
+ls ~/.claude/skills/
+
+# 手动复制
+cp -r /home/node/.claude/skills/notebooklm ~/.claude/skills/
+```
+
+### 权限问题
+
+如果遇到 `EACCES` 错误：
+
+```bash
+# 检查目录权限
+ls -la ~/.notebooklm/
+
+# 修复权限
+chmod -R 755 ~/.notebooklm/
+```
+
+### API 限流
+
+NotebookLM 有请求频率限制。如遇到限流：
+
+1. 减少并发请求
+2. 增加请求间隔
+3. 等待一段时间后重试
 
 ---
 
 ## 参考资料
 
 - [notebooklm-py GitHub](https://github.com/teng-lin/notebooklm-py)
-- [Google NotebookLM](https://notebooklm.google.com/)
+- [notebooklm-py PyPI](https://pypi.org/project/notebooklm-py/)
+- [Google NotebookLM 官方网站](https://notebooklm.google.com/)
