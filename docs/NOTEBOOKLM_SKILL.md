@@ -97,7 +97,7 @@ ls /home/node/.claude/skills/  # notebooklm 目录存在
 
 对 OpenClaw 说：
 
-> 请从 /home/node/.claude/skills/notebooklm/ 复制 skill 到你的 skills 目录，然后验证复制成功，告诉我你通过这个 skill 学习到了什么能力
+> 从 ~/.claude/skills 复制 notebooklm skill 到你的 skills 目录，然后告诉我你通过这个 skill 学习到了什么？
 
 ---
 
@@ -314,15 +314,16 @@ uv pip install --system --break-system-packages notebooklm-py
 ### Skill 未生效
 
 ```bash
-# 检查挂载目录
-ls /home/node/.claude/skills/
+# 检查 skills 目录（挂载的宿主机目录）
+ls /home/node/.claude/skills/notebooklm/
 
-# 检查 OpenClaw 的 skills 目录
-ls ~/.claude/skills/
-
-# 手动复制
-cp -r /home/node/.claude/skills/notebooklm ~/.claude/skills/
+# 检查 skill 文件内容
+cat /home/node/.claude/skills/notebooklm/skill.md
 ```
+
+如果 skill 文件存在但 OpenClaw 未识别，让 OpenClaw 重新读取：
+
+> 请读取 ~/.claude/skills/notebooklm/skill.md 并告诉我你学到了什么能力
 
 ### 权限问题
 

@@ -336,15 +336,16 @@ uv pip install --system --break-system-packages notebooklm-py
 ### Skill Not Working
 
 ```bash
-# Check mounted directory
-ls /home/node/.claude/skills/
+# Check skills directory (mounted from host)
+ls /home/node/.claude/skills/notebooklm/
 
-# Check OpenClaw's skills directory
-ls ~/.claude/skills/
-
-# Manual copy
-cp -r /home/node/.claude/skills/notebooklm ~/.claude/skills/
+# Check skill file content
+cat /home/node/.claude/skills/notebooklm/skill.md
 ```
+
+If skill file exists but OpenClaw doesn't recognize it, ask OpenClaw to re-read:
+
+> Please read ~/.claude/skills/notebooklm/skill.md and tell me what capabilities you learned
 
 ### Permission Issues
 
