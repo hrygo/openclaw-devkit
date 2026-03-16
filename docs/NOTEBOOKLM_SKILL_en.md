@@ -1,15 +1,21 @@
-# NotebookLM Skill Integration Guide
+# OpenClaw × NotebookLM Skill Integration Guide
 
-Control Google NotebookLM through natural language to create podcasts, videos, quizzes, and more.
+This guide explains how to integrate and use the Google NotebookLM CLI skill in OpenClaw DevKit, enabling full control of NotebookLM through natural language.
 
 ## Features
 
+**notebooklm-py** is an unofficial Python SDK and CLI tool for Google NotebookLM, providing:
+
 | Feature | Description |
-|---------|-------------|
-| 📓 Notebook Management | Create, list, switch, delete |
-| 📄 Multi-format Sources | URLs, YouTube, PDF, Word, Google Drive |
-| 🎙️ Content Generation | Podcasts, videos, slides, quizzes, flashcards, mind maps |
-| 📥 Export Formats | MP3, MP4, PDF, PNG, Markdown, JSON |
+|:--------|:------------|
+| 📓 Notebook Management | Create, list, rename, delete |
+| 📄 Multi-format Sources | URLs, YouTube, PDF, Word, audio/video, Google Drive |
+| 💬 Smart Chat | Q&A based on sources, custom personas |
+| 🔍 Research Agent | Web/Drive deep research, auto-import |
+| 🎙️ Content Generation | Podcasts, videos, slides, quizzes, mind maps, etc. |
+| 📥 Batch Export | MP3, MP4, PDF, PNG, CSV, JSON, Markdown |
+
+> ⚠️ **Note**: This tool uses undocumented Google APIs that may change at any time. Suitable for prototyping, research, and personal projects.
 
 ---
 

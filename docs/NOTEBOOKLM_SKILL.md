@@ -1,15 +1,21 @@
-# NotebookLM 技能集成指南
+# OpenClaw × NotebookLM 技能集成指南
 
-通过自然语言操控 Google NotebookLM，创建播客、视频、测验等内容。
+本指南介绍如何在 OpenClaw DevKit 中集成和使用 Google NotebookLM CLI 技能，实现通过自然语言操控 NotebookLM 的全部功能。
 
 ## 功能一览
 
-| 功能            | 说明                                     |
-| --------------- | ---------------------------------------- |
-| 📓 Notebook 管理 | 创建、列表、切换、删除                   |
-| 📄 多格式来源    | URLs、YouTube、PDF、Word、Google Drive   |
-| 🎙️ 内容生成      | 播客、视频、幻灯片、测验、闪卡、思维导图 |
-| 📥 导出格式      | MP3、MP4、PDF、PNG、Markdown、JSON       |
+**notebooklm-py** 是 Google NotebookLM 的非官方 Python SDK 和 CLI 工具，提供：
+
+| 功能            | 说明                                           |
+| :-------------- | :--------------------------------------------- |
+| 📓 Notebook 管理 | 创建、列表、重命名、删除                       |
+| 📄 多格式来源    | URLs、YouTube、PDF、Word、音视频、Google Drive |
+| 💬 智能对话      | 基于来源的问答、自定义人设                     |
+| 🔍 研究代理      | 网页/Drive 深度研究，自动导入                  |
+| 🎙️ 内容生成      | 播客、视频、幻灯片、测验、思维导图等           |
+| 📥 批量导出      | MP3、MP4、PDF、PNG、CSV、JSON、Markdown        |
+
+> ⚠️ **注意**: 此工具使用未公开的 Google API，可能随时变化。适合原型开发、研究和个人项目。
 
 ---
 
@@ -132,7 +138,8 @@ ls /home/node/.claude/skills/  # notebooklm 目录存在
 
 **自然语言（推荐）:**
 
-> 创建一个 Notebook "Agent Skills 最佳实践"，添加来源 https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices，生成深入讨论风格的播客并下载为 agent-skills-podcast.mp3
+> 创建一个 Notebook "Agent Skills 最佳实践"，添加来源 https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
+> 生成深入讨论风格的播客并下载为 agent-skills-podcast.mp3
 
 **等效 CLI:**
 
