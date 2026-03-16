@@ -9,6 +9,14 @@ ARG BROWSER_DEPS=1
 ARG APT_MIRROR=deb.debian.org
 ARG NODE_VERSION=22
 
+# === Locked tool versions for stability ===
+# Update these manually when upgrading tools
+# Last updated: 2026-03-16
+ARG YQ_VERSION=v4.52.2
+ARG JUST_VERSION=1.47.0
+ARG GH_VERSION=2.67.0
+ARG LAZYGIT_VERSION=0.49.0
+
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PATH="/usr/local/bin:${PATH}"
 
@@ -25,18 +33,35 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fzf zoxide tldr && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install yq, just, gh, lazygit (direct binaries for target arch)
+# Install yq (YAML processor) - locked version with retry
 RUN ARCH=$(dpkg --print-architecture) && \
-    # yq
-    curl -fsSL "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${ARCH}" -o /usr/local/bin/yq && chmod +x /usr/local/bin/yq && \
-    # just
-    curl -fsSL https://just.systems/install.sh | bash -s -- --to /usr/local/bin && \
-    # Github CLI
-    GH_VERSION=$(curl -s "https://api.github.com/repos/cli/cli/releases/latest" | jq -r .tag_name | sed "s/^v//") && \
-    curl -fsSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_${ARCH}.tar.gz" | tar -xz --strip-components=1 -C /usr/local -g "gh_${GH_VERSION}_linux_${ARCH}/bin/gh" && \
-    # lazygit
-    LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | jq -r .tag_name | sed "s/^v//") && \
-    curl -fsSL "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_Linux_$(if [ "$ARCH" = "amd64" ]; then echo "x86_64"; else echo "arm64"; fi).tar.gz" | tar -xz -C /usr/local lazygit
+    curl --retry 3 --retry-delay 2 -fsSL \
+    "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${ARCH}" \
+    -o /usr/local/bin/yq && chmod +x /usr/local/bin/yq
+
+# Install just (command runner) - locked version with retry
+RUN ARCH=$(dpkg --print-architecture) && \
+    JUST_ARCH="${ARCH}" && \
+    [ "$ARCH" = "arm64" ] && JUST_ARCH="aarch64" && \
+    curl --retry 3 --retry-delay 2 -fsSL \
+    "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-${JUST_ARCH}-unknown-linux-musl.tar.gz" \
+    | tar -xz -C /usr/local/bin just
+
+# Install GitHub CLI - locked version with retry (use .deb for reliability)
+RUN ARCH=$(dpkg --print-architecture) && \
+    curl --retry 3 --retry-delay 2 -fsSL \
+    "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_${ARCH}.deb" \
+    -o /tmp/gh.deb && \
+    apt-get update && apt-get install -y /tmp/gh.deb && \
+    rm /tmp/gh.deb && apt-get clean
+
+# Install lazygit - locked version with retry
+RUN ARCH=$(dpkg --print-architecture) && \
+    LAZYGIT_ARCH="x86_64" && \
+    [ "$ARCH" = "arm64" ] && LAZYGIT_ARCH="arm64" && \
+    curl --retry 3 --retry-delay 2 -fsSL \
+    "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_Linux_${LAZYGIT_ARCH}.tar.gz" \
+    | tar -xz -C /usr/local lazygit
 
 # Install Node.js 22 LTS
 RUN mkdir -p /etc/apt/keyrings && \
