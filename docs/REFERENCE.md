@@ -64,24 +64,65 @@ make onboard
 
 ## 3. 常用运维指令
 
+### 快速开始
+
 | 指令 | 说明 |
 | :--- | :--- |
-| `make start` / `make up` | 启动 openclaw-gateway 服务 |
-| `make stop` / `make down` | 移除容器，保留 Data Volumes |
+| `make help` | 显示所有可用命令 |
+| `make install` | 首次安装/初始化环境 |
+| `make onboard` | 交互式配置 (LLM/API) |
+
+### 生命周期管理
+
+| 指令 | 说明 |
+| :--- | :--- |
+| `make up` / `make start` | 启动 openclaw-gateway 服务 |
+| `make down` / `make stop` | 移除容器，保留 Data Volumes |
+| `make restart` | 执行 down + up，刷新配置 |
+| `make status` | 显示容器健康状态、运行时间、端口占用 |
+
+### 构建与更新
+
+| 指令 | 说明 |
+| :--- | :--- |
+| `make build` | 构建标准版镜像 |
+| `make build-go` | 构建 Go 版镜像 |
+| `make build-java` | 构建 Java 版镜像 |
+| `make build-office` | 构建 Office 版镜像 |
+| `make rebuild` | 重建镜像并重启服务 |
+| `make update` | 从 GitHub 同步最新代码 |
+
+### 调试诊断
+
+| 指令 | 说明 |
+| :--- | :--- |
 | `make logs` | 追踪任务分发、WebSocket 状态、错误堆栈 |
 | `make logs-all` | 查看所有容器日志 |
-| `make status` | 显示容器健康状态、运行时间、端口占用 |
-| `make restart` | 执行 down + up，刷新配置 |
 | `make shell` | 进入 Gateway 容器 |
 | `make run` | 交互式进入容器 |
 | `make exec CMD="..."` | 在容器中执行命令 |
 | `make cli CMD="..."` | 执行 OpenClaw CLI 命令 |
+| `make verify` | 验证镜像工具版本 |
+| `make test-proxy` | 测试代理连接 |
+
+### 设备管理
+
+| 指令 | 说明 |
+| :--- | :--- |
+| `make devices` | 列举配对设备 |
+| `make approve` | 批准配对请求 |
+| `make pairing` / `make pair` | 频道配对 |
 | `make dashboard` | 一键直达仪表盘 |
 | `make health` | 检查健康状态 |
+
+### 备份恢复
+
+| 指令 | 说明 |
+| :--- | :--- |
 | `make backup` | 备份配置文件 |
 | `make restore FILE=...` | 恢复配置文件 |
 | `make clean` | 清理容器和悬空镜像 |
-| `make clean-volumes` | 清理所有数据卷 |
+| `make clean-volumes` | 清理所有数据卷 (危险!) |
 
 ---
 

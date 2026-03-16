@@ -64,13 +64,65 @@ make onboard
 
 ## 3. Common Commands
 
+### Quick Start
+
 | Command | Description |
 | :--- | :--- |
-| `make up` | Start openclaw-gateway service |
-| `make down` | Remove containers, preserve Data Volumes |
-| `make logs` | Trace task distribution, WebSocket states, error stacks |
-| `make status` | Display container health, uptime, port occupancy |
+| `make help` | Show all available commands |
+| `make install` | First-time installation/setup |
+| `make onboard` | Interactive configuration (LLM/API) |
+
+### Lifecycle Management
+
+| Command | Description |
+| :--- | :--- |
+| `make up` / `make start` | Start openclaw-gateway service |
+| `make down` / `make stop` | Remove containers, preserve Data Volumes |
 | `make restart` | Execute down + up, refresh configuration |
+| `make status` | Display container health, uptime, port occupancy |
+
+### Build & Update
+
+| Command | Description |
+| :--- | :--- |
+| `make build` | Build standard image |
+| `make build-go` | Build Go variant image |
+| `make build-java` | Build Java variant image |
+| `make build-office` | Build Office variant image |
+| `make rebuild` | Rebuild image and restart service |
+| `make update` | Sync latest code from GitHub |
+
+### Debugging
+
+| Command | Description |
+| :--- | :--- |
+| `make logs` | Trace task distribution, WebSocket states, error stacks |
+| `make logs-all` | View all container logs |
+| `make shell` | Enter Gateway container |
+| `make run` | Interactive container access |
+| `make exec CMD="..."` | Execute command in container |
+| `make cli CMD="..."` | Execute OpenClaw CLI command |
+| `make verify` | Verify image tool versions |
+| `make test-proxy` | Test proxy connection |
+
+### Device Management
+
+| Command | Description |
+| :--- | :--- |
+| `make devices` | List paired devices |
+| `make approve` | Approve pairing request |
+| `make pairing` / `make pair` | Channel pairing |
+| `make dashboard` | Quick access to dashboard |
+| `make health` | Check health status |
+
+### Backup & Restore
+
+| Command | Description |
+| :--- | :--- |
+| `make backup` | Backup configuration files |
+| `make restore FILE=...` | Restore configuration |
+| `make clean` | Clean containers and dangling images |
+| `make clean-volumes` | Clean all data volumes (dangerous!) |
 
 ---
 

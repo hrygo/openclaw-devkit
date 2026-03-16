@@ -112,8 +112,9 @@ make install / make up
 | :---- | :--------------- | :--------------- |
 | 18789 | Gateway Web UI   | HTTP 访问        |
 | 18790 | Bridge           | WebSocket 桥接   |
-| 7897  | HTTP Proxy       | 代理服务（可选） |
-| 15721 | Claude API Proxy | API 代理（可选） |
+| 18791 | Browser          | 浏览器调试端口   |
+
+> **代理配置**: 通过环境变量 `HTTP_PROXY`/`HTTPS_PROXY` 配置外部代理访问
 
 ### 5.3 数据持久化
 

@@ -77,8 +77,10 @@ make clean-volumes    # 清理所有数据卷 (危险!)
 | Service          | Port  | Description                     |
 | ---------------- | ----- | ------------------------------- |
 | openclaw-gateway | 18789 | 主网关服务 (Web UI + WebSocket) |
-| HTTP Proxy       | 7897  | 代理服务 (访问外网)             |
-| Claude API Proxy | 15721 | Claude API 代理                 |
+|                  | 18790 | Bridge WebSocket 桥接           |
+|                  | 18791 | Browser 浏览器调试端口          |
+
+> **代理配置**: 通过 `HTTP_PROXY`/`HTTPS_PROXY` 环境变量配置外部代理，用于访问 Google 和 Claude API
 
 ## Docker Image Variants
 
@@ -133,7 +135,45 @@ GITHUB_TOKEN=xxx
 - Gateway 日志位于容器内 `/tmp/openclaw-gateway.log`
 - 进入容器后可直接运行 `openclaw` 命令
 
+### CI 调试命令
+
+```bash
+# 查看最近的 CI 运行
+gh run list --repo hrygo/openclaw-devkit --limit 5
+
+# 查看特定运行的详细信息
+gh run view <run-id> --repo hrygo/openclaw-devkit
+
+# 获取完整 CI 日志
+gh run view <run-id> --repo hrygo/openclaw-devkit --log
+
+# 搜索日志中的错误
+gh run view <run-id> --repo hrygo/openclaw-devkit --log 2>&1 | grep -E "(ERROR|failed|process \")"
+```
+
 ## Gotchas
+
+### Shell 条件执行陷阱 (Dockerfile)
+
+**问题**: 在 Dockerfile RUN 命令中使用 `&&` 链时，条件测试 `[ condition ] && cmd` 如果返回 false 会中断整个链条。
+
+**错误示例**:
+```dockerfile
+RUN ARCH=$(dpkg --print-architecture) && \
+    JUST_ARCH="${ARCH}" && \
+    [ "$ARCH" = "amd64" ] && JUST_ARCH="x86_64" && \  # 如果 ARCH=arm64，这里不会执行
+    [ "$ARCH" = "arm64" ] && JUST_ARCH="aarch64" && \  # 如果 ARCH=amd64，这里断链!
+    curl ... # 不会执行
+```
+
+**正确做法**: 使用 `if-then-elif-else-fi` 语法：
+```dockerfile
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then JUST_ARCH="x86_64"; \
+    elif [ "$ARCH" = "arm64" ]; then JUST_ARCH="aarch64"; \
+    else JUST_ARCH="${ARCH}"; fi && \
+    curl ...
+```
 
 ### Shell 脚本换行符问题
 
@@ -173,6 +213,20 @@ git diff --check
 
 ## Dockerfile Development
 
+### 工具架构映射表
+
+不同工具使用不同的架构命名约定，需要正确映射：
+
+| 工具 | amd64 命名 | arm64 命名 | 示例 URL |
+|------|-----------|-----------|----------|
+| yq | `amd64` | `arm64` | `yq_linux_amd64` |
+| just | `x86_64` | `aarch64` | `just-1.47.0-x86_64-unknown-linux-musl.tar.gz` |
+| lazygit | `x86_64` | `arm64` | `lazygit_0.49.0_Linux_x86_64.tar.gz` |
+| gh CLI | `amd64` | `arm64` | `gh_2.67.0_linux_amd64.deb` |
+| Go | `amd64` | `arm64` | `go1.26.1.linux-arm64.tar.gz` |
+
+**推荐**: 在 RUN 命令中使用 `if-then-else-fi` 处理架构差异。
+
 ### Version Verification
 Before using specific versions in Dockerfile, verify download URLs exist:
 ```bash
@@ -190,6 +244,21 @@ docker build --check -f Dockerfile .  # Validate without full build
 - Go: 1.26.x (1.27.x not yet released)
 - golangci-lint: 1.64.x
 - Java: 21 LTS (via Eclipse Temurin)
+
+### 版本锁定原则
+
+**必须锁定版本**: 所有工具版本必须锁定，避免因上游更新导致构建失败。
+
+```bash
+# ❌ 错误: 动态查询最新版本 (消耗 GitHub API 配额，易触发 rate limit)
+LATEST=$(curl -s https://api.github.com/repos/foo/bar/releases/latest | jq -r '.tag_name')
+
+# ✅ 正确: 锁定具体版本
+ARG TOOL_VERSION=1.2.3
+curl -fsSL "https://github.com/foo/bar/releases/download/v${TOOL_VERSION}/..."
+```
+
+**好处**: 可重复构建 + 避免 API rate limit + 便于追踪回滚
 
 ### Installation Methods
 - **Node.js**: Use NodeSource APT repository (not direct nodejs.org download)
