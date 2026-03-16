@@ -123,6 +123,8 @@ services:
       - ${HOME:-${USERPROFILE:-/tmp}}/.claude:/home/node/.claude:rw
       # NotebookLM auth and config (shared with host)
       - ${HOME:-${USERPROFILE:-/tmp}}/.notebooklm:/home/node/.notebooklm:rw
+      # Agents skills (read-only, shared with host)
+      - ${HOME:-${USERPROFILE:-/tmp}}/.agents/skills:/home/node/.agents/skills:ro
       # Named volumes for caches (optional, speeds up restarts)
       - openclaw-node-modules:/app/node_modules:rw
       - openclaw-go-mod:/home/node/go/pkg/mod:rw
@@ -152,43 +154,4 @@ services:
       start_period: 60s
     labels:
       - "openclaw.service=gateway"
-      - "openclaw.environment=dev"
-
-  # ============================================================================
-  # OpenClaw CLI
-  # ============================================================================
-  openclaw-cli:
-    <<: *openclaw-common
-    user: "0:0" # 同步 gateway，允许 entrypoint 修复权限
-    container_name: openclaw-cli
-    depends_on:
-      openclaw-gateway:
-        condition: service_healthy
-    cap_drop:
-      - NET_RAW
-      - NET_ADMIN
-    security_opt:
-      - no-new-privileges:true
-    environment:
-      <<: *common-env
-      BROWSER: echo
-    init: true
-    volumes:
-      # === CLI 容器只需最基本的挂载 ===
-      # 使用 .env 中定义的变量 (OPENCLAW_CONFIG_DIR)
-      # OpenClaw config seed (mount host dir to separate path)
-      - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw-seed:ro
-      # Unified state volume for persistent container data
-      - openclaw-state:/home/node/.openclaw:rw
-      # NotebookLM auth and config (shared with host)
-      - ${HOME:-${USERPROFILE:-/tmp}}/.notebooklm:/home/node/.notebooklm:rw
-    stdin_open: true
-    tty: true
-    # CLI 是交互式容器，不需要健康检查
-    healthcheck:
-      disable: true
-    # CLI 容器现在默认进入交互模式或由 Makefile 控制
-    command: [ "tail", "-f", "/dev/null" ]
-    labels:
-      - "openclaw.service=cli"
       - "openclaw.environment=dev"

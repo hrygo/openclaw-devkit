@@ -214,6 +214,7 @@ install: ## 首次安装/初始化环境
 	@echo "    2. 执行 $(BOLD)make dashboard$(NC) 直接打开 Web UI"
 
 up: ## 启动服务
+	@mkdir -p "$(HOME)/.agents/skills"
 	@docker compose up -d
 	@echo "✓ 已启动 (Web: http://127.0.0.1:$(GATEWAY_PORT)/)"
 	@echo "  $(INFO) 提示: 执行 $(BOLD)make dashboard$(NC) 获取一键直通链接"
@@ -222,7 +223,7 @@ start: up ## 启动服务 (别名)
 
 onboard: ## 启动交互式引导程序
 	@echo "$(INFO) 启动交互式引导程序..."
-	@docker compose run --rm -it -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 openclaw-cli openclaw onboard
+	@docker compose exec -it -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 openclaw-gateway openclaw onboard
 	@echo ""
 	@echo "$(SUCCESS) 配对就绪! 您可以通过以下方式访问 Web UI:"
 	@echo "  ⚡ $(BOLD)方法 A (推荐)$(NC): 执行 $(CYAN)make dashboard$(NC) 一键免密直达"
