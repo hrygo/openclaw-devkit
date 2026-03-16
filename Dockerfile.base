@@ -41,9 +41,9 @@ RUN ARCH=$(dpkg --print-architecture) && \
 
 # Install just (command runner) - locked version with retry
 RUN ARCH=$(dpkg --print-architecture) && \
-    JUST_ARCH="${ARCH}" && \
-    [ "$ARCH" = "amd64" ] && JUST_ARCH="x86_64" && \
-    [ "$ARCH" = "arm64" ] && JUST_ARCH="aarch64" && \
+    if [ "$ARCH" = "amd64" ]; then JUST_ARCH="x86_64"; \
+    elif [ "$ARCH" = "arm64" ]; then JUST_ARCH="aarch64"; \
+    else JUST_ARCH="${ARCH}"; fi && \
     curl --retry 3 --retry-delay 2 -fsSL \
     "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-${JUST_ARCH}-unknown-linux-musl.tar.gz" \
     | tar -xz -C /usr/local/bin just
@@ -58,8 +58,8 @@ RUN ARCH=$(dpkg --print-architecture) && \
 
 # Install lazygit - locked version with retry
 RUN ARCH=$(dpkg --print-architecture) && \
-    LAZYGIT_ARCH="x86_64" && \
-    [ "$ARCH" = "arm64" ] && LAZYGIT_ARCH="arm64" && \
+    if [ "$ARCH" = "arm64" ]; then LAZYGIT_ARCH="arm64"; \
+    else LAZYGIT_ARCH="x86_64"; fi && \
     curl --retry 3 --retry-delay 2 -fsSL \
     "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_Linux_${LAZYGIT_ARCH}.tar.gz" \
     | tar -xz -C /usr/local lazygit
