@@ -66,7 +66,7 @@ make onboard
 
 | 指令 | 说明 |
 | :--- | :--- |
-| `make start` / `make up` | 启动 openclaw-gateway 与 openclaw-cli |
+| `make start` / `make up` | 启动 openclaw-gateway 服务 |
 | `make stop` / `make down` | 移除容器，保留 Data Volumes |
 | `make logs` | 追踪任务分发、WebSocket 状态、错误堆栈 |
 | `make logs-all` | 查看所有容器日志 |

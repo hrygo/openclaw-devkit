@@ -66,7 +66,7 @@ make onboard
 
 | Command | Description |
 | :--- | :--- |
-| `make up` | Start openclaw-gateway and openclaw-cli |
+| `make up` | Start openclaw-gateway service |
 | `make down` | Remove containers, preserve Data Volumes |
 | `make logs` | Trace task distribution, WebSocket states, error stacks |
 | `make status` | Display container health, uptime, port occupancy |

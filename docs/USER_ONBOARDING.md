@@ -101,11 +101,6 @@ make install / make up
 │  openclaw-gateway           │ ◄── 主服务
 │  健康检查: curl 127.0.0.1:   │
 │           18789/healthz      │
-└──────────┬───────────────────┘
-           │ depends_on: service_healthy
-           ▼
-┌──────────────────────────────┐
-│  openclaw-cli               │ ◄── 按需启动
 │  $ make onboard             │     交互式配置
 │  $ make cli                 │     执行命令
 └──────────────────────────────┘
