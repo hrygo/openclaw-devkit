@@ -55,11 +55,6 @@ notebooklm login
 2. 完成身份验证
 3. 认证信息自动保存到 `~/.notebooklm/storage_state.json`
 
-**企业用户（Edge SSO）:**
-```bash
-notebooklm login --browser msedge
-```
-
 **验证认证:**
 ```bash
 notebooklm auth check --test

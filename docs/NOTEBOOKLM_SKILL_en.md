@@ -56,11 +56,6 @@ This will automatically open a browser window:
 2. Complete authentication
 3. Credentials are automatically saved to `~/.notebooklm/storage_state.json`
 
-**Enterprise Users (Edge SSO):**
-```bash
-notebooklm login --browser msedge
-```
-
 **Verify Authentication:**
 ```bash
 notebooklm auth check --test
