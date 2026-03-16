@@ -303,5 +303,5 @@ For advanced configuration (multi-account, group allowlists, streaming output, m
 ---
 
 **Document Version**: 2.1.0
-**Last Updated**: 2025-03
+**Last Updated**: 2026-03
 **Environment**: openclaw-devkit Docker deployment
