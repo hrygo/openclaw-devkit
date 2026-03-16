@@ -70,7 +70,7 @@ ls /home/node/.claude/skills/  # notebooklm 目录存在
 
 对 OpenClaw 说：
 
-> "复制 notebooklm skill"
+> 请从 /home/node/.claude/skills/notebooklm/ 复制 skill 到你的 skills 目录，然后验证复制成功，告诉我你通过这个 skill 学习到了什么能力
 
 ---
 

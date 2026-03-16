@@ -70,7 +70,7 @@ ls /home/node/.claude/skills/  # notebooklm directory exists
 
 Tell OpenClaw:
 
-> "Copy notebooklm skill"
+> Please copy the skill from /home/node/.claude/skills/notebooklm/ to your skills directory, then verify the copy succeeded and tell me what capabilities you learned from this skill
 
 ---
 
