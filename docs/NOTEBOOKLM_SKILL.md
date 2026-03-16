@@ -157,45 +157,10 @@ ls /home/node/.claude/skills/  # notebooklm 目录存在
 
 **场景**: 使用 NotebookLM 研究 Claude Agent Skills 最佳实践，生成播客便于通勤时收听。
 
-**自然语言（推荐）:**
+**自然语言:**
 
-> 创建一个 Notebook "Agent Skills 最佳实践"，添加来源 https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices，生成深入讨论风格的播客并下载为 agent-skills-podcast.mp3
-
-**等效 CLI:**
-
-```bash
-# Step 1: 创建 notebook
-notebooklm create "Agent Skills 最佳实践"
-# 输出: Created notebook: <notebook_id>
-
-# Step 2: 切换到该 notebook
-notebooklm use <notebook_id>
-
-# Step 3: 添加来源（--wait 确保处理完成）
-notebooklm source add "https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices" --wait
-
-# Step 4: 验证来源状态
-notebooklm source list
-# 确认所有来源状态为 "completed"
-
-# Step 5: 生成播客（--wait 阻塞直到完成）
-notebooklm generate audio --wait
-
-# Step 6: 下载
-notebooklm download audio agent-skills-podcast.mp3
-
-# Step 7: 验证文件
-ls -la agent-skills-podcast.mp3
-```
-
-**关键要点:**
-
-| 要点         | 说明                                                         |
-| :----------- | :----------------------------------------------------------- |
-| **简洁指令** | 单句包含完整意图，OpenClaw 自动分解步骤                      |
-| **进度验证** | `--wait` 标志确保异步操作完成后再继续                        |
-| **错误预防** | 生成前验证 source 状态，避免空播客                           |
-| **自由度**   | 自然语言=高自由度（OpenClaw 决策）；CLI=低自由度（精确控制） |
+> 创建一个 Notebook "Agent Skills 最佳实践"，添加来源 https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
+> 生成深入讨论风格的播客并下载为 agent-skills-podcast.mp3
 
 ### 案例 2：批量生成学习材料
 
@@ -203,22 +168,12 @@ ls -la agent-skills-podcast.mp3
 
 > 用当前笔记本生成 20 道测验题，再生成一套闪卡，都导出 Markdown 格式
 
-```bash
-notebooklm generate quiz --quantity more
-notebooklm generate flashcards --quantity more
-notebooklm download quiz --format markdown quiz.md
-notebooklm download flashcards --format markdown flashcards.md
-```
-
 ### 案例 3：研究与自动导入
 
 **场景**: 自动搜索并导入相关资料。
 
 > 帮我研究 "LLM Function Calling"，搜索网页资料并导入笔记本
 
-```bash
-notebooklm source add-research "LLM Function Calling"
-```
 
 ### 案例 4：生成思维导图
 
@@ -226,10 +181,6 @@ notebooklm source add-research "LLM Function Calling"
 
 > 生成当前笔记本的思维导图，导出 JSON 格式
 
-```bash
-notebooklm generate mind-map
-notebooklm download mind-map mindmap.json
-```
 
 ---
 
@@ -323,7 +274,7 @@ cat /home/node/.claude/skills/notebooklm/skill.md
 
 如果 skill 文件存在但 OpenClaw 未识别，让 OpenClaw 重新读取：
 
-> 请读取 ~/.claude/skills/notebooklm/skill.md 并告诉我你学到了什么能力
+> 从 ~/.claude/skills 复制 notebooklm skill 到你的 skills 目录，然后告诉我你通过这个 skill 学习到了什么？
 
 ### 权限问题
 

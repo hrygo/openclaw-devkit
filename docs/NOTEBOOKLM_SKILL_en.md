@@ -19,7 +19,7 @@ This guide explains how to integrate and use the Google NotebookLM CLI skill in 
 **notebooklm-py** is an unofficial Python SDK and CLI tool for Google NotebookLM, providing:
 
 | Feature | Description |
-|:--------|:------------|
+| :-------| :--------------------------------------------- |
 | 📓 Notebook Management | Create, list, rename, delete |
 | 📄 Multi-format Sources | URLs, YouTube, PDF, Word, audio/video, Google Drive |
 | 💬 Smart Chat | Source-based Q&A, custom personas |
@@ -74,7 +74,7 @@ Expected output:
 notebooklm skill install
 ```
 
-Skill installs to `~/.claude/skills/notebooklm/`.
+Skill installs to `~/.claude/skills/notebooklm/` directory.
 
 ### Step 4: Start Container
 
@@ -82,7 +82,7 @@ Skill installs to `~/.claude/skills/notebooklm/`.
 make up
 ```
 
-Container automatically:
+Container automatically on startup:
 - Mounts auth directory → Shares Google authentication
 - Mounts Skills directory → Shares Skill files
 - Installs CLI tool → Via PIP_TOOLS environment variable
@@ -98,7 +98,7 @@ ls /home/node/.claude/skills/  # notebooklm directory exists
 
 Tell OpenClaw:
 
-> Please copy the notebooklm skill from /home/node/.claude/skills/notebooklm/ to your skills directory, then verify the copy succeeded and tell me what capabilities you learned from this skill
+> Copy the notebooklm skill from ~/.claude/skills to your skills directory, then tell me what capabilities you learned from this skill?
 
 ---
 
@@ -124,10 +124,10 @@ Tell OpenClaw:
 │                        Container                                 │
 │                                                                 │
 │  /home/node/.notebooklm/                                        │
-│  └── storage_state.json    ← Auth shared ✓                      │
+│  └── storage_state.json    ← Auth shared ✓                       │
 │                                                                 │
-│  /home/node/.claude/skills/notebooklm/                          │
-│  └── skill.md              ← Skill mounted ✓                    │
+│  /home/node/.claude/skills/                                     │
+│  └── notebooklm/           ← Skill mounted ✓                     │
 │                                                                 │
 │  /usr/local/bin/notebooklm ← Dynamic install at startup         │
 │                                                                 │
@@ -139,9 +139,9 @@ Tell OpenClaw:
 │                    OpenClaw Config Directory                     │
 │                                                                 │
 │  ~/.claude/skills/notebooklm/                                   │
-│  └── skill.md              ← Copied from mounted directory      │
+│  └── skill.md              ← Copied from mounted directory       │
 │                                                                 │
-│  After copy, OpenClaw gains NotebookLM control capabilities     │
+│  After copy, OpenClaw gains NotebookLM control capabilities      │
 └─────────────────────────────────────────────────────────────────┘
 
 Sharing Rules:
@@ -156,105 +156,37 @@ Sharing Rules:
 
 ### Example 1: Research Agent Skills Best Practices
 
-**Scenario**: Research Claude Agent Skills best practices, generate podcast for commute listening.
+**Scenario**: Use NotebookLM to research Claude Agent Skills best practices, generate podcast for commute listening.
 
-**Natural Language (Recommended):**
+**Natural Language:**
 
-> Create a NotebookLM notebook "Agent Skills Best Practices", add source https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices, generate deep-dive style podcast and download as agent-skills-podcast.mp3
-
-**Equivalent CLI:**
-
-```bash
-# Step 1: Create notebook
-notebooklm create "Agent Skills Best Practices"
-# Output: Created notebook: <notebook_id>
-
-# Step 2: Switch to that notebook
-notebooklm use <notebook_id>
-
-# Step 3: Add source (--wait ensures processing completes)
-notebooklm source add "https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices" --wait
-
-# Step 4: Verify source status
-notebooklm source list
-# Confirm all sources show status: "completed"
-
-# Step 5: Generate podcast (--wait blocks until complete)
-notebooklm generate audio --wait
-
-# Step 6: Download
-notebooklm download audio agent-skills-podcast.mp3
-
-# Step 7: Verify file
-ls -la agent-skills-podcast.mp3
-```
-
-**Key Points:**
-
-| Point | Description |
-|:------|:------------|
-| **Concise instruction** | Single sentence contains full intent, OpenClaw decomposes steps automatically |
-| **Progress verification** | `--wait` flag ensures async operations complete before continuing |
-| **Error prevention** | Verify source status before generating, avoid empty podcasts |
-| **Degrees of freedom** | Natural language = high freedom (OpenClaw decides); CLI = low freedom (precise control) |
+> Create a Notebook "Agent Skills Best Practices", add source https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
+> Generate a deep-dive discussion style podcast and download as agent-skills-podcast.mp3
 
 ### Example 2: Batch Generate Learning Materials
 
-**Scenario**: Generate quiz and flashcards for a course.
+**Scenario**: Generate quiz questions and flashcards for a course.
 
-**Natural language:**
-
-> Generate 20 quiz questions from current notebook, then generate flashcards, both exported as Markdown
-
-**Equivalent CLI:**
-
-```bash
-# Generate quiz
-notebooklm generate quiz --quantity more
-
-# Generate flashcards
-notebooklm generate flashcards --quantity more
-
-# Export
-notebooklm download quiz --format markdown ./quiz.md
-notebooklm download flashcards --format markdown ./flashcards.md
-```
+> Generate 20 quiz questions from current notebook, then generate flashcards, both exported as Markdown format
 
 ### Example 3: Research and Auto-Import
 
 **Scenario**: Auto-search and import relevant materials.
 
-**Natural language:**
-
-> Research "LLM Function Calling", search web resources and import into current notebook
-
-**Equivalent CLI:**
-
-```bash
-notebooklm source add-research "LLM Function Calling"
-```
+> Help me research "LLM Function Calling", search web resources and import into notebook
 
 ### Example 4: Generate Mind Map
 
 **Scenario**: Visualize knowledge structure.
 
-**Natural language:**
-
-> Generate mind map of current notebook, export as JSON
-
-**Equivalent CLI:**
-
-```bash
-notebooklm generate mind-map
-notebooklm download mind-map mindmap.json
-```
+> Generate mind map of current notebook, export as JSON format
 
 ---
 
 ## Supported Content Types
 
 | Type | Options | Export Formats |
-|:-----|:--------|:---------------|
+| :--- | :------- | :-------------- |
 | **Audio Overview** | 4 styles (deep-dive/brief/critique/debate), 3 durations, 50+ languages | MP3/MP4 |
 | **Video Overview** | 3 styles (explainer/brief/cinematic), 9 visual styles, separate `cinematic-video` alias | MP4 |
 | **Slide Deck** | Detailed/presentation version, adjustable length | PDF, PPTX |
@@ -303,10 +235,6 @@ notebooklm download audio ./x.mp3   # Download audio
 notebooklm download video ./x.mp4   # Download video
 notebooklm download cinematic-video ./x.mp4  # Download documentary video
 notebooklm download quiz --format markdown ./x.md  # Download quiz
-
-# Skill
-notebooklm skill install            # Install Claude Code skill
-notebooklm skill status             # Check skill status
 ```
 
 ---
@@ -345,7 +273,7 @@ cat /home/node/.claude/skills/notebooklm/skill.md
 
 If skill file exists but OpenClaw doesn't recognize it, ask OpenClaw to re-read:
 
-> Please read ~/.claude/skills/notebooklm/skill.md and tell me what capabilities you learned
+> Copy the notebooklm skill from ~/.claude/skills to your skills directory, then tell me what capabilities you learned from this skill?
 
 ### Permission Issues
 
