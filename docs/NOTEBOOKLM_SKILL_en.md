@@ -5,9 +5,9 @@ This guide explains how to integrate and use the Google NotebookLM CLI skill in 
 ## Table of Contents
 
 - [Overview](#overview)
-- [Host Machine Installation & Authentication](#host-machine-installation--authentication)
-- [Container Environment Auto-Configuration](#container-environment-auto-configuration)
-- [Installing Skill via Natural Language](#installing-skill-via-natural-language)
+- [Quick Start](#quick-start)
+- [Architecture](#architecture)
+- [Step-by-Step Configuration](#step-by-step-configuration)
 - [Practical Examples](#practical-examples)
 - [Troubleshooting](#troubleshooting)
 
@@ -30,20 +30,109 @@ This guide explains how to integrate and use the Google NotebookLM CLI skill in 
 
 ---
 
-## Host Machine Installation & Authentication
+## Quick Start
 
-### 1. Install CLI Tool
+```bash
+# 1. Install CLI on host (complete Google authentication)
+pip install "notebooklm-py[browser]"
+notebooklm login
+
+# 2. Install Skill on host
+notebooklm skill install
+
+# 3. Start container (auto-installs CLI + shares auth + mounts Skills)
+make up
+
+# 4. Copy Skill via chat
+# Tell OpenClaw: "Copy notebooklm skill from host's mounted ~/.claude/skills/"
+```
+
+---
+
+## Architecture
+
+### Why This Workflow?
+
+| Component | Host | Container | Sharing Method | Reason |
+|:----------|:-----|:----------|:---------------|:-------|
+| **CLI Tool** | ✓ Installed | ✓ Installed | Cannot share directly | Python binaries not cross-OS compatible (macOS ≠ Linux) |
+| **Google Auth** | ✓ | Shared via mount | bind mount | Auth is a JSON file, directly shareable |
+| **Skill Files** | ✓ Installed | Shared via copy | bind mount + copy | Skill is text files, directly shareable |
+
+### Data Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           Host Machine                                   │
+│                                                                         │
+│  ~/.notebooklm/storage_state.json  ←── Google auth credentials          │
+│  ~/.claude/skills/notebooklm/      ←── Claude Code Skill                │
+│                                                                         │
+└─────────────────────────────┬───────────────────────────────────────────┘
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+          ▼                   ▼                   ▼
+   bind mount (rw)     bind mount (rw)     PIP_TOOLS env var
+          │                   │                   │
+┌─────────┴───────────────────┴───────────────────┴───────────────────────┐
+│                         Container                                        │
+│                                                                         │
+│  /home/node/.notebooklm/     ←── Auth shared (directly usable)          │
+│  /home/node/.claude/skills/  ←── Skills mounted (copy to OpenClaw dir)  │
+│  /usr/local/bin/notebooklm   ←── Installed via uv at startup            │
+│                                                                         │
+│  docker-entrypoint.sh execution flow:                                    │
+│  1. Detect PIP_TOOLS environment variable                                │
+│  2. uv pip install --system notebooklm-py                               │
+│  3. Create /root/.notebooklm → /home/node/.notebooklm symlink           │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Configuration Files
+
+**docker-compose.yml** (lines 123-125):
+```yaml
+volumes:
+  # Claude Code session state (skills sharing)
+  - ${HOME}/.claude:/home/node/.claude:rw
+  # NotebookLM auth (auth sharing)
+  - ${HOME}/.notebooklm:/home/node/.notebooklm:rw
+```
+
+**docker-entrypoint.sh** (lines 176-229):
+```bash
+# PIP_TOOLS env var triggers CLI installation
+if [[ -n "${PIP_TOOLS:-}" ]]; then
+    # Fast install via uv
+    uv pip install --system --break-system-packages "${pkg_name}"
+fi
+```
+
+**.env** (line 75):
+```bash
+# Design note: Could be baked into image, but dynamic install demonstrates
+# image extensibility pattern
+PIP_TOOLS=notebooklm-py:notebooklm
+```
+
+---
+
+## Step-by-Step Configuration
+
+### Step 1: Install CLI on Host
 
 ```bash
 # Basic installation
 pip install notebooklm-py
 
-# Install browser login support (required for first-time setup)
+# Install browser login support (required for initial setup)
 pip install "notebooklm-py[browser]"
 playwright install chromium
 ```
 
-### 2. Google Account Authentication
+### Step 2: Complete Google Authentication
 
 ```bash
 # Start browser login flow
@@ -62,10 +151,9 @@ This will automatically open a browser window:
 notebooklm login --browser msedge
 ```
 
-### 3. Verify Authentication Status
+**Verify Authentication**:
 
 ```bash
-# Check authentication status
 notebooklm auth check --test
 ```
 
@@ -77,43 +165,7 @@ Expected output:
 ✓ API access confirmed
 ```
 
----
-
-## Container Environment Configuration
-
-OpenClaw DevKit is pre-configured for NotebookLM support, sharing host authentication with the container.
-
-### Configuration Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Host Machine                           │
-│                                                             │
-│  ~/.notebooklm/                                             │
-│  └── storage_state.json  ←── Google auth credentials        │
-│                                                             │
-│  ~/.claude/skills/                                          │
-│  └── notebooklm/         ←── Claude Code Skill              │
-│                                                             │
-└────────────────────┬────────────────────────────────────────┘
-                     │ bind mount (rw)
-                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      Container                              │
-│                                                             │
-│  /home/node/.notebooklm/                                    │
-│  └── storage_state.json  ←── Shared with host               │
-│                                                             │
-│  /root/.notebooklm → /home/node/.notebooklm  (symlink)      │
-│                                                             │
-│  ~/.claude/skills/        ←── Copy skill here via chat       │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Install Skill on Host Machine
-
-After completing CLI installation and authentication, install the Claude Code skill on your **host machine**:
+### Step 3: Install Skill on Host
 
 ```bash
 # Run on host machine
@@ -122,56 +174,54 @@ notebooklm skill install
 
 This installs the skill to `~/.claude/skills/notebooklm/` directory.
 
-### Copy Skill to Container via Chat
+### Step 4: Start Container
 
-After starting the container, simply tell OpenClaw:
+```bash
+make up
+```
 
-> "Find and copy the notebooklm skill from host's ~/.claude/skills/ directory into the container"
+The container startup automatically:
+1. Mounts `~/.notebooklm/` → Shares Google authentication
+2. Mounts `~/.claude/` → Shares Skills directory
+3. Installs `notebooklm` CLI via `PIP_TOOLS` environment variable
 
-Or more concisely:
-
-> "Copy notebooklm skill from host machine for me"
-
-OpenClaw will automatically copy the skill—no need to reinstall CLI and skill inside the container.
-
-### Verify Configuration
+**Verify Container Configuration**:
 
 ```bash
 # Enter container
 make shell
 
-# Check if CLI is available (shared via volume mount)
-notebooklm auth check
+# Check CLI (installed at container startup)
+which notebooklm
+# Output: /usr/local/bin/notebooklm
 
-# Check if skill exists
-ls ~/.claude/skills/notebooklm/
+# Check auth (shared from host)
+notebooklm auth check
+# Output: ✓ Authentication valid
+
+# Check Skills directory (mounted from host)
+ls /home/node/.claude/skills/
+# Output: notebooklm
 ```
 
----
+### Step 5: Copy Skill to OpenClaw
 
-## Using Skill in Container
+Tell OpenClaw via chat:
 
-### Confirm Skill is Ready
+> "Copy notebooklm skill from the host's mounted ~/.claude/skills/ directory to OpenClaw's skills directory"
 
-If you've copied the skill from host machine as described above, verify directly:
+Or more concisely:
+
+> "Copy notebooklm skill for me"
+
+OpenClaw will automatically complete the skill copy.
+
+**Verify Skill Availability**:
 
 ```bash
-# Check skill status
+# Inside container
 notebooklm skill status
 ```
-
-### Fallback: Direct Installation in Container
-
-If not copied from host, you can also install directly inside the container:
-
-```bash
-# CLI installation
-notebooklm skill install
-```
-
-Or via natural language:
-
-> "Install the notebooklm skill so I can manage my Google NotebookLM notebooks"
 
 ---
 
@@ -181,20 +231,7 @@ Or via natural language:
 
 **Scenario**: Use NotebookLM to research Claude Agent Skills best practices and generate a podcast for listening during commute.
 
-This example demonstrates core NotebookLM Skill usage: create notebook → add source → generate content → download.
-
-#### Workflow Checklist
-
-Copy this checklist to track progress:
-
-```
-Progress:
-- [ ] Step 1: Create notebook
-- [ ] Step 2: Add source (wait for processing)
-- [ ] Step 3: Verify source is indexed
-- [ ] Step 4: Generate audio
-- [ ] Step 5: Download and verify
-```
+This example demonstrates the core workflow: create notebook → add source → generate content → download.
 
 #### Natural Language Instruction (Recommended)
 
@@ -229,10 +266,10 @@ notebooklm source list
 notebooklm generate audio "deep-dive discussion style" --wait
 
 # Step 6: Download
-notebooklm download audio ./agent-skills-podcast.mp3
+notebooklm download audio agent-skills-podcast.mp3
 
 # Step 7: Verify file
-ls -la ./agent-skills-podcast.mp3
+ls -la agent-skills-podcast.mp3
 ```
 
 #### Key Points
@@ -345,18 +382,31 @@ notebooklm download mind-map ./mindmap.json
 # Check authentication status
 notebooklm auth check --test
 
-# Re-login
+# Re-login (run on host)
 notebooklm login
 ```
 
-### Command Not Found in Container
+### CLI Not Found in Container
 
 ```bash
 # Check if installed
 which notebooklm
 
-# Manual installation
-uv pip install --system notebooklm-py
+# Manual installation (if PIP_TOOLS not configured)
+uv pip install --system --break-system-packages notebooklm-py
+```
+
+### Skill Not Working
+
+```bash
+# Check mounted directory
+ls /home/node/.claude/skills/
+
+# Check OpenClaw's skills directory
+ls ~/.claude/skills/
+
+# Manual copy
+cp -r /home/node/.claude/skills/notebooklm ~/.claude/skills/
 ```
 
 ### Permission Issues

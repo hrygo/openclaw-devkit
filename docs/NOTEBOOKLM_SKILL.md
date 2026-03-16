@@ -5,9 +5,9 @@
 ## 目录
 
 - [概述](#概述)
-- [宿主机安装与认证](#宿主机安装与认证)
-- [容器环境自动配置](#容器环境自动配置)
-- [通过自然语言安装技能](#通过自然语言安装技能)
+- [快速开始](#快速开始)
+- [架构原理](#架构原理)
+- [分步配置](#分步配置)
 - [实战案例](#实战案例)
 - [故障排除](#故障排除)
 
@@ -30,9 +30,97 @@
 
 ---
 
-## 宿主机安装与认证
+## 快速开始
 
-### 1. 安装 CLI 工具
+```bash
+# 1. 宿主机安装 CLI（完成 Google 认证）
+pip install "notebooklm-py[browser]"
+notebooklm login
+
+# 2. 宿主机安装 Skill
+notebooklm skill install
+
+# 3. 启动容器（自动安装 CLI + 共享认证 + 挂载 Skills）
+make up
+
+# 4. 对话复制 Skill
+# 对 OpenClaw 说: "从宿主机挂载的 ~/.claude/skills/ 复制 notebooklm skill"
+```
+
+---
+
+## 架构原理
+
+### 为什么需要这个流程？
+
+| 组件         | 宿主机 | 容器   | 共享方式          | 原因                                    |
+| :----------- | :----- | :----- | :---------------- | :-------------------------------------- |
+| **CLI 工具** | ✓ 安装 | ✓ 安装 | 无法直接共享      | Python 二进制不跨 OS 兼容（macOS ≠ Linux）|
+| **Google 认证** | ✓     | 通过挂载共享 | bind mount | 认证是 JSON 文件，可直接共享             |
+| **Skill 文件** | ✓ 安装 | 通过复制共享 | bind mount + 复制 | Skill 是文本文件，可直接共享              |
+
+### 数据流图
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           宿主机 (Host)                                  │
+│                                                                         │
+│  ~/.notebooklm/storage_state.json  ←── Google 认证凭证                   │
+│  ~/.claude/skills/notebooklm/      ←── Claude Code Skill                │
+│                                                                         │
+└─────────────────────────────┬───────────────────────────────────────────┘
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+          ▼                   ▼                   ▼
+   bind mount (rw)     bind mount (rw)     PIP_TOOLS 环境变量
+          │                   │                   │
+┌─────────┴───────────────────┴───────────────────┴───────────────────────┐
+│                         容器 (Container)                                │
+│                                                                         │
+│  /home/node/.notebooklm/     ←── 认证共享（可直接使用）                   │
+│  /home/node/.claude/skills/  ←── Skills 挂载（需复制到 OpenClaw 目录）    │
+│  /usr/local/bin/notebooklm   ←── 容器启动时通过 uv 安装                   │
+│                                                                         │
+│  docker-entrypoint.sh 执行流程:                                          │
+│  1. 检测 PIP_TOOLS 环境变量                                              │
+│  2. uv pip install --system notebooklm-py                               │
+│  3. 创建 /root/.notebooklm → /home/node/.notebooklm 符号链接             │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 关键配置文件
+
+**docker-compose.yml** (第 123-125 行):
+```yaml
+volumes:
+  # Claude Code session state (skills 共享)
+  - ${HOME}/.claude:/home/node/.claude:rw
+  # NotebookLM auth (认证共享)
+  - ${HOME}/.notebooklm:/home/node/.notebooklm:rw
+```
+
+**docker-entrypoint.sh** (第 176-229 行):
+```bash
+# PIP_TOOLS 环境变量触发 CLI 安装
+if [[ -n "${PIP_TOOLS:-}" ]]; then
+    # 使用 uv 快速安装
+    uv pip install --system --break-system-packages "${pkg_name}"
+fi
+```
+
+**.env** (第 75 行):
+```bash
+# 设计说明: 本可内置，但采用动态安装作为镜像可扩展性演示
+PIP_TOOLS=notebooklm-py:notebooklm
+```
+
+---
+
+## 分步配置
+
+### Step 1: 宿主机安装 CLI
 
 ```bash
 # 基础安装
@@ -43,7 +131,7 @@ pip install "notebooklm-py[browser]"
 playwright install chromium
 ```
 
-### 2. Google 账号认证
+### Step 2: 完成 Google 认证
 
 ```bash
 # 启动浏览器登录流程
@@ -54,66 +142,26 @@ notebooklm login
 
 1. 登录你的 Google 账号
 2. 完成身份验证
-3. 认证信息会自动保存到 `~/.notebooklm/storage_state.json`
+3. 认证信息保存到 `~/.notebooklm/storage_state.json`
 
 **企业用户**（需要 Edge SSO）：
-
 ```bash
 notebooklm login --browser msedge
 ```
 
-### 3. 验证认证状态
-
+**验证认证**：
 ```bash
-# 检查认证状态
 notebooklm auth check --test
 ```
 
 输出示例：
-
 ```
 ✓ Storage file exists: /Users/you/.notebooklm/storage_state.json
 ✓ Authentication valid
 ✓ API access confirmed
 ```
 
----
-
-## 容器环境配置
-
-OpenClaw DevKit 已预配置 NotebookLM 支持，实现宿主机认证与容器共享。
-
-### 配置原理
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      宿主机 (Host)                           │
-│                                                             │
-│  ~/.notebooklm/                                             │
-│  └── storage_state.json  ←── Google 认证凭证                 │
-│                                                             │
-│  ~/.claude/skills/                                          │
-│  └── notebooklm/         ←── Claude Code Skill              │
-│                                                             │
-└────────────────────┬────────────────────────────────────────┘
-                     │ bind mount (rw)
-                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   容器 (Container)                           │
-│                                                             │
-│  /home/node/.notebooklm/                                    │
-│  └── storage_state.json  ←── 与宿主机共享                    │
-│                                                             │
-│  /root/.notebooklm → /home/node/.notebooklm  (符号链接)      │
-│                                                             │
-│  ~/.claude/skills/        ←── 通过对话复制 skill 到此处       │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 宿主机安装 Skill
-
-完成 CLI 安装和认证后，在**宿主机**安装 Claude Code skill：
+### Step 3: 宿主机安装 Skill
 
 ```bash
 # 在宿主机执行
@@ -122,56 +170,52 @@ notebooklm skill install
 
 这会将 skill 安装到 `~/.claude/skills/notebooklm/` 目录。
 
-### 通过对话复制 Skill 到容器
+### Step 4: 启动容器
 
-启动容器后，直接对 OpenClaw 说：
+```bash
+make up
+```
 
-> "从宿主机的 ~/.claude/skills/ 目录查找并复制 notebooklm skill 到容器内"
+容器启动时会自动：
+1. 挂载 `~/.notebooklm/` → 共享 Google 认证
+2. 挂载 `~/.claude/` → 共享 Skills 目录
+3. 通过 `PIP_TOOLS` 安装 `notebooklm` CLI
 
-或更简洁：
-
-> "帮我从宿主机复制 notebooklm skill"
-
-OpenClaw 会自动完成 skill 复制，无需在容器内重复安装 CLI 和 skill。
-
-### 验证配置
-
+**验证容器配置**：
 ```bash
 # 进入容器
 make shell
 
-# 检查 CLI 是否可用（通过 volume 挂载共享）
-notebooklm auth check
+# 检查 CLI（容器启动时安装）
+which notebooklm
+# 输出: /usr/local/bin/notebooklm
 
-# 检查 skill 是否存在
-ls ~/.claude/skills/notebooklm/
+# 检查认证（来自宿主机挂载）
+notebooklm auth check
+# 输出: ✓ Authentication valid
+
+# 检查 Skills 目录（来自宿主机挂载）
+ls /home/node/.claude/skills/
+# 输出: notebooklm
 ```
 
----
+### Step 5: 复制 Skill 到 OpenClaw
 
-## 在容器中使用 Skill
+通过对话告诉 OpenClaw：
 
-### 确认 Skill 就绪
+> "从宿主机挂载的 ~/.claude/skills/ 目录复制 notebooklm skill 到 OpenClaw 的 skills 目录"
 
-如果已按上述步骤从宿主机复制 skill，可直接验证：
+或更简洁：
 
+> "复制 notebooklm skill 给我"
+
+OpenClaw 会自动完成 skill 复制。
+
+**验证 Skill 可用**：
 ```bash
-# 检查 skill 状态
+# 在容器内
 notebooklm skill status
 ```
-
-### 备选：容器内直接安装
-
-如未从宿主机复制，也可在容器内直接安装：
-
-```bash
-# CLI 安装
-notebooklm skill install
-```
-
-或通过自然语言：
-
-> "帮我安装 notebooklm skill，这样我就可以通过自然语言操控 NotebookLM 了"
 
 ---
 
@@ -181,20 +225,7 @@ notebooklm skill install
 
 **场景**: 使用 NotebookLM 研究 Claude Agent Skills 最佳实践，生成播客便于通勤时收听。
 
-本案例演示 NotebookLM Skill 的核心用法：创建 notebook → 导入来源 → 生成内容 → 下载。
-
-#### 工作流清单
-
-复制此清单跟踪进度：
-
-```
-进度：
-- [ ] Step 1: 创建 notebook
-- [ ] Step 2: 添加来源（等待处理完成）
-- [ ] Step 3: 验证来源已索引
-- [ ] Step 4: 生成音频
-- [ ] Step 5: 下载并验证
-```
+本案例演示核心流程：创建 notebook → 导入来源 → 生成内容 → 下载。
 
 #### 自然语言指令（推荐）
 
@@ -202,12 +233,12 @@ notebooklm skill install
 
 **基础版（下载到本地）**：
 
-> 创建一个 Notebook “Agent Skills 最佳实践”，添加来源：https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
+> 创建一个 Notebook "Agent Skills 最佳实践"，添加来源：https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
 > 并生成一个深入讨论风格的播客，下载输出为 agent-skills-podcast.mp3
 
 **进阶版（通过 Slack 发送）**：
 
-> 创建一个 Notebook “Agent Skills 最佳实践”，添加来源：https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
+> 创建一个 Notebook "Agent Skills 最佳实践"，添加来源：https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
 > 生成一个深入讨论风格的播客，然后通过 Slack 发给我
 
 #### 等效 CLI 命令（手动执行）
@@ -347,18 +378,31 @@ notebooklm download mind-map ./mindmap.json
 # 检查认证状态
 notebooklm auth check --test
 
-# 重新登录
+# 重新登录（在宿主机执行）
 notebooklm login
 ```
 
-### 容器内找不到命令
+### 容器内找不到 CLI
 
 ```bash
 # 检查是否安装
 which notebooklm
 
-# 手动安装
-uv pip install --system notebooklm-py
+# 手动安装（如果 PIP_TOOLS 未配置）
+uv pip install --system --break-system-packages notebooklm-py
+```
+
+### Skill 未生效
+
+```bash
+# 检查挂载目录
+ls /home/node/.claude/skills/
+
+# 检查 OpenClaw 的 skills 目录
+ls ~/.claude/skills/
+
+# 手动复制
+cp -r /home/node/.claude/skills/notebooklm ~/.claude/skills/
 ```
 
 ### 权限问题
