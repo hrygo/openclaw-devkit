@@ -111,11 +111,51 @@ make clean-volumes    # 清理所有数据卷 (危险!)
 
 ## Development Workflow
 
-1. 首次设置: `make install`
-2. 交互式配置: `make onboard`
-3. 启动服务: `make up`
-4. 访问仪表盘: `make dashboard`
-5. 查看日志: `make logs`
+### 首次设置 (完整流程)
+
+```bash
+# 1. 安装环境
+make install
+
+# 2. 交互式配置 LLM/API
+make onboard
+
+# 3. 启动服务
+make up
+
+# 4. 访问仪表盘 (自动带 token)
+make dashboard
+```
+
+### 首次访问 UI 的认证流程
+
+OpenClaw 使用 token 认证保护 Gateway。首次访问 UI 时：
+
+1. **执行 `make dashboard`** - 生成带 token 的直通链接
+2. **打开链接** - 浏览器自动保存 token 到 localStorage
+3. **如需配对** - 执行 `make approve` 批准配对请求
+
+```bash
+# 一键直达仪表盘 (推荐)
+make dashboard
+
+# 如果显示 "pairing required"，执行：
+make approve
+
+# 然后刷新浏览器页面
+```
+
+> **注意**: Gateway token 由 `OPENCLAW_GATEWAY_TOKEN` 环境变量自动管理，
+> entrypoint 脚本会同步到配置文件，确保 `make dashboard` 生成的链接始终有效。
+
+### 日常使用
+
+```bash
+make up           # 启动服务
+make dashboard    # 打开仪表盘
+make logs         # 查看日志
+make down         # 停止服务
+```
 
 ## Environment Variables
 
@@ -152,6 +192,27 @@ gh run view <run-id> --repo hrygo/openclaw-devkit --log 2>&1 | grep -E "(ERROR|f
 ```
 
 ## Gotchas
+
+### Gateway Token 认证
+
+**症状**: 打开 UI 报错 `unauthorized: gateway token missing` 或 `token mismatch`
+
+**原因**: OpenClaw Gateway 使用 token 认证，需在 UI 中配置或使用带 token 的直通链接
+
+**解决**:
+```bash
+# 方法 1 (推荐): 使用直通链接
+make dashboard
+
+# 方法 2: 如显示 "pairing required"
+make approve
+# 然后刷新浏览器
+```
+
+**技术细节**:
+- Gateway token 存储在 `OPENCLAW_GATEWAY_TOKEN` 环境变量
+- `docker-entrypoint.sh` 自动同步 token 到配置文件
+- `make dashboard` 生成的 URL 包含 `#token=...` 参数
 
 ### Shell 条件执行陷阱 (Dockerfile)
 

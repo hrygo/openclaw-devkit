@@ -211,6 +211,11 @@ run_as_node openclaw config set gateway.mode local --strict-json >/dev/null 2>&1
 run_as_node openclaw config set gateway.bind lan --strict-json >/dev/null 2>&1 || true
 run_as_node openclaw config set gateway.controlUi.allowedOrigins "${OPENCLAW_ALLOWED_ORIGINS:-[\"http://127.0.0.1:18789\", \"http://localhost:18789\", \"http://0.0.0.0:18789\"]}" --strict-json >/dev/null 2>&1 || true
 
+# Sync gateway token from environment variable to config (ensures dashboard URL works)
+if [[ -n "${OPENCLAW_GATEWAY_TOKEN:-}" ]]; then
+    run_as_node openclaw config set gateway.auth.token "\"${OPENCLAW_GATEWAY_TOKEN}\"" --strict-json >/dev/null 2>&1 || true
+fi
+
 # ------------------------------------------------------------------------------
 # 8. Execute CMD (drop privileges if root)
 #    Ensures all files created by the app belong to 'node' user

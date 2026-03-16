@@ -374,14 +374,17 @@ logs-all: ## 查看所有容器日志
 shell: ## 进入 Gateway 容器
 	@docker compose exec openclaw-gateway bash
 
-dashboard: ## 🚀 一键直达仪表盘 (免配对直通链接)
+dashboard: ## 🚀 一键直达仪表盘 (自动带 token)
 	@echo "$(INFO) 正在生成直通链接..."
 	@URL=$$(docker compose exec -T openclaw-gateway openclaw dashboard --no-open | grep "Dashboard URL:" | cut -d' ' -f3); \
 	if [ -n "$$URL" ]; then \
 		echo "$(SUCCESS) 仪表盘已就绪:"; \
 		echo "  $(BOLD)$(CYAN)$$URL$(NC)"; \
 		echo ""; \
-		echo "提示: 点击上方链接可直接进入，无需手动配对。"; \
+		if command -v open >/dev/null 2>&1; then \
+			open "$$URL" 2>/dev/null || true; \
+		fi; \
+		echo "提示: 链接已自动打开。如显示 'pairing required' 请执行 $(BOLD)make approve$(NC)"; \
 	else \
 		echo "$(ERROR) 无法获取 URL，请确保容器正在运行。"; \
 	fi
