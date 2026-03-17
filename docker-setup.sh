@@ -408,6 +408,11 @@ repair_host_permissions() {
 
 # 先检查并修复权限
 repair_host_permissions "$OPENCLAW_CONFIG_DIR"
+repair_host_permissions "$OPENCLAW_WORKSPACE_DIR"
+repair_host_permissions "$HOME/.openclaw-in-docker"
+repair_host_permissions "$HOME/.claude"
+repair_host_permissions "$HOME/.notebooklm"
+repair_host_permissions "$HOME/.agents/skills"
 
 mkdir -p "$OPENCLAW_CONFIG_DIR"
 mkdir -p "$OPENCLAW_WORKSPACE_DIR"
@@ -418,6 +423,8 @@ mkdir -p "$OPENCLAW_CONFIG_DIR/agents/main/agent"
 mkdir -p "$OPENCLAW_CONFIG_DIR/agents/main/sessions"
 mkdir -p "$OPENCLAW_CONFIG_DIR/agents/codex/agent"
 mkdir -p "$OPENCLAW_CONFIG_DIR/agents/codex/sessions"
+# Ensure the host directory for the container's state exists
+mkdir -p "$HOME/.openclaw-in-docker"
 
 # 优雅迁移 Git 身份：如果发现宿主机有热备用的 Gitconfig，自动推入 Seed，规避 docker-compose 的危险空挂载
 if [[ -f "$HOME/.gitconfig-hotplex" ]]; then
@@ -538,8 +545,10 @@ fi
 # ============================================================
 
 echo ""
-info "正在调度 Docker 引擎启动服务容器..."
-docker compose up -d openclaw-gateway
+info "正在调度 Docker 引擎准备服务环境..."
+# 仅拉取/准备，不启动，遵循 "Install-only" 策略
+# docker compose up -d openclaw-gateway
+docker compose pull openclaw-gateway >/dev/null 2>&1 || true
 
 # 清理一次性的 init 容器
 docker rm openclaw-init >/dev/null 2>&1 || true
@@ -556,28 +565,20 @@ fi
 cat <<END
 
 ${BLUE}${BOLD}============================================================${NC}
-  ${GREEN}${BOLD}OpenClaw 开发环境已就绪${NC}
+  ${GREEN}${BOLD}OpenClaw 环境初始化准备就绪${NC}
 ${BLUE}${BOLD}============================================================${NC}
-
-访问地址:
-  ${CYAN}http://127.0.0.1:${OPENCLAW_GATEWAY_PORT}/${NC}
-
-Gateway Token:
-  ${YELLOW}${OPENCLAW_GATEWAY_TOKEN}${NC}
 
 配置目录:
   ${BOLD}${OPENCLAW_CONFIG_DIR}${NC}
 
-常用命令:
-  ${INFO}查看实时日志:  ${BOLD}${COMPOSE_HINT} logs -f openclaw-gateway${NC}
-  ${INFO}进入内部 Shell: ${BOLD}${COMPOSE_HINT} exec openclaw-gateway bash${NC}
-  ${INFO}交互式配置引导:  ${BOLD}make onboard${NC}
+${BOLD}下一步 (Next Steps):${NC}
+  1. 运行配置引导:  ${BOLD}make onboard${NC}
+  2. 启动核心服务:  ${BOLD}make up${NC}
 
 包含的开发工具:
   ${SUCCESS}Node.js 22 + pnpm + Bun
   ${SUCCESS}Python 3 + Office 自动化套件
   ${SUCCESS}Go & JDK 21 (根据版本选择)
   ${SUCCESS}Chromium/Playwright & Pandoc & LaTeX
-
 
 END

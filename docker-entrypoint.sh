@@ -79,6 +79,12 @@ if [[ "$(id -u)" = "0" ]]; then
         echo "--> Fixing notebooklm permissions..."
         chown -R node:node /home/node/.notebooklm 2>/dev/null || true
     fi
+
+    # Claude directory (shared with host)
+    if [[ -d "/home/node/.claude" ]]; then
+        echo "--> Fixing Claude permissions..."
+        chown -R node:node /home/node/.claude 2>/dev/null || true
+    fi
 fi
 
 # ------------------------------------------------------------------------------
@@ -91,13 +97,26 @@ run_as_node openclaw doctor --fix >/dev/null 2>&1 || true
 if [[ -f "${CONFIG_FILE}" ]]; then
     echo "--> Running configuration surgical repair..."
     
+    # 0. Global Path Surgery (Incremental / Migratory)
+    # Identify and fix host path leaks that cause EACCES in the container.
+    # We use a flag file to ensure this O(N) scan only runs once (or when reset).
+    SURGERY_FLAG="${CONFIG_DIR}/.path_surgery_complete"
+    if [[ ! -f "${SURGERY_FLAG}" ]]; then
+        echo "--> Performing one-time environment path surgery..."
+        find "${CONFIG_DIR}" -type f \( -name "*.json" -o -name "*.jsonl" \) -print0 | xargs -0 sed -i "s|/Users/[^/]*/\.openclaw|/home/node/.openclaw|g" || true
+        find "${CONFIG_DIR}" -type f \( -name "*.json" -o -name "*.jsonl" \) -print0 | xargs -0 sed -i "s|/home/[^/]*/\.openclaw|/home/node/.openclaw|g" || true
+        touch "${SURGERY_FLAG}"
+        echo "--> Path surgery migration completed."
+    fi
+
     # Deep cleanup using Node.js for surgical removal of obsolete nodes
     # Node.js guarantees JSON validity, unlike sed which can corrupt structure
-    run_as_node node -e "
-        const fs = require('fs');
-        const path = '${CONFIG_FILE}';
+    export OPENCLAW_CONFIG_FILE="${CONFIG_FILE}"
+    run_as_node node -e '
+        const fs = require("fs");
+        const path = process.env.OPENCLAW_CONFIG_FILE;
         try {
-            const data = fs.readFileSync(path, 'utf8');
+            const data = fs.readFileSync(path, "utf8");
             const config = JSON.parse(data);
 
             // 1. Clean legacy schema nodes
@@ -106,18 +125,59 @@ if [[ -f "${CONFIG_FILE}" ]]; then
                 delete config.agents.defaults.compaction;
             }
 
-            // 2. Force DevKit Gateway Best-Practices
+            // 2. Cleanup "phantom" auth profiles that block startup
+            // If a profile exists but its mandatory environment variable is missing, remove it.
+            if (config.auth && config.auth.profiles) {
+                for (const [id, profile] of Object.entries(config.auth.profiles)) {
+                    // Specific check for Anthropic/OpenAI defaults that often cause blocks
+                    if (id === "anthropic:default" && !process.env.ANTHROPIC_AUTH_TOKEN) {
+                        delete config.auth.profiles[id];
+                        console.log("--> Pruned phantom auth profile: " + id);
+                    } else if (id === "openai:default" && !process.env.OPENAI_AUTH_TOKEN) {
+                        delete config.auth.profiles[id];
+                        console.log("--> Pruned phantom auth profile: " + id);
+                    }
+                }
+            }
+
+            // 3. Agent-specific auth-profiles.json cleanup
+            // Prune profiles that reference missing environment variables in any agent
+            const agentsDir = require("path").join(require("path").dirname(path), "agents");
+            if (fs.existsSync(agentsDir)) {
+                fs.readdirSync(agentsDir).forEach(agentId => {
+                    const authPath = require("path").join(agentsDir, agentId, "agent", "auth-profiles.json");
+                    if (fs.existsSync(authPath)) {
+                        try {
+                            const authData = JSON.parse(fs.readFileSync(authPath, "utf8"));
+                            let changed = false;
+                            if (authData.profiles) {
+                                Object.keys(authData.profiles).forEach(id => {
+                                    const profile = authData.profiles[id];
+                                    if (profile.keyRef && profile.keyRef.source === "env" && !process.env[profile.keyRef.id]) {
+                                        delete authData.profiles[id];
+                                        changed = true;
+                                        console.log("--> [Agent: " + agentId + "] Pruned phantom secret ref: " + profile.keyRef.id);
+                                    }
+                                });
+                            }
+                            if (changed) fs.writeFileSync(authPath, JSON.stringify(authData, null, 2));
+                        } catch (e) {}
+                    }
+                });
+            }
+
+            // 4. Force DevKit Gateway Best-Practices
             config.gateway = config.gateway || {};
-            config.gateway.bind = 'lan';
-            config.gateway.mode = 'local';
+            config.gateway.bind = "lan";
+            config.gateway.mode = "local";
             config.gateway.controlUi = config.gateway.controlUi || {};
 
             // Comprehensive whitelist for Windows/WSL/Docker dev environments
             const baseOrigins = [
-                'http://127.0.0.1:18789',
-                'http://localhost:18789',
-                'http://0.0.0.0:18789',
-                'http://host.docker.internal:18789'
+                "http://127.0.0.1:18789",
+                "http://localhost:18789",
+                "http://0.0.0.0:18789",
+                "http://host.docker.internal:18789"
             ];
 
             // Add custom origins if provided via ENV
@@ -130,11 +190,11 @@ if [[ -f "${CONFIG_FILE}" ]]; then
             config.gateway.controlUi.allowedOrigins = [...new Set([...baseOrigins, ...customOrigins])];
 
             fs.writeFileSync(path, JSON.stringify(config, null, 2));
-            console.log('--> OpenClaw configuration surgically optimized for DevKit.');
+            console.log("--> OpenClaw configuration surgically optimized for DevKit.");
         } catch (e) {
-            console.error('Warning: Configuration surgery failed: ' + e.message);
+            console.error("Warning: Configuration surgery failed: " + e.message);
         }
-    " || true
+    ' || true
 
     # Re-run doctor to fill in any missing required fields
     run_as_node openclaw doctor --fix >/dev/null 2>&1 || true

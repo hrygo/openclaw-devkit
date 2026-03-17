@@ -170,6 +170,7 @@ help: ## 显示帮助信息
 	@printf "    $(BOLD)make devices$(NC)           查看已配对设备及请求\n"
 	@printf "    $(BOLD)make shell$(NC)             进入隔离沙盒 Shell\n"
 	@printf "    $(BOLD)make test-proxy$(NC)        黑盒代理通配性测试\n"
+	@printf "    $(BOLD)make doctor$(NC)            🛠️  一键诊断并修复容器配置\n"
 	@printf "    $(BOLD)make verify$(NC)            工具链合规检查\n"
 	@printf "\n"
 	@printf "  $(BOLD)$(CYAN)💾  持久化维护 $(NC)\n"
@@ -211,8 +212,7 @@ install: ## 首次安装/初始化环境
 	@OPENCLAW_IMAGE="$(IMAGE_NAME)" bash "$(SETUP_SCRIPT)"
 	@echo "$(SUCCESS) $(GREEN)环境安装完毕!$(NC)"
 	@echo "  $(INFO) 🚀 下一步:"
-	@echo "    1. 执行 $(BOLD)make onboard$(NC) 配置核心模型"
-	@echo "    2. 执行 $(BOLD)make dashboard$(NC) 直接打开 Web UI"
+	@echo "    执行 $(BOLD)make onboard$(NC) 配置核心模型并启动服务"
 
 # ============================================================
 # 服务启动辅助函数
@@ -263,6 +263,7 @@ endef
 
 up: ## 启动服务
 	@mkdir -p "$(HOME)/.agents/skills"
+	@mkdir -p "$(HOME)/.openclaw-in-docker"
 	@echo "$(INFO) 启动 OpenClaw 服务..."
 	@docker compose up -d
 	@echo ""
@@ -276,11 +277,11 @@ start: up ## 启动服务 (别名)
 
 onboard: ## 启动交互式引导程序
 	@echo "$(INFO) 启动交互式引导程序..."
-	@docker compose exec -it -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 openclaw-gateway openclaw onboard
+	@docker compose run --rm -it -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 openclaw-gateway openclaw onboard
 	@echo ""
-	@echo "$(SUCCESS) 配对就绪! 您可以通过以下方式访问 Web UI:"
-	@echo "  ⚡ $(BOLD)方法 A (推荐)$(NC): 执行 $(CYAN)make dashboard$(NC) 一键免密直达"
-	@echo "  🔒 $(BOLD)方法 B (安全)$(NC): 访问网页后执行 $(CYAN)make approve$(NC) 自动授权"
+	@echo "$(SUCCESS) 配置完毕! 接下来请执行:"
+	@echo "  ⚡ $(BOLD)make up$(NC)                正式启动服务"
+	@echo "  🚀 $(BOLD)make dashboard$(NC)         一键免密直达 Web UI"
 
 down: ## 停止服务
 	@echo "$(INFO) 停止服务..."
@@ -427,6 +428,11 @@ gateway-health: ## 检查健康状态
 	@curl -s http://127.0.0.1:$(GATEWAY_PORT)/ >/dev/null 2>&1 && echo "✓ Web UI 正常" || echo "✗ Web UI 不可用"
 
 health: gateway-health ## 检查健康状态 (别名)
+ 
+doctor: ## 🛠️  一键诊断并修复容器配置
+	@echo "$(INFO) 正在诊断容器配置..."
+	@docker compose exec -it -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw openclaw-gateway openclaw doctor --fix
+	@echo "$(SUCCESS) 诊断与修复完成！"
 
 test-proxy: ## 测试代理连接 (默认端口: HTTP=7897, Claude API=15721)
 	@echo "$(INFO) Google (proxy: http://host.docker.internal:7897): "; docker compose exec -T openclaw-gateway \

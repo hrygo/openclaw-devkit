@@ -73,9 +73,7 @@ volumes:
     name: openclaw-playwright-cache
   openclaw-playwright-bin:
     name: openclaw-playwright-bin
-  # Unified state storage for sessions, identities, and logs
-  openclaw-state:
-    name: openclaw-state
+  # Unified state storage for sessions, identities, and logs - REMOVED for host mapping
 
 services:
   # ============================================================================
@@ -95,6 +93,7 @@ services:
     environment:
       - OPENCLAW_CONFIG_DIR=/home/node/.openclaw
       - OPENCLAW_WORKSPACE_DIR=/home/node/.openclaw/workspace
+      - OPENCLAW_HOME=/home/node
     init: true
     volumes:
       # === 必需挂载 (Required) ===
@@ -103,8 +102,8 @@ services:
       - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw-seed:ro
       # Workspace (AI working directory - required!)
       - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace:rw
-      # Unified state volume for persistent container data
-      - openclaw-state:/home/node/.openclaw:rw
+      # Unified state mapping to host for portability
+      - ${HOME:-${USERPROFILE}}/.openclaw-in-docker:/home/node/.openclaw:rw
       # Mount local entrypoint to apply fixes without rebuilding
       - ./docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
 
