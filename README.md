@@ -152,9 +152,13 @@ make rebuild
 </details>
 
 <details>
-<summary><b>Q: 配置文件在哪？</b></summary>
+<summary><b>Q: 配置文件在哪？如何从宿主机修改？</b></summary>
 
-容器内 `~/.openclaw/`，宿主机通过 `openclaw-state` 卷持久化。
+DevKit 采用了双轨挂载：
+- **修改当前活动配置**：编辑宿主机的 `~/.openclaw-in-docker/openclaw.json`。
+- **工作区代码**：位于 `~/.openclaw/workspace/`。
+- **配置种子**：`~/.openclaw/` 仅用于首次初始化。
+- **注意**：宿主机修改配置后，需执行 `make restart` 重启网格使其生效。
 </details>
 
 ---

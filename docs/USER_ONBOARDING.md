@@ -114,11 +114,12 @@ make onboard
 
 ### 5.3 数据持久化
 
-| 数据类型 | 存储位置                    |
-| :------- | :-------------------------- |
-| 配置文件 | `~/.openclaw/openclaw.json` |
-| 会话数据 | Docker 卷 `openclaw-state`  |
-| 工作区   | `~/.openclaw/workspace`     |
+| 数据类型 | 宿主机存储位置 (Host Path) | 说明 |
+| :------- | :-------------------------- | :--- |
+| **活动配置** | `~/.openclaw-in-docker/openclaw.json` | **修改配置请编辑此文件** |
+| **配置种子** | `~/.openclaw/openclaw.json` | 仅用于首次初始化 |
+| **工作区** | `~/.openclaw/workspace` | 开发代码同步区 |
+| **会话状态** | `~/.openclaw-in-docker/sessions/` | 自动保存，Survive Restart |
 
 ---
 

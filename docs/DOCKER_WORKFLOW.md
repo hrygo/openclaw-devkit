@@ -139,6 +139,20 @@ RUN npm install -g openclaw
 - **增量式修复**：通过标记文件确保沉重的全量扫描仅在首次运行，日常启动无需等待。
 - **防止泄露**：通过 `OPENCLAW_HOME` 等变量强制锁定路径生成，确保无障碍执行。
 
+### 目录映射与挂载逻辑 (Mount Hierarchy)
+
+DevKit 采用了“种子映射 (Seed)”与“状态分片 (State)”分离的设计，确保环境在快速同步的同时不丢失运行时状态。
+
+| 宿主机路径 (Host Path) | 容器路径 (Container Path) | 权限 | 用途 (Purpose) |
+| :--- | :--- | :--- | :--- |
+| `~/.openclaw/` | `/home/node/.openclaw-seed` | `ro` | **配置种子**。首次启动时会从此目录拷贝初始配置。 |
+| `~/.openclaw/workspace/` | `/home/node/.openclaw/workspace` | `rw` | **开发工作区**。AI 写代码的地方，实时双向同步。 |
+| `~/.openclaw-in-docker/`| `/home/node/.openclaw` | `rw` | **运行时状态**。包含 `openclaw.json`、Session、审计日志等。 |
+
+#### 如何修改配置文件？
+- **运行时修改**：若要修改正在运行的网关配置，请直接编辑宿主机的 **`~/.openclaw-in-docker/openclaw.json`**，随后执行 `make restart`。
+- **模板修改**：修改 `~/.openclaw/openclaw.json` 仅在首次安装或清空状态卷时生效。
+
 ### 权限迁移
 容器入口脚本会自动修复 `~/.openclaw` 的读写权限。
 

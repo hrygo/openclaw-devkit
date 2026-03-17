@@ -152,9 +152,13 @@ Modify `OPENCLAW_IMAGE` in `.env`, then execute `make rebuild <variant>`.
 </details>
 
 <details>
-<summary><b>Q: Where are config files?</b></summary>
+<summary><b>Q: Where are config files? How to modify them from host?</b></summary>
 
-In container at `~/.openclaw/`, persisted on host via `openclaw-state` volume.
+DevKit uses dual-track mounting:
+- **Modify Active Config**: Edit `~/.openclaw-in-docker/openclaw.json` on the host.
+- **Workspace**: Access your AI code at `~/.openclaw/workspace/`.
+- **Seed Config**: `~/.openclaw/` is for first-time initialization only.
+- **Note**: Run `make restart` after host-side edits for changes to take effect.
 </details>
 
 ---

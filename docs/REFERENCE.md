@@ -162,17 +162,17 @@ make rebuild office
 
 双轨持久化设计保证容器非易失性：
 
-1. **配置挂载 (Bind Mount)**
-   - 路径：`~/.openclaw/`
-   - 用途：存放 `openclaw.json`，允许宿主机直接编辑
+1. **配置文件 (Runtime Config)**
+   - 路径：`~/.openclaw-in-docker/openclaw.json`
+   - 用途：网关运行时的活动配置文件。**修改配置请编辑此文件**，随后执行 `make restart`。
 
-2. **工作区 (双向同步)**
+2. **工作区 (Workspace)**
    - 路径：`~/.openclaw/workspace/`
-   - 用途：开发案板，容器内外文件秒级同步
+   - 用途：开发案板，容器内外文件秒级同步。
 
-3. **状态卷 (Named Volume)**
-   - `.openclaw-state`
-   - 用途：数据库快照、Session 持久化，防止镜像更新导致记忆丢失
+3. **配置种子 (Seed)**
+   - 路径：`~/.openclaw/`
+   - 用途：**仅作为初始化种子**。其内容在容器内被挂载为只读的 `/home/node/.openclaw-seed`，仅在首次启动时用于填充状态。
 
 ---
 

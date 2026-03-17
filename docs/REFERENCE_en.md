@@ -162,17 +162,17 @@ make rebuild office
 
 Dual-track persistence ensures container non-volatility:
 
-1. **Configuration (Bind Mount)**
-   - Path: `~/.openclaw/`
-   - Purpose: Stores `openclaw.json`, enables direct host editing
+1. **Runtime Configuration**
+   - Path: `~/.openclaw-in-docker/openclaw.json`
+   - Purpose: The active configuration file for the running gateway. **Edit this file to modify settings**, then run `make restart`.
 
 2. **Workspace (Bidirectional Sync)**
    - Path: `~/.openclaw/workspace/`
-   - Purpose: Development workbench, millisecond-level sync between host and container
+   - Purpose: Development workbench, millisecond-level sync between host and container.
 
-3. **State (Named Volume)**
-   - `.openclaw-state`
-   - Purpose: DB snapshots, session persistence prevents memory loss during image updates
+3. **Configuration Seed**
+   - Path: `~/.openclaw/`
+   - Purpose: **Initial setup only**. Mounted as read-only `/home/node/.openclaw-seed` to populate state on first boot.
 
 ---
 
