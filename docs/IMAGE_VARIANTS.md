@@ -75,6 +75,6 @@ make install java
 make install office
 
 # 切换与更新
-make rebuild go        # 检测并拉取最新镜像，重启容器
-make build java        # 仅构建（若本地已有镜像则跳过构建直接下载或基于缓存）
+make upgrade go       # 检测并拉取最新镜像，重启容器
+make build java       # 仅构建（若本地已有镜像则跳过构建直接下载或基于缓存）
 ```

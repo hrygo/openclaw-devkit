@@ -111,7 +111,7 @@ make install java
 make install office
 ```
 
-After initial install, modify `OPENCLAW_IMAGE` in `.env`, then run `make rebuild` to switch versions.
+After initial install, modify `OPENCLAW_IMAGE` in `.env`, then run `make upgrade` to switch versions.
 
 ### Daily Operations
 
@@ -123,7 +123,7 @@ After initial install, modify `OPENCLAW_IMAGE` in `.env`, then run `make rebuild
 | View status | `make status` |
 | View logs | `make logs` |
 | Enter container | `make shell` |
-| Force update image | `make rebuild` |
+| Force update image | `make upgrade` |
 
 ---
 
@@ -140,7 +140,7 @@ Ensure your proxy has "Allow LAN Connections" enabled. Run `make test-proxy` to 
 
 `make install` uses local cache by default. To detect and update remote images, run:
 ```bash
-make rebuild
+make upgrade
 ```
 Or manually execute `docker pull ghcr.io/hrygo/openclaw-devkit:latest`.
 </details>
@@ -148,7 +148,7 @@ Or manually execute `docker pull ghcr.io/hrygo/openclaw-devkit:latest`.
 <details>
 <summary><b>Q: How to switch versions?</b></summary>
 
-Modify `OPENCLAW_IMAGE` in `.env`, then execute `make rebuild <variant>`.
+Modify `OPENCLAW_IMAGE` in `.env`, then execute `make upgrade <variant>`.
 </details>
 
 <details>

@@ -91,7 +91,7 @@ make onboard
 | `make build-go` | 构建 Go 版镜像 |
 | `make build-java` | 构建 Java 版镜像 |
 | `make build-office` | 构建 Office 版镜像 |
-| `make rebuild` | 重建镜像并重启服务 |
+| `make upgrade` | 升级镜像并重启服务 |
 | `make update` | 从 GitHub 同步最新代码 |
 
 ### 调试诊断
@@ -146,15 +146,15 @@ make install java
 make install office
 
 # 后续切换
-make rebuild go
-make rebuild java
-make rebuild office
+make upgrade go
+make upgrade java
+make upgrade office
 ```
 
 | 操作 | 命令 | 场景 |
 | :--- | :--- | :--- |
 | 首次安装 | `make install <variant>` | 创建数据目录和配置 |
-| 后续切换 | `make rebuild <variant>` | 已安装后切换版本 |
+| 后续切换 | `make upgrade <variant>` | 已安装后切换版本 |
 
 ---
 

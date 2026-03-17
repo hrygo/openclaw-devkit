@@ -271,9 +271,9 @@ notebooklm login
 
 ### 容器内找不到 CLI
 
-> 注意：notebooklm CLI 已内置于镜像中。如果找不到，请尝试重建镜像：
+> 注意：notebooklm CLI 已内置于镜像中。如果找不到，请尝试升级镜像：
 ```bash
-make rebuild
+make upgrade
 ```
 
 ### Skill 未生效

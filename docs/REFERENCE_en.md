@@ -91,7 +91,7 @@ make onboard
 | `make build-go` | Build Go variant image |
 | `make build-java` | Build Java variant image |
 | `make build-office` | Build Office variant image |
-| `make rebuild` | Rebuild image and restart service |
+| `make upgrade` | Upgrade image and restart service |
 | `make update` | Sync latest code from GitHub |
 
 ### Debugging
@@ -146,15 +146,15 @@ make install java
 make install office
 
 # Switch later
-make rebuild go
-make rebuild java
-make rebuild office
+make upgrade go
+make upgrade java
+make upgrade office
 ```
 
 | Operation | Command | When |
 | :--- | :--- | :--- |
 | First Install | `make install <variant>` | Create data dirs and config |
-| Switch Version | `make rebuild <variant>` | Already installed, need different flavor |
+| Switch Version | `make upgrade <variant>` | Already installed, need different flavor |
 
 ---
 

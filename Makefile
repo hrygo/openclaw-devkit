@@ -15,8 +15,8 @@
 #   make install go          # 安装 Go 版
 #   make install office      # 安装 Office 版
 #   make build              # 构建标准版镜像
-#   make rebuild go         # 构建并重启 Go 版
-#   make rebuild office     # 构建并重启 Office 版
+#   make upgrade go         # 升级并重启 Go 版
+#   make upgrade office     # 升级并重启 Office 版
 # ==============================================================================
 
 # ============================================================
@@ -161,7 +161,7 @@ help: ## 显示帮助信息
 	@printf "\n"
 	@printf "  $(BOLD)$(CYAN)🔧  构建引擎 (Version: dev|go|java|office) $(NC)\n"
 	@printf "    $(BOLD)make build$(NC)             感知式构建 (根据 SKIP_BUILD)\n"
-	@printf "    $(BOLD)make rebuild$(NC)           强制更新镜像并重启\n"
+	@printf "    $(BOLD)make upgrade$(NC)           ⬆️  升级镜像并重启\n"
 	@printf "\n"
 	@printf "  $(BOLD)$(CYAN)🐛  调试与诊断 $(NC)\n"
 	@printf "    $(BOLD)make logs$(NC)              查看 Gateway 实时日志\n"
@@ -338,16 +338,35 @@ build-java: ## 构建 Java 版镜像 (基于 openclaw-runtime:java)
 build-office: ## 构建 Office 版镜像 (基于 openclaw-runtime:office)
 	@$(call do_build,office,$(MAKECMDGOALS))
 
-rebuild: ## 重建镜像并重启
+# --------------------------------------------------------------
+
+upgrade: ## ⬆️  升级镜像并重启 (拉取最新镜像或本地构建)
 	@$(call do_rebuild,dev,$(MAKECMDGOALS))
 
-rebuild-go: ## 重建 Go 版并重启
+upgrade-go: ## 升级 Go 版镜像并重启
 	@$(call do_rebuild,go,$(MAKECMDGOALS))
 
-rebuild-java: ## 重建 Java 版并重启
+upgrade-java: ## 升级 Java 版镜像并重启
 	@$(call do_rebuild,java,$(MAKECMDGOALS))
 
-rebuild-office: ## 重建 Office 版并重启
+upgrade-office: ## 升级 Office 版镜像并重启
+	@$(call do_rebuild,office,$(MAKECMDGOALS))
+
+# 向后兼容别名
+rebuild: ## [已弃用] 请使用 upgrade
+	@echo "$(WARN)  'rebuild' 已更名为 'upgrade'，建议使用新命令"
+	@$(call do_rebuild,dev,$(MAKECMDGOALS))
+
+rebuild-go: ## [已弃用] 请使用 upgrade-go
+	@echo "$(WARN)  'rebuild-go' 已更名为 'upgrade-go'，建议使用新命令"
+	@$(call do_rebuild,go,$(MAKECMDGOALS))
+
+rebuild-java: ## [已弃用] 请使用 upgrade-java
+	@echo "$(WARN)  'rebuild-java' 已更名为 'upgrade-java'，建议使用新命令"
+	@$(call do_rebuild,java,$(MAKECMDGOALS))
+
+rebuild-office: ## [已弃用] 请使用 upgrade-office
+	@echo "$(WARN)  'rebuild-office' 已更名为 'upgrade-office'，建议使用新命令"
 	@$(call do_rebuild,office,$(MAKECMDGOALS))
 
 clean: ## 清理容器和悬空镜像
@@ -496,7 +515,7 @@ update: ## 从 GitHub 同步最新代码
 		echo "$(INFO) 落后远程 $$BEHIND 个提交，正在拉取..."; \
 		git pull --rebase; \
 		echo ""; \
-		echo "$(SUCCESS) 更新完成! 如需应用镜像更新，请执行:$(BOLD) make rebuild$(NC)"; \
+		echo "$(SUCCESS) 更新完成! 如需应用镜像更新，请执行:$(BOLD) make upgrade$(NC)"; \
 	elif [ "$$AHEAD" -gt 0 ] && [ "$$BEHIND" -eq 0 ]; then \
 		echo "$(INFO) 本地领先远程 $$AHEAD 个提交，无需更新"; \
 		echo "$(INFO) 如需推送，请执行:$(BOLD) git push$(NC)"; \

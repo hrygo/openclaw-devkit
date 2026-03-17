@@ -111,7 +111,7 @@ make install java
 make install office
 ```
 
-首次安装后修改 `.env` 中的 `OPENCLAW_IMAGE`，然后执行 `make rebuild` 切换版本。
+首次安装后修改 `.env` 中的 `OPENCLAW_IMAGE`，然后执行 `make upgrade` 切换版本。
 
 ### 日常运维
 
@@ -123,7 +123,7 @@ make install office
 | 查看状态 | `make status` |
 | 查看日志 | `make logs` |
 | 进入容器 | `make shell` |
-| 强制更新镜像 | `make rebuild` |
+| 强制更新镜像 | `make upgrade` |
 
 ---
 
@@ -140,7 +140,7 @@ make install office
 
 `make install` 默认使用本地缓存。若要检测并更新远程镜像，请运行：
 ```bash
-make rebuild
+make upgrade
 ```
 或手动执行 `docker pull ghcr.io/hrygo/openclaw-devkit:latest`。
 </details>
@@ -148,7 +148,7 @@ make rebuild
 <details>
 <summary><b>Q: 如何切换版本？</b></summary>
 
-修改 `.env` 中的 `OPENCLAW_IMAGE`，然后执行 `make rebuild <variant>`。
+修改 `.env` 中的 `OPENCLAW_IMAGE`，然后执行 `make upgrade <variant>`。
 </details>
 
 <details>

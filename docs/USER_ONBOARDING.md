@@ -73,7 +73,7 @@ docker logs openclaw-init  # 查看配置迁移日志
 
 ```bash
 make build            # 构建镜像（本地）
-make rebuild          # 强制重建并重启
+make upgrade          # 升级镜像并重启服务
 make clean            # 清理容器和悬空镜像
 ```
 
@@ -208,7 +208,7 @@ docker exec openclaw-gateway openclaw doctor --fix
 make install go
 
 # 方式 2: 强制拉取最新镜像
-make rebuild
+make upgrade
 ```
 
 ### Q: 访问地址是什么？

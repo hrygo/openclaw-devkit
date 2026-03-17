@@ -270,9 +270,9 @@ notebooklm login
 
 ### CLI Not Found in Container
 
-> Note: notebooklm CLI is now built-in in the image. If not found, try rebuilding the image:
+> Note: notebooklm CLI is now built-in in the image. If not found, try upgrading the image:
 ```bash
-make rebuild
+make upgrade
 ```
 
 ### Skill Not Working

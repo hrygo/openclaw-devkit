@@ -38,10 +38,10 @@ make build            # 构建标准版镜像
 make build-go         # 构建 Go 版镜像
 make build-java       # 构建 Java 版镜像
 make build-office     # 构建 Office 版镜像
-make rebuild          # 重建镜像并重启服务
-make rebuild-go       # 重建 Go 版并重启
-make rebuild-java     # 重建 Java 版并重启
-make rebuild-office   # 重建 Office 版并重启
+make upgrade          # 升级镜像并重启服务
+make upgrade-go       # 升级 Go 版并重启
+make upgrade-java     # 升级 Java 版并重启
+make upgrade-office   # 升级 Office 版并重启
 make update           # 从 GitHub 同步最新代码
 
 # 调试诊断
@@ -91,7 +91,7 @@ make clean-volumes    # 清理所有数据卷 (危险!)
 | java    | ghcr.io/hrygo/openclaw-devkit:java  | Java 支持 (包含 JDK 21)       |
 | office  | ghcr.io/hrygo/openclaw-devkit:office | 办公环境集成 (PDF/OCR)    |
 
-选择版本: `make install <variant>` 或 `make rebuild <variant>`
+选择版本: `make install <variant>` 或 `make upgrade <variant>`
 
 ## Configuration
 
