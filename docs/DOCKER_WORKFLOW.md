@@ -100,10 +100,10 @@ RUN npm install -g openclaw
 
 | 变量                     | 默认值                          | 说明         |
 | :----------------------- | :------------------------------ | :----------- |
-| `OPENCLAW_CONFIG_DIR`    | `~/.openclaw`                   | 配置目录     |
-| `OPENCLAW_WORKSPACE_DIR` | `~/.openclaw/workspace`         | 工作区       |
-| `OPENCLAW_GATEWAY_PORT`  | `18789`                         | Gateway 端口 |
-| `OPENCLAW_IMAGE`         | `ghcr.io/hrygo/openclaw-devkit` | 镜像名       |
+| `OPENCLAW_CONFIG_DIR`    | `/home/node/.openclaw`          | 配置目录 (容器内路径) |
+| `OPENCLAW_WORKSPACE_DIR` | `/home/node/.openclaw/workspace`| 工作区 (容器内路径)  |
+| `OPENCLAW_HOME`          | `/home/node`                    | OpenClaw 根目录 (重要) |
+| `OPENCLAW_GATEWAY_PORT`  | `18789`                         | Gateway 端口         |
 
 ---
 
@@ -133,11 +133,14 @@ RUN npm install -g openclaw
 
 ## 7. 故障处理
 
-### 权限问题
-```bash
-# 修复宿主机目录权限
-sudo chown -R 1000:1000 ~/.openclaw
-```
+### 处理路径兼容性与权限
+传统 Docker 挂载容易因宿主机与容器路径不一致导致 `EACCES` 或路径报错。OpenClaw DevKit 已实现**全自动自愈机制**：
+- **环境路径手术 (Path Surgery)**：启动时自动将配置/日志中的宿主机路径（如 `/Users/xxx`）迁移为容器标准路径。
+- **增量式修复**：通过标记文件确保沉重的全量扫描仅在首次运行，日常启动无需等待。
+- **防止泄露**：通过 `OPENCLAW_HOME` 等变量强制锁定路径生成，确保无障碍执行。
+
+### 权限迁移
+容器入口脚本会自动修复 `~/.openclaw` 的读写权限。
 
 ### 清理
 ```bash

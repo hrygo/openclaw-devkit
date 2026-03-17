@@ -25,6 +25,7 @@
 - 🚀 **Rapid Startup**: One-click deployment, start the full development stack in seconds
 - 🔒 **Secure Isolation**: Containerized execution, secure and controllable environment isolation
 - 💾 **Data Persistence**: Sessions and configs auto-saved, survive restarts
+- 🩹 **Self-Healing Engine**: Entrypoint automatically fixes path leaks and cleans stale secrets for 100% startup success
 
 ---
 
@@ -79,7 +80,7 @@ make approve
 
 > [!NOTE]
 > `make install` automates: directory creation, `.env` config generation, image synchronization, and fixing host permissions.
-> **Note**: To ensure installation speed, `make install` prioritizes existing local images. **If this is not your first installation, it is recommended to run `make rebuild` to pull the latest image version.**
+> **Note**: `make install` only performs setup and preparation; it **does not start services**. After installation, follow the flow to run `make onboard` and `make up`.
 
 ### First-time UI Authentication Flow
 

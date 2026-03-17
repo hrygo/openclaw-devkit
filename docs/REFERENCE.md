@@ -33,7 +33,9 @@
 执行 `make install` 时，系统自动执行以下操作：
 1. **环境检查**：确认 Docker 及 Compose 插件可用
 2. **配置初始化**：若宿主机缺少 `.env`，则从 `.env.example` 初始化，并生成 32 位 Gateway Token
-3. **架构适配**：识别硬件架构（x86/ARM），拉取对应预构建层
+3. **架构适配**：识别硬件架构（x86/ARM），准备对应预构建层。
+> [!IMPORTANT]
+> `make install` 仅进行环境准备与安装，**不会启动服务**。安装后应继续执行 `make onboard` 配置 AI 凭证，最后运行 `make up` 启动。
 
 ```bash
 # 克隆源码
@@ -69,8 +71,8 @@ make onboard
 | 指令 | 说明 |
 | :--- | :--- |
 | `make help` | 显示所有可用命令 |
-| `make install` | 首次安装/初始化环境 |
-| `make onboard` | 交互式配置 (LLM/API) |
+| `make install` | 环境初始化（不启动服务） |
+| `make onboard` | 交互式配置（使用临时容器，稳健性高） |
 
 ### 生命周期管理
 
@@ -222,9 +224,12 @@ Makefile 根据环境变量动态重组 Compose 文件：
 
 容器启动时，`docker-entrypoint.sh` 执行以下操作：
 
-1. **UID 适配**：检测宿主机用户 ID，执行 `chown` 修复挂载目录权限
-2. **种子填充**：工作区为空时，从 `/home/node/.openclaw-seed` 自动填充
-3. **网络绑定**：锁定网关端口，绑定地址设为 `lan` 以穿透 Docker 桥接网卡
+1. **UID 适配**：检测宿主机用户 ID，执行 `chown` 修复挂载目录权限。
+2. **种子填充**：工作区为空时，从 `/home/node/.openclaw-seed` 自动填充。
+3. **环境自愈 (Self-Healing)**：
+   - **路径手术 (Path Surgery)**：自动将泄露的宿主机路径（Mac/Linux）替换为容器标准路径，防止 `EACCES`。
+   - **秘密清理 (Phantom Secret Cleanup)**：自动清理引用了缺失环境变量的无效模型配置，确保网关 100% 启动成功。
+4. **网络绑定**：锁定网关端口，绑定地址设为 `lan` 以穿透 Docker 桥接网卡。
 
 ---
 
@@ -255,8 +260,9 @@ Makefile 根据环境变量动态重组 Compose 文件：
 | **编排** | `COMPOSE_FILE` | `docker-compose.yml` | 定义编排分层 |
 | | `OPENCLAW_SKIP_BUILD`| `true` | true=拉镜像, false=本地构建 |
 | | `OPENCLAW_IMAGE` | `...:latest` | Docker 镜像标签 |
-| **路径** | `OPENCLAW_CONFIG_DIR`| `~/.openclaw` | 配置目录 |
-| | `OPENCLAW_WORKSPACE_DIR`| `.../workspace` | 工作区 |
+| **路径** | `OPENCLAW_CONFIG_DIR`| `/home/node/.openclaw` | 配置目录 (内部) |
+| | `OPENCLAW_WORKSPACE_DIR`| `/home/node/.openclaw/workspace` | 工作区 (内部) |
+| | `OPENCLAW_HOME` | `/home/node` | 容器根目录 |
 | **网络** | `OPENCLAW_GATEWAY_PORT`| `18789` | 网关端口 |
 | | `OPENCLAW_GATEWAY_TOKEN`| (Hex) | CLI-Gateway 握手凭证 |
 | | `HTTP[S]_PROXY` | - | 容器外网出口 |

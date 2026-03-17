@@ -5,11 +5,10 @@
 ## 1. 极速起步
 
 ```bash
-# 1. 安装并启动
-make install
-
-# 2. 交互式配置（设置 LLM、Slack、飞书等）
-make onboard
+# 1. 安装与配置流程
+make install    # 环境初始化（不启动服务）
+make onboard    # 引导式配置（使用隔离容器，极其稳健）
+make up         # 启动网关服务
 ```
 
 > **提示**: 首次安装后，日常启动只需执行 `make up`
@@ -23,13 +22,11 @@ git clone https://github.com/hrygo/openclaw-devkit.git
 cd openclaw-devkit
 make install [flavor]
        │
-       ├─> 检查 Docker/Compose 环境
-       ├─> 生成 .env（基于 .env.example）
-       ├─> 创建配置目录 ~/.openclaw
-       ├─> 拉取镜像 ghcr.io/hrygo/openclaw-devkit:latest
-       ├─> 启动 openclaw-init（配置迁移）
-       ├─> 启动 openclaw-gateway
-       └─> 输出访问地址 http://127.0.0.1:18789
+       ├─> 检查 Docker 运行环境
+       ├─> 生成 .env 配置文件
+       ├─> 准备宿主机目录 ~/.openclaw
+       ├─> 获取最新容器镜像
+       └─> 提示后续命令 (make onboard & make up)
 ```
 
 ---
@@ -87,22 +84,21 @@ make clean            # 清理容器和悬空镜像
 ### 5.1 启动流程
 
 ```
-make install / make up
+make onboard
        │
        ▼
 ┌──────────────────────────────┐
-│  openclaw-init              │ ◄── 一次性容器
-│  $ openclaw doctor --fix   │     仅首次或配置问题时运行
-│  修复过时配置字段           │
+│  Ephemeral Onboard Container │ ◄── 隔离容器 (docker run --rm)
+│  $ openclaw onboard          │     不依赖正在运行的网关
+│  交互式配置密钥与设置          │
 └──────────┬───────────────────┘
-           │ 完成后自动删除
+           │ 配置保存至 ~/.openclaw
            ▼
 ┌──────────────────────────────┐
-│  openclaw-gateway           │ ◄── 主服务
-│  健康检查: curl 127.0.0.1:   │
-│           18789/healthz      │
-│  $ make onboard             │     交互式配置
-│  $ make cli                 │     执行命令
+│  openclaw-gateway           │ ◄── 长期运行的主服务 (make up)
+│  健康检查: 自动自愈 (Healing) │     
+│  - 自动修复 host 路径泄露     │     
+│  - 自动清理缺失 Secret 的模型  │     
 └──────────────────────────────┘
 ```
 

@@ -33,7 +33,9 @@ Fast Mode leverages GitHub Packages (GHCR) pre-built images for rapid deployment
 Executing `make install` triggers the following operations:
 1. **Environment Check**: Verify Docker and Compose plugin availability
 2. **Config Initialization**: If `.env` is missing, initialize from `.env.example` and generate 32-digit Gateway Token
-3. **Architecture Detection**: Identify hardware (x86/ARM) and pull corresponding pre-built layers
+3. **Architecture Detection**: Identify hardware (x86/ARM) and prepare corresponding pre-built layers.
+> [!IMPORTANT]
+> `make install` only performs setup and preparation; it **does not start services**. After installation, follow the flow to run `make onboard` and `make up`.
 
 ```bash
 # Clone source
@@ -69,8 +71,8 @@ make onboard
 | Command | Description |
 | :--- | :--- |
 | `make help` | Show all available commands |
-| `make install` | First-time installation/setup |
-| `make onboard` | Interactive configuration (LLM/API) |
+| `make install` | Environment initialization (does not start services) |
+| `make onboard` | Interactive configuration (uses ephemeral container for stability) |
 
 ### Lifecycle Management
 
@@ -222,9 +224,12 @@ Makefile dynamically reassembles Compose files based on environment variables:
 
 On container start, `docker-entrypoint.sh` executes:
 
-1. **UID Adaptation**: Detect host User ID, execute `chown` to fix mounted directory permissions
-2. **Seed Population**: If workspace is empty, automatically populate from `/home/node/.openclaw-seed`
-3. **Network Binding**: Lock gateway port, set bind address to `lan` to bypass Docker bridge isolation
+1. **UID Adaptation**: Detect host User ID, execute `chown` to fix mounted directory permissions.
+2. **Seed Population**: If workspace is empty, automatically populate from `/home/node/.openclaw-seed`.
+3. **Self-Healing Mechanics**:
+   - **Path Surgery**: Automatically migrates leaked host paths (Mac/Linux) to container-standard paths, preventing `EACCES`.
+   - **Phantom Secret Cleanup**: Automatically prunes invalid model configs referencing missing environment variables, ensuring 100% gateway startup success.
+4. **Network Binding**: Lock gateway port, set bind address to `lan` to bypass Docker bridge isolation.
 
 ---
 
@@ -255,8 +260,9 @@ Verify actual mount path of `OPENCLAW_CONFIG_DIR`, defaults to `~/.openclaw`
 | **Orchestration** | `COMPOSE_FILE` | `docker-compose.yml` | Defines orchestration layers |
 | | `OPENCLAW_SKIP_BUILD`| `true` | true=pull, false=build |
 | | `OPENCLAW_IMAGE` | `...:latest` | Docker image tag |
-| **Paths** | `OPENCLAW_CONFIG_DIR`| `~/.openclaw` | Config directory |
-| | `OPENCLAW_WORKSPACE_DIR`| `.../workspace` | Workspace |
+| **Paths** | `OPENCLAW_CONFIG_DIR`| `/home/node/.openclaw` | Internal config dir |
+| | `OPENCLAW_WORKSPACE_DIR`| `/home/node/.openclaw/workspace` | Internal workspace |
+| | `OPENCLAW_HOME` | `/home/node` | Container root home |
 | **Network** | `OPENCLAW_GATEWAY_PORT`| `18789` | Gateway port |
 | | `OPENCLAW_GATEWAY_TOKEN`| (Hex) | CLI-Gateway handshake |
 | | `HTTP[S]_PROXY` | - | Container outbound proxy |
