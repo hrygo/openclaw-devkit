@@ -165,6 +165,7 @@ help: ## 显示帮助信息
 	@printf "\n"
 	@printf "  $(BOLD)$(CYAN)🐛  调试与诊断 $(NC)\n"
 	@printf "    $(BOLD)make logs$(NC)              查看 Gateway 实时日志\n"
+	@printf "    $(BOLD)make tui$(NC)               🖥️  启动 TUI 终端界面\n"
 	@printf "    $(BOLD)make dashboard$(NC)         🚀 一键直达仪表盘 (免配对)\n"
 	@printf "    $(BOLD)make approve$(NC)           🔐 一键批准配对请求\n"
 	@printf "    $(BOLD)make devices$(NC)           查看已配对设备及请求\n"
@@ -393,6 +394,9 @@ logs-all: ## 查看所有容器日志
 
 shell: ## 进入 Gateway 容器
 	@docker compose exec openclaw-gateway bash
+
+tui: ## 启动 OpenClaw TUI 终端界面
+	@docker compose exec -it openclaw-gateway openclaw tui
 
 dashboard: ## 🚀 一键直达仪表盘 (自动带 token)
 	@echo "$(INFO) 正在生成直通链接..."
