@@ -60,7 +60,7 @@ make onboard
 - **App Token**: Required for enterprise chat bot integration
 - **Workspace ID**: Required if AI needs awareness of specific collaborative spaces
 
-> Once complete, `openclaw.json` is stored in `~/.openclaw` and hot-loaded on container startup.
+> Once complete, `openclaw.json` is stored in container's `/home/node/.openclaw/` (maps to host's `~/.openclaw-in-docker/`) and hot-loaded on startup.
 
 ---
 
@@ -260,9 +260,10 @@ Verify actual mount path of `OPENCLAW_CONFIG_DIR`, defaults to `~/.openclaw`
 | **Orchestration** | `COMPOSE_FILE` | `docker-compose.yml` | Defines orchestration layers |
 | | `OPENCLAW_SKIP_BUILD`| `true` | true=pull, false=build |
 | | `OPENCLAW_IMAGE` | `...:latest` | Docker image tag |
-| **Paths** | `OPENCLAW_CONFIG_DIR`| `/home/node/.openclaw` | Internal config dir |
-| | `OPENCLAW_WORKSPACE_DIR`| `/home/node/.openclaw/workspace` | Internal workspace |
-| | `OPENCLAW_HOME` | `/home/node` | Container root home |
+| **Host Paths** | `OPENCLAW_CONFIG_DIR`| `~/.openclaw` | Config seed (mounted as seed) |
+| | `OPENCLAW_WORKSPACE_DIR`| `~/.openclaw/workspace` | Workspace (bidirectional sync) |
+| **Container Paths** | `OPENCLAW_HOME` | `/home/node` | Container root home |
+| | Runtime config | `/home/node/.openclaw` | Maps to host `~/.openclaw-in-docker/` |
 | **Network** | `OPENCLAW_GATEWAY_PORT`| `18789` | Gateway port |
 | | `OPENCLAW_GATEWAY_TOKEN`| (Hex) | CLI-Gateway handshake |
 | | `HTTP[S]_PROXY` | - | Container outbound proxy |

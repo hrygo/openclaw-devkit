@@ -96,15 +96,15 @@ services:
       - OPENCLAW_HOME=/home/node
     init: true
     volumes:
-      # === 必需挂载 (Required) ===
-      # 使用 .env 中定义的变量 (OPENCLAW_CONFIG_DIR, OPENCLAW_WORKSPACE_DIR)
-      # OpenClaw config seed (mount host dir to separate path)
+      # === 必需挂载 (Required Mounts) ===
+      # 1. 配置种子: 宿主机 ~/.openclaw → 容器 seed (只读，仅用于首次初始化)
       - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw-seed:ro
-      # Workspace (AI working directory - required!)
+      # 2. 工作区: AI 代码目录 (双向同步)
       - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace:rw
-      # Unified state mapping to host for portability
+      # 3. 运行时状态: 宿主机 ~/.openclaw-in-docker → 容器 /home/node/.openclaw (读写)
+      #    设计目的: 与宿主机原生 ~/.openclaw 分离，可在宿主机直接编辑容器配置
       - ${HOME:-${USERPROFILE}}/.openclaw-in-docker:/home/node/.openclaw:rw
-      # Mount local entrypoint to apply fixes without rebuilding
+      # 4. 入口脚本: 无需重建即可应用修复
       - ./docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
 
       # === 可选挂载 (Optional) - 根据需求选择 ===

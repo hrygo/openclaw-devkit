@@ -287,8 +287,9 @@ OpenClaw 开发环境 Docker 部署脚本
   --help          显示帮助信息
 
 环境变量:
-  OPENCLAW_CONFIG_DIR     配置目录 (默认: ~/.openclaw)
-  OPENCLAW_WORKSPACE_DIR  工作区目录 (默认: ~/.openclaw/workspace)
+  OPENCLAW_CONFIG_DIR     配置种子目录 (默认: ~/.openclaw，仅用于首次初始化)
+  OPENCLAW_WORKSPACE_DIR  工作区目录 (默认: ~/.openclaw/workspace，双向同步)
+                          注: 运行时配置存储在 ~/.openclaw-in-docker/ (自动管理)
   OPENCLAW_EXTRA_MOUNTS   额外挂载点，逗号分隔
                           格式: src:dst[:ro],src2:dst2
   OPENCLAW_HOME_VOLUME    命名卷名称 (可选，用于持久化整个 home)

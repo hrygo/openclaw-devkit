@@ -53,15 +53,26 @@ make status
 
 ### 第 2 步：配置 OpenClaw
 
-> **⚠️ 重要**：容器使用 Docker 命名卷（`openclaw-state`）存储配置。
+> **⚠️ 挂载说明**：容器运行时配置通过 bind mount 存储在宿主机 `~/.openclaw-in-docker/`。
 >
-> **宿主机 `~/.openclaw/` 仅作为初始化种子，运行时修改不会自动同步到容器！**
+> **宿主机 `~/.openclaw/` 仅作为初始化种子**，首次启动后不再使用。
 >
-> **正确的配置方式**：
-> - **方法一（推荐）**：使用 CLI 命令
-> - **方法二**：进入容器直接编辑
+> **配置方式**：
+> - **方法一**：直接编辑宿主机 `~/.openclaw-in-docker/openclaw.json`
+> - **方法二**：使用 CLI 命令
+> - **方法三**：进入容器编辑
 
-#### 方法一：使用 CLI 命令（推荐）
+#### 方法一：直接编辑配置文件
+
+```bash
+# 在宿主机编辑运行时配置
+vi ~/.openclaw-in-docker/openclaw.json
+
+# 编辑完成后重启服务
+make restart
+```
+
+#### 方法二：使用 CLI 命令
 
 ```bash
 # 启用飞书渠道
@@ -77,7 +88,7 @@ make cli CMD="config set channels.feishu.accounts.main.appSecret 'your_secret_he
 make cli CMD="config list"
 ```
 
-#### 方法二：进入容器编辑
+#### 方法三：进入容器编辑
 
 ```bash
 # 进入容器
@@ -93,6 +104,7 @@ openclaw config set channels.feishu.enabled true
 
 # 保存后退出容器
 exit
+make restart
 ```
 
 配置示例：
@@ -205,27 +217,42 @@ make logs
 
 ## 配置存储说明
 
+DevKit 采用**双轨挂载**设计，分离"配置种子"与"运行时状态"：
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      宿主机 (Host)                          │
-│  ~/.openclaw/                                               │
-│  └── openclaw.json  ──────────────┐                        │
-│       (初始化种子，仅首次启动时复制)  │                        │
-└─────────────────────────────────────│───────────────────────┘
-                                      │ 挂载为只读 seed
-                                      ▼
+│                                                             │
+│  ~/.openclaw/                    ← 配置种子 (只读)          │
+│  └── openclaw.json                                           │
+│                                                             │
+│  ~/.openclaw-in-docker/          ← 运行时状态 (读写)        │
+│  └── openclaw.json              ← **实际使用的配置文件**    │
+│                                                             │
+│  ~/.openclaw/workspace/          ← 工作区 (读写)            │
+└───────────────────────────│─────────────────────────────────┘
+                            │
+          ┌─────────────────┼─────────────────┐
+          │                 │                 │
+          ▼                 ▼                 ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                     Docker 容器                             │
-│  /home/node/.openclaw-seed/   ← 只读挂载                    │
-│  /home/node/.openclaw/        ← Docker 命名卷 (运行时配置)  │
-│  └── openclaw.json            ← 实际使用的配置文件          │
+│                                                             │
+│  /home/node/.openclaw-seed/     ← 只读挂载 (种子)           │
+│  /home/node/.openclaw/          ← 读写挂载 (运行时)         │
+│  └── openclaw.json              ← 对应宿主机的              │
+│                                     ~/.openclaw-in-docker/  │
+│  /home/node/.openclaw/workspace/ ← 工作区                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 **关键点**：
-- 容器首次启动时，会将 seed 目录的配置复制到运行时目录
-- 之后的修改**只影响容器内的配置**，不会同步回宿主机
-- **正确的修改方式**：使用 `make cli CMD="config set ..."` 或 `make shell` 进入容器
+- **双轨隔离**：`~/.openclaw/` (种子) 与 `~/.openclaw-in-docker/` (运行时) 分离，互不干扰
+- **宿主机可编辑**：运行时配置存储在 `~/.openclaw-in-docker/`，可在宿主机直接编辑
+- **修改方式**：
+  - ✅ 宿主机编辑 `~/.openclaw-in-docker/openclaw.json`
+  - ✅ 使用 CLI 命令 `make cli CMD="config set ..."`
+  - ✅ 进入容器 `make shell` 编辑
 
 ---
 
@@ -249,20 +276,22 @@ make restart
 
 ### 2. 配置修改后不生效
 
-确保你使用了正确的方式修改配置：
+确保你编辑的是正确的配置文件：
 
 ```bash
-# ❌ 错误：直接编辑宿主机文件（不会同步到容器）
-# 无论是用 nano、vi 还是其他编辑器编辑宿主机的 ~/.openclaw/ 都不会生效
-nano ~/.openclaw/openclaw.json  # 这样做不会生效！
+# ✅ 正确：直接编辑宿主机的运行时配置
+nano ~/.openclaw-in-docker/openclaw.json
+vi ~/.openclaw-in-docker/openclaw.json
 
 # ✅ 正确：使用 CLI 命令
 make cli CMD="config set channels.feishu.enabled true"
 
-# ✅ 正确：进入容器编辑（使用 vi）
+# ✅ 正确：进入容器编辑
 make shell
 vi ~/.openclaw/openclaw.json
-# 提示：按 i 进入编辑模式，编辑完成后按 Esc，输入 :wq 保存退出
+
+# ❌ 错误：编辑种子配置（仅首次初始化生效）
+nano ~/.openclaw/openclaw.json  # 这是种子，修改不会立即生效！
 ```
 
 修改后重启服务：`make restart`
@@ -280,14 +309,15 @@ make down && make up
 ### 4. 需要重置配置
 
 ```bash
-# 进入容器
-make shell
+# 方式 1：在宿主机操作（推荐）
+cp ~/.openclaw-in-docker/openclaw.json ~/.openclaw-in-docker/openclaw.json.backup
+rm ~/.openclaw-in-docker/openclaw.json
+make restart  # 会从 seed 重新初始化
 
-# 备份并删除配置
+# 方式 2：进入容器操作
+make shell
 cp ~/.openclaw/openclaw.json ~/.openclaw/openclaw.json.backup
 rm ~/.openclaw/openclaw.json
-
-# 退出并重启（会从 seed 重新初始化）
 exit
 make restart
 ```

@@ -145,7 +145,7 @@ Gateway token 由以下机制自动管理：
 | 组件 | 说明 |
 | :--- | :--- |
 | 环境变量 | `OPENCLAW_GATEWAY_TOKEN`（自动生成） |
-| 配置文件 | `~/.openclaw/openclaw.json` 中的 `gateway.auth.token` |
+| 配置文件 | 容器内 `/home/node/.openclaw/openclaw.json` 中的 `gateway.auth.token` |
 | 同步机制 | `docker-entrypoint.sh` 启动时自动同步环境变量到配置文件 |
 
 **认证流程**：

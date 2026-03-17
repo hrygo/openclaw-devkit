@@ -60,7 +60,7 @@ make onboard
 - **App Token**：企业聊天机器人集成所需
 - **Workspace ID**：AI 感知特定协作空间所需
 
-> 配置完成后，`openclaw.json` 存储在 `~/.openclaw`，容器启动时自动热加载。
+> 配置完成后，`openclaw.json` 存储在容器内 `/home/node/.openclaw/`（对应宿主机 `~/.openclaw-in-docker/`），容器启动时自动热加载。
 
 ---
 
@@ -162,9 +162,9 @@ make rebuild office
 
 双轨持久化设计保证容器非易失性：
 
-1. **配置文件 (Runtime Config)**
-   - 路径：`~/.openclaw-in-docker/openclaw.json`
-   - 用途：网关运行时的活动配置文件。**修改配置请编辑此文件**，随后执行 `make restart`。
+1. **活动配置 (Active Config)**
+   - 宿主机路径：`~/.openclaw-in-docker/` (对应容器内 `~/.openclaw/`)
+   - 用途：存放网关运行时的活动配置文件 `openclaw.json`。**修改配置请编辑此宿主机路径下的文件**，随后执行 `make restart`。
 
 2. **工作区 (Workspace)**
    - 路径：`~/.openclaw/workspace/`
@@ -260,9 +260,10 @@ Makefile 根据环境变量动态重组 Compose 文件：
 | **编排** | `COMPOSE_FILE` | `docker-compose.yml` | 定义编排分层 |
 | | `OPENCLAW_SKIP_BUILD`| `true` | true=拉镜像, false=本地构建 |
 | | `OPENCLAW_IMAGE` | `...:latest` | Docker 镜像标签 |
-| **路径** | `OPENCLAW_CONFIG_DIR`| `/home/node/.openclaw` | 配置目录 (内部) |
-| | `OPENCLAW_WORKSPACE_DIR`| `/home/node/.openclaw/workspace` | 工作区 (内部) |
-| | `OPENCLAW_HOME` | `/home/node` | 容器根目录 |
+| **宿主机路径** | `OPENCLAW_CONFIG_DIR`| `~/.openclaw` | 配置种子 (挂载为 seed) |
+| | `OPENCLAW_WORKSPACE_DIR`| `~/.openclaw/workspace` | 工作区 (双向同步) |
+| **容器内路径** | `OPENCLAW_HOME` | `/home/node` | 容器根目录 |
+| | 运行时配置 | `/home/node/.openclaw` | 对应宿主机 `~/.openclaw-in-docker/` |
 | **网络** | `OPENCLAW_GATEWAY_PORT`| `18789` | 网关端口 |
 | | `OPENCLAW_GATEWAY_TOKEN`| (Hex) | CLI-Gateway 握手凭证 |
 | | `HTTP[S]_PROXY` | - | 容器外网出口 |

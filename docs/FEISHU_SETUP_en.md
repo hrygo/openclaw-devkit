@@ -53,15 +53,26 @@ Expected output:
 
 ### Step 2: Configure OpenClaw
 
-> **⚠️ Important**: The container uses a Docker named volume (`openclaw-state`) to store configuration.
+> **⚠️ Mount Note**: Container runtime config is stored on host via bind mount at `~/.openclaw-in-docker/`.
 >
-> **Host machine's `~/.openclaw/` only serves as initialization seed, runtime changes will NOT sync back to host!**
+> **Host's `~/.openclaw/` is initialization seed only**, not used after first startup.
 >
-> **Correct ways to modify configuration**:
-> - **Method 1 (Recommended)**: Use CLI commands
-> - **Method 2**: Enter container and edit directly
+> **Configuration methods**:
+> - **Method 1**: Edit host's `~/.openclaw-in-docker/openclaw.json` directly
+> - **Method 2**: Use CLI commands
+> - **Method 3**: Enter container and edit
 
-#### Method 1: Use CLI Commands (Recommended)
+#### Method 1: Edit Config File Directly
+
+```bash
+# Edit runtime config on host
+vi ~/.openclaw-in-docker/openclaw.json
+
+# Restart after editing
+make restart
+```
+
+#### Method 2: Use CLI Commands
 
 ```bash
 # Enable Feishu channel
@@ -77,7 +88,7 @@ make cli CMD="config set channels.feishu.accounts.main.appSecret 'your_secret_he
 make cli CMD="config list"
 ```
 
-#### Method 2: Enter Container to Edit
+#### Method 3: Enter Container to Edit
 
 ```bash
 # Enter container
@@ -93,6 +104,7 @@ openclaw config set channels.feishu.enabled true
 
 # Exit container after saving
 exit
+make restart
 ```
 
 Configuration example:
@@ -205,27 +217,42 @@ Send a message in Feishu. If you receive a reply, configuration is successful!
 
 ## Configuration Storage Explained
 
+DevKit uses a **dual-track mount** design, separating "config seed" from "runtime state":
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      Host Machine                           │
-│  ~/.openclaw/                                               │
-│  └── openclaw.json  ──────────────┐                        │
-│       (Initialization seed, only copied on first start)     │
-└─────────────────────────────────────│───────────────────────┘
-                                      │ Mounted as read-only seed
-                                      ▼
+│                                                             │
+│  ~/.openclaw/                    ← Config seed (read-only)  │
+│  └── openclaw.json                                           │
+│                                                             │
+│  ~/.openclaw-in-docker/          ← Runtime state (rw)       │
+│  └── openclaw.json              ← **Actual config in use**  │
+│                                                             │
+│  ~/.openclaw/workspace/          ← Workspace (rw)           │
+└───────────────────────────│─────────────────────────────────┘
+                            │
+          ┌─────────────────┼─────────────────┐
+          │                 │                 │
+          ▼                 ▼                 ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                     Docker Container                        │
-│  /home/node/.openclaw-seed/   ← Read-only mount             │
-│  /home/node/.openclaw/        ← Docker named volume (runtime)│
-│  └── openclaw.json            ← Actual config file in use   │
+│                                                             │
+│  /home/node/.openclaw-seed/     ← Read-only mount (seed)    │
+│  /home/node/.openclaw/          ← Read-write mount (runtime)│
+│  └── openclaw.json              ← Maps to host's            │
+│                                     ~/.openclaw-in-docker/  │
+│  /home/node/.openclaw/workspace/ ← Workspace                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 **Key Points**:
-- On first container start, config is copied from seed directory to runtime directory
-- Subsequent modifications **only affect container's config**, will NOT sync back to host
-- **Correct modification method**: Use `make cli CMD="config set ..."` or `make shell` to enter container
+- **Dual-track isolation**: `~/.openclaw/` (seed) and `~/.openclaw-in-docker/` (runtime) are separate
+- **Host-editable**: Runtime config is stored in `~/.openclaw-in-docker/`, directly editable from host
+- **Modification methods**:
+  - ✅ Edit `~/.openclaw-in-docker/openclaw.json` on host
+  - ✅ Use CLI commands `make cli CMD="config set ..."`
+  - ✅ Enter container with `make shell`
 
 ---
 
@@ -249,20 +276,22 @@ make restart
 
 ### 2. Configuration Changes Not Taking Effect
 
-Ensure you're using the correct method to modify configuration:
+Make sure you're editing the correct configuration file:
 
 ```bash
-# ❌ Wrong: Directly editing host machine file (will NOT sync to container)
-# Whether using nano, vi or any other editor on host's ~/.openclaw/, it won't work
-nano ~/.openclaw/openclaw.json  # This won't work!
+# ✅ Correct: Directly edit host's runtime config
+nano ~/.openclaw-in-docker/openclaw.json
+vi ~/.openclaw-in-docker/openclaw.json
 
 # ✅ Correct: Use CLI commands
 make cli CMD="config set channels.feishu.enabled true"
 
-# ✅ Correct: Enter container to edit (using vi)
+# ✅ Correct: Enter container to edit
 make shell
 vi ~/.openclaw/openclaw.json
-# Tip: Press i to enter edit mode, press Esc when done, type :wq to save and exit
+
+# ❌ Wrong: Editing seed config (only works on first init)
+nano ~/.openclaw/openclaw.json  # This is the seed, changes won't take effect immediately!
 ```
 
 Restart service after modification: `make restart`
@@ -280,14 +309,15 @@ make down && make up
 ### 4. Need to Reset Configuration
 
 ```bash
-# Enter container
-make shell
+# Method 1: On host machine (recommended)
+cp ~/.openclaw-in-docker/openclaw.json ~/.openclaw-in-docker/openclaw.json.backup
+rm ~/.openclaw-in-docker/openclaw.json
+make restart  # Will re-initialize from seed
 
-# Backup and delete config
+# Method 2: Enter container
+make shell
 cp ~/.openclaw/openclaw.json ~/.openclaw/openclaw.json.backup
 rm ~/.openclaw/openclaw.json
-
-# Exit and restart (will re-initialize from seed)
 exit
 make restart
 ```

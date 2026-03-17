@@ -199,4 +199,4 @@ SLACK_GROUP_POLICY=mention
 # 仅允许在这几个特定的频道 ID 中运作
 SLACK_ALLOWED_CHANNELS=C1A2B3C4D5,C9Z8Y7X6W5
 ```
-*(注：由于底层架构引擎会将其最终结构化存储，除 `.env` 变量外，你也可在配置成功后，直接进容器审查 `~/.openclaw/openclaw.json` 里的 `channels.slack` 属性树)*
+*(注：配置也会存储到 `~/.openclaw-in-docker/openclaw.json`，可在宿主机直接查看或编辑 `channels.slack` 属性树)*

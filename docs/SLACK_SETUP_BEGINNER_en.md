@@ -203,4 +203,4 @@ If you don't want anyone to privately pull the bot into unauthorized random chan
 # Only allowed to operate in these specific channel IDs
 SLACK_ALLOWED_CHANNELS=C1A2B3C4D5,C9Z8Y7X6W5
 ```
-*(Note: Because the underlying architectural engine stores this securely, besides using the `.env` variable, you can also directly inspect the `channels.slack` property tree in `~/.openclaw/openclaw.json` inside the container after a successful configuration)*
+*(Note: Config is also stored in `~/.openclaw-in-docker/openclaw.json`, you can view or edit the `channels.slack` property tree directly on the host)*
