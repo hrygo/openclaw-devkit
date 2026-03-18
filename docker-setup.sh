@@ -726,24 +726,19 @@ if [[ "$HOST_OPENCLAW_RUNNING" == "true" ]]; then
 cat <<HOST_WARN
 
 ${YELLOW}═══════════════════════════════════════════════════════════════════════════════${NC}
-${YELLOW}  ⚠️  配置冲突风险：宿主机 OpenClaw${NC}
+${YELLOW}  ⚠️  宿主机 OpenClaw 检测到${NC}
 ${YELLOW}═══════════════════════════════════════════════════════════════════════════════${NC}
 
-容器 Gateway 绑定 LAN 无风险（Docker 网络隔离，仅宿主机可访问 127.0.0.1:18789）。
-真正的风险来自配置共享：
-
-  宿主机 ~/.openclaw  ←── bind mount (rw) ──→  容器 /home/node/.openclaw
+配置目录 ${HOST_OPENCLAW_DIR}  同时被宿主机和容器使用。
+Gateway 绑定 LAN（gateway.bind=lan）使容器内 Gateway 监听所有网卡。
 
 ${RED}风险:${NC}
-  → 容器与宿主机同时读写 openclaw.json，存在竞争覆盖风险
-  → 容器 entrypoint 每次启动强制覆盖 gateway.bind/gateway.mode 等字段
-  → 宿主机 OpenClaw 的配置变更可能被容器覆盖
+  → 同一局域网的设备可能访问到你的 Gateway（受 token 保护）
+  → 如果在宿主机上直接运行 openclaw 命令，它会读写容器的同一份配置，导致冲突
 
 ${GREEN}建议:${NC}
-  → 如仅需容器内 Gateway，先停止宿主机 OpenClaw:
-    ${BOLD}pkill openclaw${NC}
-  → 如需同时运行，使用独立配置目录:
-    ${BOLD}HOST_OPENCLAW_DIR=~/.openclaw-host make up${NC}
+  → ${BOLD}pkill openclaw${NC}   # 先停止宿主机进程，只用容器版
+  → 容器 Gateway 通过 ${BOLD}make dashboard${NC} 访问，不要在宿主机直接运行 openclaw
 
 HOST_WARN
 fi

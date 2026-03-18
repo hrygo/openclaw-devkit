@@ -88,7 +88,7 @@ services:
     <<: *openclaw-common
     container_name: openclaw-gateway
     ports:
-      - "127.0.0.1:${OPENCLAW_GATEWAY_PORT:-18789}:18789"
+      - "0.0.0.0:${OPENCLAW_GATEWAY_PORT:-18789}:18789"
       - "127.0.0.1:${OPENCLAW_BRIDGE_PORT:-18790}:18790"
       - "127.0.0.1:${OPENCLAW_BROWSER_PORT:-18791}:18791"
     env_file:
