@@ -714,46 +714,38 @@ if [[ -f "$EXTRA_COMPOSE_FILE" ]]; then
 fi
 
 # ============================================================
-# 安全提示：Gateway LAN 模式
+# 安全提示：宿主机 OpenClaw 配置共享
 # ============================================================
 
-LAN_BIND=false
-if [[ -f "$ROOT_DIR/.env" ]]; then
-    # 检查是否在 .env 或 openclaw.json 中显式配置了 lan 模式
-    if grep -q "gateway.bind.*lan\|bind.*lan" "$ROOT_DIR/.env" 2>/dev/null || \
-       grep -q '"bind"[[:space:]]*:[[:space:]]*"lan"' "${HOST_OPENCLAW_DIR}/openclaw.json" 2>/dev/null; then
-        LAN_BIND=true
-    fi
+HOST_OPENCLAW_RUNNING=false
+if command -v openclaw &>/dev/null && pgrep -x openclaw &>/dev/null; then
+    HOST_OPENCLAW_RUNNING=true
 fi
 
-# docker-entrypoint.sh 默认强制设置 gateway.bind=lan，检查 .env 中是否有显式覆盖
-ENV_GATEWAY_BIND_LINE=$(grep -E "^OPENCLAW_GATEWAY_BIND=" "$ROOT_DIR/.env" 2>/dev/null || true)
-if [[ -z "$ENV_GATEWAY_BIND_LINE" ]]; then
-    LAN_BIND=true  # 未显式设置，默认走 LAN 模式
-fi
-
-if [[ "$LAN_BIND" == "true" ]]; then
-cat <<LAN_WARN
+if [[ "$HOST_OPENCLAW_RUNNING" == "true" ]]; then
+cat <<HOST_WARN
 
 ${YELLOW}═══════════════════════════════════════════════════════════════════════════════${NC}
-${YELLOW}  ⚠️  网络安全提示：Gateway LAN 模式${NC}
+${YELLOW}  ⚠️  配置冲突风险：宿主机 OpenClaw${NC}
 ${YELLOW}═══════════════════════════════════════════════════════════════════════════════${NC}
 
-容器内 Gateway 以 LAN 模式运行 (gateway.bind=lan):
-  → Gateway 监听所有网卡，包括 Docker 桥接网络
+容器 Gateway 绑定 LAN 无风险（Docker 网络隔离，仅宿主机可访问 127.0.0.1:18789）。
+真正的风险来自配置共享：
+
+  宿主机 ~/.openclaw  ←── bind mount (rw) ──→  容器 /home/node/.openclaw
 
 ${RED}风险:${NC}
-  → 同一局域网的设备可能访问到你的 Gateway（受 token 保护）
-  → Docker 网络内的容器可直接访问 Gateway WebSocket
+  → 容器与宿主机同时读写 openclaw.json，存在竞争覆盖风险
+  → 容器 entrypoint 每次启动强制覆盖 gateway.bind/gateway.mode 等字段
+  → 宿主机 OpenClaw 的配置变更可能被容器覆盖
 
-${GREEN}安全建议:${NC}
-  → 仅在可信网络使用
-  → 如需改为仅本机访问，在 .env 中添加:
-  →   ${BOLD}OPENCLAW_GATEWAY_BIND=local${NC}
-  → 如需远程访问，建议通过 VPN 或 SSH 隧道连接
-  → 修改后执行: ${BOLD}make down && make up${NC} 重启服务
+${GREEN}建议:${NC}
+  → 如仅需容器内 Gateway，先停止宿主机 OpenClaw:
+    ${BOLD}pkill openclaw${NC}
+  → 如需同时运行，使用独立配置目录:
+    ${BOLD}HOST_OPENCLAW_DIR=~/.openclaw-host make up${NC}
 
-LAN_WARN
+HOST_WARN
 fi
 
 cat <<END
