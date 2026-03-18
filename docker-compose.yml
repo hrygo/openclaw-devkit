@@ -104,6 +104,8 @@ services:
       # Python package manager (uv) - force user-level installation
       UV_SYSTEM_PYTHON: "0"
       UV_NO_PROGRESS: "1"
+      # GitHub MCP server token (add to .env: GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxx)
+      GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_PERSONAL_ACCESS_TOKEN:-}"
     init: true
     stop_grace_period: 30s
     volumes:
