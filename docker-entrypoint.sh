@@ -243,8 +243,11 @@ fi
 # Ensure symlink for config directory (CLI looks in /root/.notebooklm)
 # ------------------------------------------------------------------------------
 if [[ -d "/home/node/.notebooklm" ]] && [[ ! -d "/root/.notebooklm" ]]; then
-    ln -sf /home/node/.notebooklm /root/.notebooklm
-    echo "--> Linked /root/.notebooklm -> /home/node/.notebooklm"
+    if ln -sf /home/node/.notebooklm /root/.notebooklm 2>/dev/null; then
+        echo "--> Linked /root/.notebooklm -> /home/node/.notebooklm"
+    else
+        echo "--> Warning: Cannot create /root/.notebooklm symlink (read-only /root?), skipping"
+    fi
 fi
 
 # ------------------------------------------------------------------------------
@@ -290,7 +293,7 @@ mkdir -p /home/node/.global
 mkdir -p /home/node/.local
 mkdir -p /home/node/.agents
 if [[ -d "/home/node/.global/bin" ]] && [[ ! -L "/usr/local/bin/global" ]]; then
-    ln -sf /home/node/.global/bin /usr/local/bin/global
+    ln -sf /home/node/.global/bin /usr/local/bin/global 2>/dev/null || true
 fi
 
 # ------------------------------------------------------------------------------
