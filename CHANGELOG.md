@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.10.2] - 2026-03-19
+
+### Added
+- **GitHub Integration**: Added `GITHUB_PERSONAL_ACCESS_TOKEN` environment variable and `.env` template support for GitHub MCP and `gh` CLI authentication.
+
+### Fixed
+- **Volume Permissions**: Refactored volume permission initialization to run as root, create named volume directories before `chown`, and iterate over `.agents` in addition to `.openclaw` and `.config` for complete permission setup.
+- **Entrypoint Robustness**: Hardcoded `CLAUDE_JSON` path to `/home/node` instead of relying on `$HOME`, ensuring consistent behavior across container environments.
+- **Plugin Marketplaces**: Fixed bind mount of plugin marketplaces from host to container, enabling local plugin marketplace discovery.
+- **Git Identity**: Restored accidentally removed `GIT_USER_NAME` and `GIT_USER_EMAIL` fields from `.env.example`.
+
 ## [v1.6.2] - 2026-03-13
 
 ### Optimized
