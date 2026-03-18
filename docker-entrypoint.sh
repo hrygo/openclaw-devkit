@@ -70,7 +70,7 @@ if [[ "$(id -u)" = "0" ]]; then
 
     # Named volume directories: create if missing (empty volumes have no contents from image),
     # then chown to node (idempotent, cheap ~5ms, prevents stale root ownership).
-    for dir in "/home/node/.claude" "/home/node/.global" "/home/node/.local" "/home/node/go" "/home/node/.cache" "/app"; do
+    for dir in "/home/node/.claude" "/home/node/.global" "/home/node/.local" "/home/node/.agents" "/home/node/go" "/home/node/.cache" "/app"; do
         if [[ ! -d "${dir}" ]]; then
             mkdir -p "${dir}"
         fi
@@ -274,7 +274,6 @@ fi
 # ------------------------------------------------------------------------------
 mkdir -p /home/node/.global
 mkdir -p /home/node/.local
-mkdir -p /home/node/.agents
 
 # ------------------------------------------------------------------------------
 # 8. Execute CMD (drop privileges if root)
