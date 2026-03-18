@@ -288,8 +288,22 @@ fi
 # ------------------------------------------------------------------------------
 mkdir -p /home/node/.global
 mkdir -p /home/node/.local
+mkdir -p /home/node/.agents
 if [[ -d "/home/node/.global/bin" ]] && [[ ! -L "/usr/local/bin/global" ]]; then
     ln -sf /home/node/.global/bin /usr/local/bin/global
+fi
+
+# ------------------------------------------------------------------------------
+# 9.5 Configure shell aliases for node user
+# ------------------------------------------------------------------------------
+if [[ ! -f /home/node/.bashrc ]] || ! grep -q "alias ll=" /home/node/.bashrc 2>/dev/null; then
+    cat >> /home/node/.bashrc << 'EOF'
+
+# User aliases
+alias ll='ls -la'
+alias la='ls -a'
+EOF
+    chown node:node /home/node/.bashrc 2>/dev/null || true
 fi
 
 # ------------------------------------------------------------------------------

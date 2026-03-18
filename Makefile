@@ -392,8 +392,8 @@ logs: ## 查看 Gateway 日志
 logs-all: ## 查看所有容器日志
 	@LANG=C.UTF-8 LC_ALL=C.UTF-8 docker compose logs --tail 100 -f
 
-shell: ## 进入 Gateway 容器 (以 node 用户登录)
-	@docker compose exec -u node openclaw-gateway bash
+shell: ## 进入 Gateway 容器 (以 node 用户登录，切换到 node 主目录)
+	@docker compose exec -u node -w /home/node openclaw-gateway bash -l
 
 tui: ## 启动 OpenClaw TUI 终端界面
 	@docker compose exec -it openclaw-gateway openclaw tui
