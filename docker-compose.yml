@@ -100,6 +100,8 @@ services:
       OPENCLAW_CONFIG_DIR: /home/node/.openclaw
       OPENCLAW_WORKSPACE_DIR: /home/node/.openclaw/workspace
       OPENCLAW_HOME: /home/node
+      # 宿主机 OpenClaw 安装目录（用于存量配置迁移）
+      HOST_OPENCLAW_DIR: ${HOME}/.openclaw
       # Node.js package managers (npm/pnpm/bun)
       npm_config_prefix: /home/node/.global
       pnpm_config_global_dir: /home/node/.global/pnpm
@@ -124,9 +126,15 @@ services:
       #    - 工具链 (.global, .local/bin)
       #    - Go 生态 (go/pkg/mod, go/bin, .cache/go-build)
       #    - 浏览器缓存 (.cache/ms-playwright)
+      #    - .openclaw/: 由 entrypoint 从 HOST_OPENCLAW_DIR 迁移填充
       #    - 特性：容器重启后全部保留，无需重建
-      #    - 注意：.openclaw/.notebooklm/workspace 被数据层 3 的 bind mount 遮蔽
+      #
+      # 挂载顺序说明:
+      #   devkit-home (/home/node) 声明在 bind mount 之后，
+      #   因此 devkit-home 遮蔽 bind mount 的 .openclaw 目录。
+      #   .openclaw-in-docker 目录作为迁移源由 entrypoint 维护。
       # ─────────────────────────────────────────────────────────────────
+      - ${HOME:-${USERPROFILE:-/tmp}}/.openclaw-in-docker:/home/node/.openclaw-in-docker:rw
       - openclaw-devkit-home:/home/node:rw
 
       # ─────────────────────────────────────────────────────────────────

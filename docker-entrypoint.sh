@@ -251,18 +251,49 @@ if [[ -f "${CONFIG_FILE}" ]]; then
         echo "--> Configuration previously repaired, skipping surgery and health check."
     fi
 else
-    # No config file - fresh init (named volume was empty)
+    # No config file - named volume was empty, attempt migration
     echo "==> Initializing fresh OpenClaw environment..."
 
-    # Try to copy from host bind mount
-    if [[ -d "/home/node/.openclaw" ]] && [[ "$(ls -A "/home/node/.openclaw" 2>/dev/null)" ]]; then
-        echo "--> Copying initial configuration from host..."
-        run_as_node cp -rn /home/node/.openclaw/* "${CONFIG_DIR}/" 2>/dev/null || true
+    # Determine migration source (priority order):
+    #   1. HOST_OPENCLAW_DIR  — 宿主机原始 OpenClaw 安装目录 (存量用户)
+    #   2. ~/.openclaw-in-docker — Docker 旧版 staging 目录 (向后兼容)
+    #   3. none — 真正的全新安装
+    MIGRATION_SRC=""
+    if [[ -n "${HOST_OPENCLAW_DIR:-}" ]] && \
+       [[ -f "${HOST_OPENCLAW_DIR}/openclaw.json" || -d "${HOST_OPENCLAW_DIR}/agents" ]]; then
+        MIGRATION_SRC="${HOST_OPENCLAW_DIR}"
+    elif [[ -f "/home/node/.openclaw-in-docker/openclaw.json" ]] || \
+         [[ -d "/home/node/.openclaw-in-docker/agents" ]]; then
+        MIGRATION_SRC="/home/node/.openclaw-in-docker"
     fi
 
-    # If still missing, run official setup
+    if [[ -n "${MIGRATION_SRC}" ]]; then
+        echo "--> 检测到宿主机 OpenClaw 配置，正在迁移..."
+        echo "--> 迁移源: ${MIGRATION_SRC}"
+        echo "--> 迁移目标: ${CONFIG_DIR}"
+
+        # Use rsync if available (preserves permissions, excludes workspace)
+        if command -v rsync >/dev/null 2>&1; then
+            rsync -a --exclude='workspace/' \
+                "${MIGRATION_SRC}/" \
+                "${CONFIG_DIR}/"
+            echo "--> 迁移完成 (rsync)"
+        else
+            # Fallback: cp without overwrite (-n) to avoid clobbering user edits
+            for item in "${MIGRATION_SRC}"/*; do
+                [[ "$(basename "$item")" == "workspace" ]] && continue
+                cp -rn "$item" "${CONFIG_DIR}/" 2>/dev/null || true
+            done
+            echo "--> 迁移完成 (cp)"
+        fi
+        echo "--> workspace 目录通过独立 bind mount 与宿主机共享"
+    else
+        echo "--> 未检测到宿主机配置，初始化新环境..."
+    fi
+
+    # Ensure openclaw.json exists (run official setup if still missing)
     if [[ ! -f "${CONFIG_FILE}" ]]; then
-        echo "--> Running official OpenClaw onboarding (non-interactive)..."
+        echo "--> 运行 OpenClaw 初始化向导..."
         run_as_node openclaw onboard --non-interactive --accept-risk || true
     fi
 fi
