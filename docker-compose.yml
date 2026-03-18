@@ -65,22 +65,10 @@ x-openclaw-common: &openclaw-common
 # Named Volumes
 # ------------------------------------------------------------------------------
 volumes:
-  openclaw-node-modules:
-    name: openclaw-node-modules
-  openclaw-go-mod:
-    name: openclaw-go-mod
-  openclaw-playwright-cache:
-    name: openclaw-playwright-cache
-  openclaw-playwright-bin:
-    name: openclaw-playwright-bin
-  # Unified global tools persistence - solves container restart tool loss issue
-  # Persists ALL package managers: npm, pnpm, bun, uv (Python)
-  openclaw-global:
-    name: openclaw-global
-  # Python user packages (uv pip install --user)
-  openclaw-python-local:
-    name: openclaw-python-local
-  # Unified state storage for sessions, identities, and logs - REMOVED for host mapping
+  # 统一命名卷: 工具链 + Go 生态 + 浏览器缓存 + node_modules
+  # 替代原来分散的 6 个独立命名卷
+  openclaw-devkit-home:
+    name: openclaw-devkit-home
 
 services:
   # ============================================================================
@@ -112,32 +100,40 @@ services:
       UV_NO_PROGRESS: "1"
     init: true
     volumes:
-      # === 必需挂载 (Required Mounts) ===
-      # 1. 配置种子: 宿主机 ~/.openclaw → 容器 seed (只读，仅用于首次初始化)
-      - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw-seed:ro
-      # 2. 工作区: AI 代码目录 (双向同步)
-      - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace:rw
-      # 3. 运行时状态: 宿主机 ~/.openclaw-in-docker → 容器 /home/node/.openclaw (读写)
-      #    设计目的: 与宿主机原生 ~/.openclaw 分离，可在宿主机直接编辑容器配置
-      - ${HOME:-${USERPROFILE}}/.openclaw-in-docker:/home/node/.openclaw:rw
-      # 4. 入口脚本: 无需重建即可应用修复
-      - ./docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
+      # ─────────────────────────────────────────────────────────────────
+      # 数据层 1: 持久化存储 (命名卷)
+      #    - 工具链 (.global, .local/bin)
+      #    - Go 生态 (go/pkg/mod, go/bin, .cache/go-build)
+      #    - 浏览器缓存 (.cache/ms-playwright)
+      #    - node_modules (/app)
+      #    - 特性：容器重启后全部保留，无需重建
+      # ─────────────────────────────────────────────────────────────────
+      - openclaw-devkit-home:/home/node:rw
 
-      # === 可选挂载 (Optional) - 根据需求选择 ===
-      # Claude Code session state (shared with host)
+      # ─────────────────────────────────────────────────────────────────
+      # 数据层 2: 双向同步 (读写挂载)
+      #    - .claude: Claude Code session/memory 写入
+      #    - .openclaw: Gateway 配置读写
+      #    - .notebooklm: CLI 状态写入
+      #    - workspace: AI 代码工作区
+      #    - 特性：与宿主机共享读写
+      # ─────────────────────────────────────────────────────────────────
       - ${HOME:-${USERPROFILE:-/tmp}}/.claude:/home/node/.claude:rw
-      # NotebookLM auth and config (shared with host)
+      - ${HOME:-${USERPROFILE:-/tmp}}/.openclaw-in-docker:/home/node/.openclaw:rw
       - ${HOME:-${USERPROFILE:-/tmp}}/.notebooklm:/home/node/.notebooklm:rw
-      # Agents skills (read-only, shared with host)
+      - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace:rw
+
+      # ─────────────────────────────────────────────────────────────────
+      # 数据层 3: 单向同步 (只读挂载)
+      #    - .agents/skills: Host 管理的 skills 目录
+      #    - 特性：容器只读，Host 管理内容
+      # ─────────────────────────────────────────────────────────────────
       - ${HOME:-${USERPROFILE:-/tmp}}/.agents/skills:/home/node/.agents/skills:ro
-      # Named volumes for caches (optional, speeds up restarts)
-      - openclaw-node-modules:/app/node_modules:rw
-      - openclaw-go-mod:/home/node/go/pkg/mod:rw
-      - openclaw-playwright-cache:/home/node/.cache/ms-playwright:rw
-      # Unified global tools - persist ALL package managers (npm/pnpm/bun)
-      - openclaw-global:/home/node/.global:rw
-      # Python user packages (for uv pip install --user persistence)
-      - openclaw-python-local:/home/node/.local:rw
+
+      # ─────────────────────────────────────────────────────────────────
+      # 脚本层: 入口脚本 (只读)
+      # ─────────────────────────────────────────────────────────────────
+      - ./docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
     healthcheck: &common-healthcheck
       # Use 127.0.0.1 for more stable local check
       test: [ "CMD", "node", "-e", "require('http').get('http://127.0.0.1:18789/healthz', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))" ]

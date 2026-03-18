@@ -3,20 +3,24 @@ set -e
 
 # ==============================================================================
 # OpenClaw Docker Entrypoint
-# Handles permission fixes, config seeding, Git identity, PIP tools, and
-# privilege drop. Optimized for DevKit development environments.
+# Handles permission fixes, config seeding, Git identity, and privilege drop.
+# Optimized for DevKit development environments.
+#
+# Architecture (v3):
+# - Named volume: openclaw-devkit-home:/home/node (tools, caches, node_modules)
+# - RW bind mounts: .claude, .openclaw, .notebooklm (session/config/state)
+# - RO bind mount: .agents/skills (host-managed)
+# - RW bind mount: workspace, entrypoint script
 #
 # Performance optimizations:
-# - Smart detection: only fix permissions on bind mounts when empty/first-time
 # - One-time surgery + one-time doctor (gateway manages config afterwards)
-# - Batch operations: single chown for all directories
 # ==============================================================================
 
 CONFIG_DIR="/home/node/.openclaw"
 CONFIG_FILE="${CONFIG_DIR}/openclaw.json"
-SEED_DIR="/home/node/.openclaw-seed"
-INIT_FLAG="${CONFIG_DIR}/.entrypoint_initialized"
-SURGERY_FLAG="${CONFIG_DIR}/.path_surgery_complete"
+# Flags in named volume (writable) - avoids read-only mount conflicts
+INIT_FLAG="/home/node/.entrypoint_initialized"
+SURGERY_FLAG="/home/node/.openclaw_initialized"
 
 # Global tools path for node user
 NODE_GLOBAL_PATH="/home/node/.opencode/bin:/home/node/.global/bin:/home/node/.local/bin"
@@ -98,9 +102,8 @@ fi
 
 # ------------------------------------------------------------------------------
 # 1. Smart Permission Fix (only when needed)
-#    - Named volumes: always fix (may be owned by root from previous runs)
-#    - Bind mounts: only fix if empty or first-time (has flag file)
-#    - Batch operation: single chown for all targets
+#    - Named volume dirs: always fix (tools, caches, node_modules)
+#    - Bind mounts: fix only if empty (preserve host data)
 # ------------------------------------------------------------------------------
 if [[ "$(id -u)" = "0" ]]; then
     # Check if we've already initialized (skip redundant fixes)
@@ -109,44 +112,24 @@ if [[ "$(id -u)" = "0" ]]; then
     else
         echo "--> Running one-time permission initialization..."
 
-        # Define all directories that need fixing
-        # Named volumes (always need fixing): .global, .local, go, .cache
-        # Bind mounts (only if empty): .openclaw, .notebooklm, .claude, .agents
-        TARGET_DIRS=(
-            "/home/node/.global"
-            "/home/node/.local"
-            "/home/node/go"
-            "/home/node/.cache/go-build"
-            "/home/node/.openclaw"
-            "/home/node/.notebooklm"
-            "/home/node/.claude"
-            "/home/node/.agents"
-        )
-
-        # Batch chown - single recursive operation for all existing directories
-        for dir in "${TARGET_DIRS[@]}"; do
+        # Named volume directories: always fix ownership
+        # (tools, caches, node_modules)
+        for dir in "/home/node/.global" "/home/node/.local" "/home/node/go" "/home/node/.cache" "/app"; do
             if [[ -d "${dir}" ]]; then
-                # For bind mounts (.openclaw, .notebooklm, .claude), only chown if empty
-                case "${dir}" in
-                    /home/node/.openclaw|/home/node/.notebooklm|/home/node/.claude|/home/node/.agents)
-                        # Only chown if directory is empty or has no proper owner
-                        if [[ -z "$(ls -A "${dir}" 2>/dev/null)" ]] || \
-                           [[ "$(stat -c '%u' "${dir}" 2>/dev/null)" != "1000" ]]; then
-                            chown -R node:node "${dir}" 2>/dev/null || true
-                        fi
-                        ;;
-                    *)
-                        # Named volumes: always fix ownership
-                        chown -R node:node "${dir}" 2>/dev/null || true
-                        ;;
-                esac
+                chown -R node:node "${dir}" 2>/dev/null || true
             fi
         done
 
-        # Seed directory for initial configuration
-        if [[ -d "${SEED_DIR}" ]]; then
-            chown -R node:node "${SEED_DIR}" 2>/dev/null || true
-        fi
+        # Bind mount directories: only fix if empty or wrong owner
+        # (.claude, .openclaw, .notebooklm)
+        for dir in "/home/node/.claude" "/home/node/.openclaw" "/home/node/.notebooklm"; do
+            if [[ -d "${dir}" ]]; then
+                if [[ -z "$(ls -A "${dir}" 2>/dev/null)" ]] || \
+                   [[ "$(stat -c '%u' "${dir}" 2>/dev/null)" != "1000" ]]; then
+                    chown -R node:node "${dir}" 2>/dev/null || true
+                fi
+            fi
+        done
 
         # Mark as initialized to skip on subsequent runs
         touch "${INIT_FLAG}"
@@ -268,13 +251,13 @@ if [[ -f "${CONFIG_FILE}" ]]; then
         echo "--> Configuration previously repaired, skipping surgery and health check."
     fi
 else
-    # No config file - fresh init
+    # No config file - fresh init (named volume was empty)
     echo "==> Initializing fresh OpenClaw environment..."
 
-    # Try to copy from seed if available
-    if [[ -d "${SEED_DIR}" ]] && [[ "$(ls -A "${SEED_DIR}" 2>/dev/null)" ]]; then
-        echo "--> Copying initial configuration from seed..."
-        run_as_node cp -rn "${SEED_DIR}"/* "${CONFIG_DIR}/" 2>/dev/null || true
+    # Try to copy from host bind mount
+    if [[ -d "/home/node/.openclaw" ]] && [[ "$(ls -A "/home/node/.openclaw" 2>/dev/null)" ]]; then
+        echo "--> Copying initial configuration from host..."
+        run_as_node cp -rn /home/node/.openclaw/* "${CONFIG_DIR}/" 2>/dev/null || true
     fi
 
     # If still missing, run official setup
@@ -286,7 +269,8 @@ fi
 
 # ------------------------------------------------------------------------------
 # 4. Claude Code Embedded Skills
-#    Re-injects skills from staging layer into the live mount point
+#    Re-injects skills from staging layer into .claude directory
+#    Note: .claude is a rw bind mount, skills inject directly
 # ------------------------------------------------------------------------------
 CLAUDE_DIR="/home/node/.claude"
 CLAUDE_SEED="/opt/claude_seed"
@@ -295,6 +279,16 @@ if [[ -d "${CLAUDE_SEED}" ]]; then
     run_as_node mkdir -p "${CLAUDE_DIR}"
     # Copy missing/updated skills (-n to not overwrite user edits)
     run_as_node cp -Rn "${CLAUDE_SEED}"/* "${CLAUDE_DIR}/" 2>/dev/null || true
+fi
+
+# ------------------------------------------------------------------------------
+# 4b. Claude Code Settings Protection
+#    Ensure settings.json is read-only to prevent accidental modification
+# ------------------------------------------------------------------------------
+CLAUDE_SETTINGS="${CLAUDE_DIR}/settings.json"
+if [[ -f "${CLAUDE_SETTINGS}" ]]; then
+    chmod a-w "${CLAUDE_SETTINGS}" 2>/dev/null || true
+    echo "--> Protected settings.json (read-only)"
 fi
 
 # ------------------------------------------------------------------------------
