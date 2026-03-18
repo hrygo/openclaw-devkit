@@ -1,10 +1,12 @@
 # ==============================================================================
 # OpenClaw Docker Compose Development Environment
 # ==============================================================================
+# ⚠️  首次使用: 复制 .env.example 为 .env，或运行 ./docker-setup.sh
+# ==============================================================================
 # Quick Start:
-#   ./docker-dev-setup.sh                              # 启动服务
-#   docker compose -f docker-compose.dev.yml logs -f   # 查看日志
-#   docker compose -f docker-compose.dev.yml down      # 停止服务
+#   ./docker-setup.sh                                 # 启动服务
+#   docker compose logs -f                              # 查看日志
+#   docker compose down                                # 停止服务
 #
 # Key Features:
 #   - Claude Code CLI 内置
@@ -44,6 +46,10 @@ x-openclaw-common: &openclaw-common
     PLAYWRIGHT_BROWSERS_PATH: /home/node/.cache/ms-playwright
     # NotebookLM config path (shared with host via bind mount)
     NOTEBOOKLM_STORAGE: /home/node/.notebooklm/storage_state.json
+  # Requires Docker Engine 20.10+ for host-gateway special value.
+  # On older Docker versions (pre-20.10), replace host-gateway with:
+  #   Linux:   "$(ip route show default | awk '/default/ {print $3}')"
+  #   macOS/Windows (Docker Desktop): no extra_hosts needed (auto-managed).
   extra_hosts:
     - "host.docker.internal:host-gateway"
   logging: &common-logging
@@ -77,7 +83,6 @@ services:
 
   openclaw-gateway:
     <<: *openclaw-common
-    user: "0:0" # Run as root to fix permissions - enabled to fix EACCES
     container_name: openclaw-gateway
     ports:
       - "127.0.0.1:${OPENCLAW_GATEWAY_PORT:-18789}:18789"
@@ -99,6 +104,7 @@ services:
       UV_SYSTEM_PYTHON: "0"
       UV_NO_PROGRESS: "1"
     init: true
+    stop_grace_period: 30s
     volumes:
       # ─────────────────────────────────────────────────────────────────
       # 数据层 1: 持久化存储 (命名卷)
@@ -106,8 +112,7 @@ services:
       #    - Claude Code (.claude/ 全目录，包含 session/memory)
       #    - Go 生态 (go/pkg/mod, go/bin, .cache/go-build)
       #    - 浏览器缓存 (.cache/ms-playwright)
-      #    - node_modules (/app)
-      #    - 特性：容器重启后全部保留，无需重建
+      #    - 注意：.openclaw/.notebooklm/workspace 被数据层 3 的 bind mount 遮蔽
       # ─────────────────────────────────────────────────────────────────
       - openclaw-devkit-home:/home/node:rw
 
@@ -134,7 +139,7 @@ services:
       # 脚本层: 入口脚本 (只读)
       # ─────────────────────────────────────────────────────────────────
       - ./docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
-    healthcheck: &common-healthcheck
+    healthcheck:
       test: [ "CMD", "node", "-e", "require('http').get('http://127.0.0.1:18789/healthz', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))" ]
       interval: 10s
       timeout: 10s
