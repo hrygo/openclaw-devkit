@@ -11,19 +11,58 @@
 │ Layer III: Product Layer - 构建频率: 高                                        │
 │ ghcr.io/hrygo/openclaw-devkit:latest | :go | :java | :office              │
 │ 包含: OpenClaw 官方 Release (openclaw.ai)                                   │
+│ Dockerfile: Dockerfile                                                      │
 └───────────────────┬─────────────────────────────────┬─────────────────────┘
                     │ FROM                             │ FROM
 ┌───────────────────┴─────────────────────────────────┴─────────────────────┐
 │ Layer II: Stack Runtimes - 构建频率: 低                                      │
 │ ghcr.io/hrygo/openclaw-runtime:go | :java | :office                       │
 │ 包含: Go 1.26, JDK 21, LibreOffice, Python IDP                             │
+│ Dockerfile: Dockerfile.stacks                                                │
 └───────────────────────────────────┬───────────────────────────────────────┘
                                     │ FROM
 ┌───────────────────────────────────┴───────────────────────────────────────┐
 │ Layer I: Base Foundation - 构建频率: 极低                                   │
 │ ghcr.io/hrygo/openclaw-runtime:base                                        │
 │ 包含: Debian Bookworm, Node.js 22, Bun, uv, Playwright                     │
+│ Dockerfile: Dockerfile.base                                                 │
 └─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 1.1 Dockerfile 职责对比
+
+| 特性 | Dockerfile.base | Dockerfile.stacks | Dockerfile |
+| :--- | :--- | :--- | :--- |
+| **层级** | Layer I (基础) | Layer II (技术栈) | Layer III (应用) |
+| **Base 镜像** | `debian:bookworm-slim` | `${BASE_IMAGE}` | `${BASE_IMAGE}` |
+| **构建目标** | 单一镜像 | 多阶段构建 | 单一镜像 |
+| **构建命令** | `make build-base` | `make build-stacks` | `make build` |
+| **包含内容** | | | |
+| 系统工具 | yq, just, gh, lazygit | - | - |
+| 运行时 | Node.js, Bun, uv | Go, JDK, Gradle, Maven | - |
+| 浏览器依赖 | Playwright 依赖 | - | Playwright 浏览器 |
+| Python 包 | - | pandoc, libreoffice 等 | notebooklm-py |
+| AI 工具 | - | gopls, staticcheck 等 | OpenClaw, Claude Code |
+| **持久化配置** | ❌ | ❌ | ✅ 全局工具目录 |
+| **镜像标签** | `openclaw-runtime:base` | `openclaw-runtime:{go,java,office}` | `openclaw-devkit:{latest,go,java,office}` |
+
+### 1.2 构建顺序
+
+```bash
+# 1. 构建基础镜像 (Layer I) - 首次或更新系统依赖时
+make build-base
+# → 产出: openclaw-runtime:base
+
+# 2. 构建技术栈镜像 (Layer II) - 首次或更新 Go/Java/Office 时
+make build-stacks
+# → 产出: openclaw-runtime:go, openclaw-runtime:java, openclaw-runtime:office
+
+# 3. 构建应用镜像 (Layer III) - 每次更新 OpenClaw 时
+make build        # 标准版 (基于 base)
+make build-go     # Go 版 (基于 go)
+make build-java   # Java 版 (基于 java)
+make build-office # Office 版 (基于 office)
+# → 产出: openclaw-devkit:latest, :go, :java, :office
 ```
 
 ---
@@ -194,3 +233,77 @@ Windows / WSL 环境的 Docker 健康检查配置：
 - **DRY**: 构建逻辑收拢在 Makefile
 - **缓存**: 更新版本时 Layer I/II 来自本地缓存
 - **独立**: 各层可独立测试和发布
+
+---
+
+## 11. 全局工具持久化
+
+OpenClaw 容器支持在运行时安装任何工具（npm/pnpm/bun/uv），重启后自动保留。
+
+### 11.1 持久化原理
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Named Volume: openclaw-global                                     │
+│  ┌─────────────────────────────────────────────────────────────────┐│
+│  │ /home/node/.global/                                            ││
+│  │ ├── bin/ (npm/pnpm/bun 工具)                                   ││
+│  │ ├── pnpm/                                                      ││
+│  │ └── _npm-cache/                                               ││
+│  └─────────────────────────────────────────────────────────────────┘│
+├─────────────────────────────────────────────────────────────────────┤
+│  Named Volume: openclaw-python-local                               │
+│  ┌─────────────────────────────────────────────────────────────────┐│
+│  │ /home/node/.local/                                             ││
+│  │ ├── bin/ (Python CLI 工具)                                     ││
+│  │ └── lib/python3.x/site-packages/                              ││
+│  └─────────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 11.2 支持的包管理器
+
+| 包管理器 | 安装命令示例 | 持久化位置 |
+| :------ | :---------- | :-------- |
+| **npm** | `npm install -g some-tool` | `/home/node/.global` |
+| **pnpm** | `pnpm add -g some-tool` | `/home/node/.global` |
+| **bun** | `bun install -g some-tool` | `/home/node/.global` |
+| **uv (Python)** | `uv pip install --user some-tool` | `/home/node/.local` |
+
+### 11.3 工作机制
+
+- **镜像构建时 (Dockerfile)**：预配置所有包管理器使用统一全局目录
+- **容器启动时 (docker-compose.yml)**：挂载 named volume 确保数据持久化
+- **运行时 (docker-entrypoint.sh)**：自动修复权限，确保 PATH 正确
+
+### 11.4 使用方式
+
+无需任何额外配置，OpenClaw 安装的工具会自动持久化：
+
+```bash
+# 重建镜像后启动
+make down
+make build
+make up
+
+# 在容器内安装工具 - 重启后依然存在
+make shell
+npm install -g my-tool
+pnpm add -g another-tool
+uv pip install --user python-tool
+
+# 退出容器，重启验证
+exit
+make down && make up
+make shell
+which my-tool  # 工具仍在!
+```
+
+### 11.5 注意事项
+
+- **首次重建**：需要在镜像构建时执行配置，首次 `make build` 后自动生效
+- **工具迁移**：之前在旧位置安装的工具不会自动迁移，需手动重新安装
+- **清理数据**：如需清除所有持久化工具，执行:
+  ```bash
+  docker volume rm openclaw-global openclaw-python-local
+  ```

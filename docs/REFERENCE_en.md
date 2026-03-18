@@ -174,6 +174,14 @@ Dual-track persistence ensures container non-volatility:
    - Path: `~/.openclaw/`
    - Purpose: **Initial setup only**. Mounted as read-only `/home/node/.openclaw-seed` to populate state on first boot.
 
+4. **Global Tools** - v1.7.3+ New
+   - Named Volumes: `openclaw-global` + `openclaw-python-local`
+   - Purpose: Persist CLI tools installed at runtime (npm/pnpm/bun/uv)
+   - Container paths:
+     - `/home/node/.global/` - Node.js tools (npm/pnpm/bun)
+     - `/home/node/.local/` - Python tools (uv pip install --user)
+   - **No configuration needed** - OpenClaw-installed tools automatically persist across restarts
+
 ---
 
 ## 6. Roles Workflow

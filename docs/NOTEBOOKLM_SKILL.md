@@ -100,12 +100,12 @@ make up
 容器启动时自动：
 - 挂载认证目录 → 共享 Google 认证
 - 挂载 Skills 目录 → 共享 Skill 文件
-- notebooklm CLI → **已内置于镜像中**（无需动态安装）
+- notebooklm CLI → **已内置于镜像中，通过 volume 持久化**（重启后依然存在）
 
 **验证容器配置:**
 ```bash
 make shell
-which notebooklm               # ✓ CLI 已内置
+which notebooklm               # ✓ CLI 已内置并持久化
 notebooklm auth check          # ✓ 认证共享成功
 ls /home/node/.claude/skills/  # notebooklm 目录存在
 ```
@@ -145,7 +145,7 @@ ls /home/node/.claude/skills/  # notebooklm 目录存在
 │  /home/node/.claude/skills/                                     │
 │  └── notebooklm/           ← Skill 挂载 ✓                        │
 │                                                                 │
-│  /usr/local/bin/notebooklm ← 镜像内置 ✓                          │
+│  /home/node/.local/bin/notebooklm ← Volume 持久化 ✓                      │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
         │

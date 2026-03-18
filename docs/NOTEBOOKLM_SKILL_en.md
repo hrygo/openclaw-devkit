@@ -101,12 +101,12 @@ make up
 Container automatically on startup:
 - Mounts auth directory → Shares Google authentication
 - Mounts Skills directory → Shares Skill files
-- notebooklm CLI → **Built-in in image** (no dynamic install needed)
+- notebooklm CLI → **Built-in in image, persisted via volume** (survives restarts)
 
 **Verify Container Configuration:**
 ```bash
 make shell
-which notebooklm               # ✓ CLI is built-in
+which notebooklm               # ✓ CLI is built-in and persisted
 notebooklm auth check          # ✓ Auth shared successfully
 ls /home/node/.claude/skills/  # notebooklm directory exists
 ```
@@ -146,7 +146,7 @@ Tell OpenClaw:
 │  /home/node/.claude/skills/                                     │
 │  └── notebooklm/           ← Skill mounted ✓                     │
 │                                                                 │
-│  /usr/local/bin/notebooklm ← Built-in in image ✓                 │
+│  /home/node/.local/bin/notebooklm ← Volume persisted ✓                   │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
         │
@@ -270,7 +270,7 @@ notebooklm login
 
 ### CLI Not Found in Container
 
-> Note: notebooklm CLI is now built-in in the image. If not found, try upgrading the image:
+> Note: notebooklm CLI is now built-in and persisted via volume. If not found, try upgrading the image:
 ```bash
 make upgrade
 ```

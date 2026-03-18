@@ -174,6 +174,14 @@ make upgrade office
    - 路径：`~/.openclaw/`
    - 用途：**仅作为初始化种子**。其内容在容器内被挂载为只读的 `/home/node/.openclaw-seed`，仅在首次启动时用于填充状态。
 
+4. **全局工具 (Global Tools)** - v1.7.3+ 新增
+   - Named Volumes: `openclaw-global` + `openclaw-python-local`
+   - 用途：持久化运行时安装的 CLI 工具（npm/pnpm/bun/uv）
+   - 容器内路径：
+     - `/home/node/.global/` - Node.js 工具 (npm/pnpm/bun)
+     - `/home/node/.local/` - Python 工具 (uv pip install --user)
+   - **无需任何配置**，OpenClaw 安装的工具自动持久化，重启后依然存在
+
 ---
 
 ## 6. Roles 开发流

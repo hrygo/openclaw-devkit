@@ -17,7 +17,7 @@ SEED_DIR="/home/node/.openclaw-seed"
 # ------------------------------------------------------------------------------
 run_as_node() {
     if [[ "$(id -u)" = "0" ]]; then
-        runuser -u node -m -- env HOME="/home/node" "$@"
+        runuser -u node -m -- env HOME="/home/node" PATH="/home/node/.global/bin:/home/node/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin" "$@"
     else
         "$@"
     fi
@@ -68,7 +68,7 @@ if [[ "$(id -u)" = "0" ]]; then
         chown -R node:node /home/node/.cache/go-build 2>/dev/null || true
     fi
 
-    # pip packages directory (for PIP_TOOLS persistence)
+    # Python user packages directory (for uv pip install --user persistence)
     if [[ -d "/home/node/.local" ]]; then
         echo "--> Fixing pip packages permissions..."
         chown -R node:node /home/node/.local 2>/dev/null || true
@@ -84,6 +84,12 @@ if [[ "$(id -u)" = "0" ]]; then
     if [[ -d "/home/node/.claude" ]]; then
         echo "--> Fixing Claude permissions..."
         chown -R node:node /home/node/.claude 2>/dev/null || true
+    fi
+
+    # Unified global tools directory (persistent via named volume)
+    if [[ -d "/home/node/.global" ]]; then
+        echo "--> Fixing global tools permissions..."
+        chown -R node:node /home/node/.global 2>/dev/null || true
     fi
 fi
 
@@ -277,13 +283,24 @@ if [[ -n "${OPENCLAW_GATEWAY_TOKEN:-}" ]]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 8. Execute CMD (drop privileges if root)
+# 9. Unified Global Tools Directory
+#    Pre-configured in Dockerfile, ensure symlink exists at runtime
+# ------------------------------------------------------------------------------
+mkdir -p /home/node/.global
+mkdir -p /home/node/.local
+if [[ -d "/home/node/.global/bin" ]] && [[ ! -L "/usr/local/bin/global" ]]; then
+    ln -sf /home/node/.global/bin /usr/local/bin/global
+fi
+
+# ------------------------------------------------------------------------------
+# 10. Execute CMD (drop privileges if root)
 #    Ensures all files created by the app belong to 'node' user
 # ------------------------------------------------------------------------------
 echo "==> Starting OpenClaw..."
 if [[ "$(id -u)" = "0" ]]; then
     export HOME="/home/node"
-    exec runuser -u node -m -- "$@"
+    # PATH already set in environment, ensure global tools are accessible
+    exec runuser -u node -m -- env PATH="/home/node/.global/bin:/home/node/.local/bin:${PATH}" "$@"
 else
     exec "$@"
 fi

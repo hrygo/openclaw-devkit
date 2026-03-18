@@ -73,6 +73,13 @@ volumes:
     name: openclaw-playwright-cache
   openclaw-playwright-bin:
     name: openclaw-playwright-bin
+  # Unified global tools persistence - solves container restart tool loss issue
+  # Persists ALL package managers: npm, pnpm, bun, uv (Python)
+  openclaw-global:
+    name: openclaw-global
+  # Python user packages (uv pip install --user)
+  openclaw-python-local:
+    name: openclaw-python-local
   # Unified state storage for sessions, identities, and logs - REMOVED for host mapping
 
 services:
@@ -91,9 +98,20 @@ services:
     env_file:
       - .env
     environment:
-      - OPENCLAW_CONFIG_DIR=/home/node/.openclaw
-      - OPENCLAW_WORKSPACE_DIR=/home/node/.openclaw/workspace
-      - OPENCLAW_HOME=/home/node
+      <<: *common-env
+      OPENCLAW_CONFIG_DIR: /home/node/.openclaw
+      OPENCLAW_WORKSPACE_DIR: /home/node/.openclaw/workspace
+      OPENCLAW_HOME: /home/node
+      # Ensure global tools are on PATH at runtime (npm/pnpm/bun + Python user bin)
+      PATH: /home/node/.global/bin:/home/node/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+      # Node.js package managers (npm/pnpm/bun)
+      npm_config_prefix: /home/node/.global
+      pnpm_config_global_dir: /home/node/.global/pnpm
+      pnpm_config_global_bin_dir: /home/node/.global/bin
+      BUN_INSTALL_PREFIX: /home/node/.global
+      # Python package manager (uv) - force user-level installation
+      UV_SYSTEM_PYTHON: "0"
+      UV_NO_PROGRESS: "1"
     init: true
     volumes:
       # === 必需挂载 (Required Mounts) ===
@@ -118,22 +136,10 @@ services:
       - openclaw-node-modules:/app/node_modules:rw
       - openclaw-go-mod:/home/node/go/pkg/mod:rw
       - openclaw-playwright-cache:/home/node/.cache/ms-playwright:rw
-      # -------------------------------------------------------------------------
-      # 🔌 添加额外挂载点 (Extend with custom mounts)
-      # -------------------------------------------------------------------------
-      # 示例 (Examples):
-      #   - /your/project/path:/home/node/projects:rw
-      #   - /Users/yourname/Downloads:/home/node/Downloads:rw
-      #   - /shared/team-config:/home/node/team-config:ro
-      #
-      # 格式: 宿主机路径:容器内路径:访问模式 (rw=读写, ro=只读)
-      # Format: host_path:container_path:access_mode (rw=read-write, ro=read-only)
-      #
-      # 修改后执行: make down && make up
-      # After modifying: make down && make up
-      # -------------------------------------------------------------------------
-      # 移除复杂的 inline command，改用容器内置 entrypoint
-      # command: ["openclaw", "gateway", "--allow-unconfigured"]
+      # Unified global tools - persist ALL package managers (npm/pnpm/bun)
+      - openclaw-global:/home/node/.global:rw
+      # Python user packages (for uv pip install --user persistence)
+      - openclaw-python-local:/home/node/.local:rw
     healthcheck: &common-healthcheck
       # Use 127.0.0.1 for more stable local check
       test: [ "CMD", "node", "-e", "require('http').get('http://127.0.0.1:18789/healthz', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))" ]

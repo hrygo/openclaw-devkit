@@ -18,6 +18,8 @@ ARG GH_VERSION=2.67.0
 ARG LAZYGIT_VERSION=0.49.0
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=zh_CN.UTF-8
+ENV LC_ALL=zh_CN.UTF-8
 ENV PATH="/usr/local/bin:${PATH}"
 
 # Configure Apt with retries and mirror
@@ -26,12 +28,16 @@ RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries && \
 deb http://$APT_MIRROR/debian-security bookworm-security main contrib non-free\n\
 deb http://$APT_MIRROR/debian bookworm-updates main contrib non-free\n" > /etc/apt/sources.list
 
-# Install essential system utilities
+# Install essential system utilities (including locales for Chinese charset)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl ca-certificates gnupg git jq ripgrep fd-find build-essential pkg-config \
-    unzip file sqlite3 zip wget procps openssl less vim-tiny tree \
-    fzf zoxide tldr && \
+    unzip file sqlite3 zip wget procps openssl less vim tree \
+    fzf zoxide tldr locales && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Generate Chinese locale (UTF-8)
+RUN sed -i '/^#.*zh_CN.UTF-8/s/^#//' /etc/locale.gen && \
+    locale-gen
 
 # Install yq (YAML processor) - locked version with retry
 RUN ARCH=$(dpkg --print-architecture) && \
@@ -78,8 +84,7 @@ RUN curl -fsSL https://bun.sh/install | BUN_INSTALL=/usr/local bash
 # Install uv (Python package manager)
 RUN curl -fsSL https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
 
-# Install notebooklm-py (Google NotebookLM CLI - built-in)
-RUN uv pip install --system --break-system-packages --no-cache notebooklm-py
+# notebooklm-py moved to Dockerfile (app layer) for persistence via volume
 
 # Install Browser dependencies (LibreOffice and Playwright need these)
 RUN if [ "$BROWSER_DEPS" = "1" ]; then \
