@@ -68,11 +68,13 @@ if [[ "$(id -u)" = "0" ]]; then
     # Bind mounts: fix only if empty or not already owned by node user (preserves host data).
     echo "--> Checking volume permissions..."
 
-    # Named volume directories: always chown to node (idempotent, prevents stale root ownership)
+    # Named volume directories: create if missing (empty volumes have no contents from image),
+    # then chown to node (idempotent, cheap ~5ms, prevents stale root ownership).
     for dir in "/home/node/.claude" "/home/node/.global" "/home/node/.local" "/home/node/go" "/home/node/.cache" "/app"; do
-        if [[ -d "${dir}" ]]; then
-            chown -R node:node "${dir}" 2>/dev/null || true
+        if [[ ! -d "${dir}" ]]; then
+            mkdir -p "${dir}"
         fi
+        chown -R node:node "${dir}" 2>/dev/null || true
     done
 
     # Bind mount directories: only fix if empty or wrong owner (preserve host data)
