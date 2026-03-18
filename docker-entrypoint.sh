@@ -268,11 +268,23 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 4. Claude Code Session Persistence
+# 4. Claude Code Runtime Files
 #    .claude/ is backed by openclaw-claude-home named volume.
 #    settings.json and skills/ are read-only bind mounts from host.
 #    No seed copying needed - session/memory persist across rebuilds.
 # ------------------------------------------------------------------------------
+# Ensure .claude.json exists (Claude Code CLI requires this file)
+# Create empty JSON object if missing to prevent "configuration file not found" warnings.
+# This file stores userID, project configs, MCP servers, and other CLI runtime state.
+# Ref: https://code.claude.com/docs/en/settings
+CLAUDE_JSON="${HOME}/.claude.json"
+if [[ ! -f "${CLAUDE_JSON}" ]]; then
+    echo "--> Creating empty .claude.json configuration file..."
+    run_as_node sh -c "echo '{}' > '${CLAUDE_JSON}'"
+    if [[ "$(id -u)" = "0" ]]; then
+        chown node:node "${CLAUDE_JSON}" 2>/dev/null || true
+    fi
+fi
 
 # ------------------------------------------------------------------------------
 # 5. NotebookLM CLI
