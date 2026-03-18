@@ -108,47 +108,31 @@ services:
     stop_grace_period: 30s
     volumes:
       # ─────────────────────────────────────────────────────────────────
-      # 数据层 0: Claude Code 专用命名卷 (持久化)
-      #    - session, memory, skills state
-      #    - 重建后自动保留，无须 seed 拷贝
-      #    - settings.json 和 skills/ 通过只读 bind mount 覆盖
-      # ─────────────────────────────────────────────────────────────────
-      - openclaw-claude-home:/home/node/.claude:rw
-
-      # ─────────────────────────────────────────────────────────────────
-      # 数据层 1: 工具链持久化 (命名卷)
-      #    - .global/, .local/, go/, .cache/
-      #    - 容器重启后保留，无需重建
+      # Layer 1: 工具链命名卷 (base layer, provides .global/.local/go/.cache)
       # ─────────────────────────────────────────────────────────────────
       - openclaw-devkit-home:/home/node:rw
 
       # ─────────────────────────────────────────────────────────────────
-      # 数据层 2: OpenClaw 配置共享 (宿主 → 容器，bind mount)
-      #    - HOST_OPENCLAW_DIR: 宿主机 OpenClaw 目录（存量用户直接使用）
-      #    - 宿主机与容器实时双向共享，无迁移
+      # Layer 2: Claude Code 命名卷 (session/memory persist across rebuilds)
       # ─────────────────────────────────────────────────────────────────
-      - ${HOST_OPENCLAW_DIR:-${HOME}/.openclaw}:/home/node/.openclaw:rw
+      - openclaw-claude-home:/home/node/.claude:rw
 
       # ─────────────────────────────────────────────────────────────────
-      # 数据层 3: Claude Code 只读配置 (host → container)
-      #    - settings.json: Claude Code 全局配置，Host 管理，容器只读
-      #    - skills/: Claude Code skills，Host 管理，容器只读
+      # Layer 3: 用户配置共享 (host → container, bind mounts)
+      #    More specific paths override Layer 1 named volume.
       # ─────────────────────────────────────────────────────────────────
+      # OpenClaw 配置目录 (默认 ~/.openclaw，存量用户直接挂载，无迁移)
+      - ${HOST_OPENCLAW_DIR:-${HOME}/.openclaw}:/home/node/.openclaw:rw
+      # NotebookLM CLI 状态
+      - ${HOME:-${USERPROFILE:-/tmp}}/.notebooklm:/home/node/.notebooklm:rw
+      # Claude Code 只读配置 (覆盖 Layer 2 命名卷中的同名路径)
       - ${HOME:-${USERPROFILE:-/tmp}}/.claude/settings.json:/home/node/.claude/settings.json:ro
       - ${HOME:-${USERPROFILE:-/tmp}}/.claude/skills:/home/node/.claude/skills:ro
-
-      # ─────────────────────────────────────────────────────────────────
-      # 数据层 4: NotebookLM CLI 状态共享 (host ↔ container)
-      # ─────────────────────────────────────────────────────────────────
-      - ${HOME:-${USERPROFILE:-/tmp}}/.notebooklm:/home/node/.notebooklm:rw
-
-      # ─────────────────────────────────────────────────────────────────
-      # 数据层 5: .agents/skills 只读共享
-      # ─────────────────────────────────────────────────────────────────
+      # .agents/skills 只读共享
       - ${HOME:-${USERPROFILE:-/tmp}}/.agents/skills:/home/node/.agents/skills:ro
 
       # ─────────────────────────────────────────────────────────────────
-      # 脚本层: 入口脚本 (只读)
+      # Layer 4: 脚本 (只读)
       # ─────────────────────────────────────────────────────────────────
       - ./docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
     healthcheck:
