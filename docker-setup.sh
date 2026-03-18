@@ -124,7 +124,7 @@ validate_mount_spec() {
 }
 
 read_config_gateway_token() {
-  local config_path="$OPENCLAW_CONFIG_DIR/openclaw.json"
+  local config_path="${HOST_OPENCLAW_DIR:-"$HOME/.openclaw"}/openclaw.json"
   if [[ ! -f "$config_path" ]]; then
     return 0
   fi
@@ -240,8 +240,8 @@ YAML
 
   if [[ -n "$home_volume" ]]; then
     gateway_home_mount="${home_volume}:/home/node"
-    gateway_config_mount="${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw"
-    gateway_workspace_mount="${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace"
+    gateway_config_mount="${HOST_OPENCLAW_DIR}:/home/node/.openclaw"
+    gateway_workspace_mount="${HOST_OPENCLAW_DIR}/workspace:/home/node/.openclaw/workspace"
     validate_mount_spec "$gateway_home_mount"
     validate_mount_spec "$gateway_config_mount"
     validate_mount_spec "$gateway_workspace_mount"
@@ -263,6 +263,7 @@ volumes:
 YAML
   fi
 }
+
 
 # ============================================================
 # 参数解析
@@ -287,9 +288,7 @@ OpenClaw 开发环境 Docker 部署脚本
   --help          显示帮助信息
 
 环境变量:
-  OPENCLAW_CONFIG_DIR     配置种子目录 (默认: ~/.openclaw，仅用于首次初始化)
-  OPENCLAW_WORKSPACE_DIR  工作区目录 (默认: ~/.openclaw/workspace，双向同步)
-                          注: 运行时配置存储在 ~/.openclaw-in-docker/ (自动管理)
+  HOST_OPENCLAW_DIR     宿主机 OpenClaw 配置目录 (默认: ~/.openclaw，直接 bind mount 共享)
   OPENCLAW_EXTRA_MOUNTS   额外挂载点，逗号分隔
                           格式: src:dst[:ro],src2:dst2
   OPENCLAW_HOME_VOLUME    命名卷名称 (可选，用于持久化整个 home)
@@ -327,6 +326,168 @@ if ! docker compose version >/dev/null 2>&1; then
 fi
 
 # ============================================================
+# 安全检测：宿主机 OpenClaw (提前检测，避免端口/配置冲突)
+# ============================================================
+
+_openclaw_host_installed=false
+_openclaw_host_running=false
+
+# 检测 CLI 是否存在于 PATH
+if command -v openclaw >/dev/null 2>&1; then
+    _openclaw_host_installed=true
+fi
+
+# 检测 launchd 服务 (macOS CLI 安装)
+if [[ "$OSTYPE" == "darwin"* ]] && command -v launchctl >/dev/null 2>&1; then
+    if launchctl print gui/$UID/bot.molt.gateway >/dev/null 2>&1; then
+        _openclaw_host_running=true
+    fi
+fi
+
+# 检测 systemd 服务 (Linux CLI 安装，user mode)
+if command -v systemctl >/dev/null 2>&1; then
+    if systemctl --user is-active --quiet openclaw-gateway.service 2>/dev/null; then
+        _openclaw_host_running=true
+    fi
+fi
+
+# 检测直接运行进程（兜底：即使没有服务管理器也可能 Gateway 在运行）
+if ! $_openclaw_host_running; then
+    if pgrep -f "openclaw-gateway" >/dev/null 2>&1; then
+        _openclaw_host_running=true
+    fi
+fi
+
+# ── 输出警告与停止建议 ──────────────────────────────────────────
+if $_openclaw_host_installed || $_openclaw_host_running; then
+    echo ""
+    echo -e "${RED}${BOLD}═══════════════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${RED}${BOLD}  ⚠️  安全警示：宿主机 OpenClaw 检测到${NC}"
+    echo -e "${RED}${BOLD}═══════════════════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo -e "容器模式与宿主机模式存在冲突："
+    echo ""
+    echo -e "  1. ${BOLD}端口冲突${NC}: 两者均监听 18789"
+    echo -e "  2. ${BOLD}配置冲突${NC}: bind mount 会覆盖宿主机 ~/.openclaw/ 配置"
+    echo -e "  3. ${BOLD}双进程风险${NC}: 同时运行会争夺设备配对和 WebSocket 连接"
+    echo ""
+
+    # ── 自动停止 ──────────────────────────────────────────────
+    _stopped=false
+
+    # 方式 1: 使用 openclaw CLI (跨平台，会自动选择 launchd/systemd/直接 kill)
+    if command -v openclaw >/dev/null 2>&1; then
+        echo -e "${INFO}尝试通过 openclaw CLI 停止 Gateway 服务..."
+        if openclaw gateway stop >/dev/null 2>&1; then
+            echo -e "${SUCCESS}Gateway 服务已通过 openclaw 停止${NC}"
+            _stopped=true
+        else
+            # CLI stop 失败，尝试平台原生工具
+            echo -e "${YELLOW}openclaw gateway stop 未成功，尝试平台原生工具...${NC}"
+
+            # 方式 2: macOS launchd
+            if [[ "$OSTYPE" == "darwin"* ]] && command -v launchctl >/dev/null 2>&1; then
+                if launchctl print gui/$UID/bot.molt.gateway >/dev/null 2>&1; then
+                    echo -e "${INFO}检测到 launchd 服务 (bot.molt.gateway)，正在停止..."
+                    if launchctl bootout gui/$UID/bot.molt.gateway 2>/dev/null; then
+                        echo -e "${SUCCESS}launchd 服务已停止${NC}"
+                        _stopped=true
+                    fi
+                fi
+                # macOS App launchd
+                if launchctl print gui/$UID/ai.openclaw.mac >/dev/null 2>&1; then
+                    echo -e "${INFO}检测到 macOS App launchd 服务 (ai.openclaw.mac)，正在停止..."
+                    launchctl bootout gui/$UID/ai.openclaw.mac 2>/dev/null && \
+                        echo -e "${SUCCESS}macOS App 服务已停止${NC}" || true
+                fi
+            fi
+
+            # 方式 3: Linux systemd (user mode)
+            if command -v systemctl >/dev/null 2>&1; then
+                if systemctl --user is-active --quiet openclaw-gateway.service 2>/dev/null; then
+                    echo -e "${INFO}检测到 systemd 服务 (openclaw-gateway.service)，正在停止..."
+                    if systemctl --user stop openclaw-gateway.service 2>/dev/null; then
+                        echo -e "${SUCCESS}systemd 服务已停止${NC}"
+                        _stopped=true
+                    fi
+                fi
+            fi
+        fi
+    fi
+
+    # 方式 4: 兜底 - 直接 kill 进程
+    if ! $_stopped; then
+        _gateway_pids=$(pgrep -f "openclaw-gateway" 2>/dev/null || true)
+        if [[ -n "$_gateway_pids" ]]; then
+            echo -e "${YELLOW}正在强制终止残留进程...${NC}"
+            for _pid in $_gateway_pids; do
+                echo -e "${INFO}  kill TERM PID $_pid"
+                kill -TERM "$_pid" 2>/dev/null || true
+            done
+            sleep 2
+            # 检查是否还有残留
+            _remaining=$(pgrep -f "openclaw-gateway" 2>/dev/null || true)
+            if [[ -n "$_remaining" ]]; then
+                echo -e "${YELLOW}  进程未响应 SIGTERM，发送 SIGKILL...${NC}"
+                for _pid in $_remaining; do
+                    kill -KILL "$_pid" 2>/dev/null || true
+                done
+            fi
+            echo -e "${SUCCESS}残留进程已终止${NC}"
+            _stopped=true
+        fi
+    fi
+
+    if $_stopped; then
+        echo -e "${SUCCESS}宿主机 OpenClaw 已全部停止${NC}"
+    else
+        echo -e "${YELLOW}未能自动停止宿主机 OpenClaw，请手动处理${NC}"
+    fi
+    echo ""
+
+    # ── 卸载指南 ──────────────────────────────────────────────
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${YELLOW}  🔧 宿主机 OpenClaw 卸载指南${NC}"
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+
+    echo -e "${BOLD}推荐：使用官方卸载命令（最彻底，自动清理所有资源）${NC}"
+    echo -e "  ${BOLD}npx -y openclaw uninstall --all --yes --non-interactive${NC}"
+    echo ""
+    echo -e "${BOLD}分步卸载：${NC}"
+    echo ""
+
+    if $_openclaw_host_running; then
+        echo -e "${BOLD}Step 1 - 停止服务${NC}"
+        echo -e "  macOS (launchd):   ${BOLD}launchctl bootout gui/\$UID/bot.molt.gateway${NC}"
+        echo -e "  macOS (App):       ${BOLD}launchctl bootout gui/\$UID/ai.openclaw.mac${NC}"
+        echo -e "  Linux (systemd):   ${BOLD}systemctl --user stop openclaw-gateway.service${NC}"
+        echo -e "  直接进程:          ${BOLD}pkill -f openclaw-gateway${NC}"
+        echo ""
+    fi
+
+    echo -e "${BOLD}Step 2 - 卸载 CLI${NC}"
+    echo -e "  npm:  ${BOLD}npm uninstall -g openclaw${NC}"
+    echo -e "  pnpm: ${BOLD}pnpm remove -g openclaw${NC}"
+    echo -e "  bun:  ${BOLD}bun remove -g openclaw${NC}"
+    echo ""
+
+    echo -e "${BOLD}Step 3 - 清理残留服务文件（如有）${NC}"
+    echo -e "  macOS (CLI plist):     ${BOLD}rm -f ~/Library/LaunchAgents/bot.molt.gateway.plist${NC}"
+    echo -e "  macOS (App plist):     ${BOLD}rm -f ~/Library/LaunchAgents/ai.openclaw.mac.plist${NC}"
+    echo -e "  Linux (systemd unit):  ${BOLD}rm -f ~/.config/systemd/user/openclaw-gateway.service${NC}"
+    echo -e "  Linux (reload):        ${BOLD}systemctl --user daemon-reload${NC}"
+    echo ""
+
+    echo -e "${BOLD}Step 4 - 清理配置与数据（按需）${NC}"
+    echo -e "  配置目录:  ${BOLD}rm -rf ~/.openclaw${NC}"
+    echo -e "  npm 全局包: ${BOLD}npm list -g openclaw --depth=0${NC} (确认是否有残留)"
+    echo ""
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+fi
+
+# ============================================================
 # 配置变量
 # ============================================================
 
@@ -334,22 +495,17 @@ HOME_VOLUME_NAME="${OPENCLAW_HOME_VOLUME:-}"
 RAW_EXTRA_MOUNTS="${OPENCLAW_EXTRA_MOUNTS:-}"
 
 # Initialize variables with defaults (handled before tilde expansion)
-OPENCLAW_CONFIG_DIR="${OPENCLAW_CONFIG_DIR:-$HOME/.openclaw}"
-OPENCLAW_WORKSPACE_DIR="${OPENCLAW_WORKSPACE_DIR:-$HOME/.openclaw/workspace}"
+HOST_OPENCLAW_DIR="${HOST_OPENCLAW_DIR:-$HOME/.openclaw}"
 OPENCLAW_GATEWAY_PORT="${OPENCLAW_GATEWAY_PORT:-18789}"
 OPENCLAW_BRIDGE_PORT="${OPENCLAW_BRIDGE_PORT:-18790}"
 
 # Handle tilde expansion (POSIX compliant)
-case "$OPENCLAW_CONFIG_DIR" in
-    \~*) OPENCLAW_CONFIG_DIR="$HOME${OPENCLAW_CONFIG_DIR#\~}" ;;
-esac
-case "$OPENCLAW_WORKSPACE_DIR" in
-    \~*) OPENCLAW_WORKSPACE_DIR="$HOME${OPENCLAW_WORKSPACE_DIR#\~}" ;;
+case "$HOST_OPENCLAW_DIR" in
+    \~*) HOST_OPENCLAW_DIR="$HOME${HOST_OPENCLAW_DIR#\~}" ;;
 esac
 
 # 验证路径
-validate_mount_path_value "OPENCLAW_CONFIG_DIR" "$OPENCLAW_CONFIG_DIR"
-validate_mount_path_value "OPENCLAW_WORKSPACE_DIR" "$OPENCLAW_WORKSPACE_DIR"
+validate_mount_path_value "HOST_OPENCLAW_DIR" "$HOST_OPENCLAW_DIR"
 if [[ -n "$HOME_VOLUME_NAME" ]]; then
   if [[ "$HOME_VOLUME_NAME" == *"/"* ]]; then
     validate_mount_path_value "OPENCLAW_HOME_VOLUME" "$HOME_VOLUME_NAME"
@@ -407,29 +563,24 @@ repair_host_permissions() {
     fi
 }
 
-# 先检查并修复权限
-repair_host_permissions "$OPENCLAW_CONFIG_DIR"
-repair_host_permissions "$OPENCLAW_WORKSPACE_DIR"
-repair_host_permissions "$HOME/.openclaw-in-docker"
+# 先检查并修复权限 (使用新架构的 HOST_OPENCLAW_DIR)
+repair_host_permissions "${HOST_OPENCLAW_DIR:-$HOME/.openclaw}"
 repair_host_permissions "$HOME/.claude"
 repair_host_permissions "$HOME/.notebooklm"
 repair_host_permissions "$HOME/.agents/skills"
 
-mkdir -p "$OPENCLAW_CONFIG_DIR"
-mkdir -p "$OPENCLAW_WORKSPACE_DIR"
-# Seed directory tree eagerly so bind mounts work even on Docker Desktop/Windows
-# where the container (even as root) cannot create new host subdirectories.
-mkdir -p "$OPENCLAW_CONFIG_DIR/identity"
-mkdir -p "$OPENCLAW_CONFIG_DIR/agents/main/agent"
-mkdir -p "$OPENCLAW_CONFIG_DIR/agents/main/sessions"
-mkdir -p "$OPENCLAW_CONFIG_DIR/agents/codex/agent"
-mkdir -p "$OPENCLAW_CONFIG_DIR/agents/codex/sessions"
-# Ensure the host directory for the container's state exists
-mkdir -p "$HOME/.openclaw-in-docker"
+# 创建配置目录（仅首次使用——存量用户已有 ~/.openclaw，直接复用）
+mkdir -p "${HOST_OPENCLAW_DIR:-$HOME/.openclaw}"
+# Seed 子目录：确保 bind mount 目标存在（Dokcer Desktop/Windows 容器内无法创建宿主机子目录）
+mkdir -p "${HOST_OPENCLAW_DIR:-$HOME/.openclaw}/identity"
+mkdir -p "${HOST_OPENCLAW_DIR:-$HOME/.openclaw}/agents/main/agent"
+mkdir -p "${HOST_OPENCLAW_DIR:-$HOME/.openclaw}/agents/main/sessions"
+mkdir -p "${HOST_OPENCLAW_DIR:-$HOME/.openclaw}/agents/codex/agent"
+mkdir -p "${HOST_OPENCLAW_DIR:-$HOME/.openclaw}/agents/codex/sessions"
 
-# 优雅迁移 Git 身份：如果发现宿主机有热备用的 Gitconfig，自动推入 Seed，规避 docker-compose 的危险空挂载
+# 优雅迁移 Git 身份：如果发现宿主机有热备用的 Gitconfig，自动推入配置目录
 if [[ -f "$HOME/.gitconfig-hotplex" ]]; then
-  cp "$HOME/.gitconfig-hotplex" "$OPENCLAW_CONFIG_DIR/.gitconfig"
+  cp "$HOME/.gitconfig-hotplex" "${HOST_OPENCLAW_DIR:-$HOME/.openclaw}/.gitconfig"
 fi
 
 # ============================================================
@@ -440,7 +591,7 @@ if [[ -z "${OPENCLAW_GATEWAY_TOKEN:-}" ]]; then
   EXISTING_CONFIG_TOKEN="$(read_config_gateway_token || true)"
   if [[ -n "$EXISTING_CONFIG_TOKEN" ]]; then
     OPENCLAW_GATEWAY_TOKEN="$EXISTING_CONFIG_TOKEN"
-    info "复用配置文件中的 Gateway Token: ${CYAN}$OPENCLAW_CONFIG_DIR/openclaw.json${NC}"
+    info "复用配置文件中的 Gateway Token: ${CYAN}${HOST_OPENCLAW_DIR}/openclaw.json${NC}"
   elif command -v openssl >/dev/null 2>&1; then
     OPENCLAW_GATEWAY_TOKEN="$(openssl rand -hex 32)"
   else
@@ -511,8 +662,7 @@ info "同步环境变量文件: ${CYAN}$ENV_FILE${NC}"
 # Use host paths for .env (required for docker-compose volume mounting)
 # The application inside will still use the internal paths via compose environment overrides.
 upsert_env "$ENV_FILE" \
-  OPENCLAW_CONFIG_DIR \
-  OPENCLAW_WORKSPACE_DIR \
+  HOST_OPENCLAW_DIR \
   OPENCLAW_GATEWAY_PORT \
   OPENCLAW_BRIDGE_PORT \
   OPENCLAW_GATEWAY_TOKEN \
@@ -563,6 +713,49 @@ if [[ -f "$EXTRA_COMPOSE_FILE" ]]; then
   COMPOSE_HINT+=" -f ${EXTRA_COMPOSE_FILE}"
 fi
 
+# ============================================================
+# 安全提示：Gateway LAN 模式
+# ============================================================
+
+LAN_BIND=false
+if [[ -f "$ROOT_DIR/.env" ]]; then
+    # 检查是否在 .env 或 openclaw.json 中显式配置了 lan 模式
+    if grep -q "gateway.bind.*lan\|bind.*lan" "$ROOT_DIR/.env" 2>/dev/null || \
+       grep -q '"bind"[[:space:]]*:[[:space:]]*"lan"' "${HOST_OPENCLAW_DIR}/openclaw.json" 2>/dev/null; then
+        LAN_BIND=true
+    fi
+fi
+
+# docker-entrypoint.sh 默认强制设置 gateway.bind=lan，检查 .env 中是否有显式覆盖
+ENV_GATEWAY_BIND_LINE=$(grep -E "^OPENCLAW_GATEWAY_BIND=" "$ROOT_DIR/.env" 2>/dev/null || true)
+if [[ -z "$ENV_GATEWAY_BIND_LINE" ]]; then
+    LAN_BIND=true  # 未显式设置，默认走 LAN 模式
+fi
+
+if [[ "$LAN_BIND" == "true" ]]; then
+cat <<LAN_WARN
+
+${YELLOW}═══════════════════════════════════════════════════════════════════════════════${NC}
+${YELLOW}  ⚠️  网络安全提示：Gateway LAN 模式${NC}
+${YELLOW}═══════════════════════════════════════════════════════════════════════════════${NC}
+
+容器内 Gateway 以 LAN 模式运行 (gateway.bind=lan):
+  → Gateway 监听所有网卡，包括 Docker 桥接网络
+
+${RED}风险:${NC}
+  → 同一局域网的设备可能访问到你的 Gateway（受 token 保护）
+  → Docker 网络内的容器可直接访问 Gateway WebSocket
+
+${GREEN}安全建议:${NC}
+  → 仅在可信网络使用
+  → 如需改为仅本机访问，在 .env 中添加:
+  →   ${BOLD}OPENCLAW_GATEWAY_BIND=local${NC}
+  → 如需远程访问，建议通过 VPN 或 SSH 隧道连接
+  → 修改后执行: ${BOLD}make down && make up${NC} 重启服务
+
+LAN_WARN
+fi
+
 cat <<END
 
 ${BLUE}${BOLD}============================================================${NC}
@@ -570,7 +763,7 @@ ${BLUE}${BOLD}============================================================${NC}
 ${BLUE}${BOLD}============================================================${NC}
 
 配置目录:
-  ${BOLD}${OPENCLAW_CONFIG_DIR}${NC}
+  ${BOLD}${HOST_OPENCLAW_DIR}${NC}
 
 ${BOLD}下一步 (Next Steps):${NC}
   1. 运行配置引导:  ${BOLD}make onboard${NC}
