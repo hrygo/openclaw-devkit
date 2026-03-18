@@ -88,7 +88,7 @@ services:
     <<: *openclaw-common
     container_name: openclaw-gateway
     ports:
-      - "0.0.0.0:${OPENCLAW_GATEWAY_PORT:-18789}:18789"
+      - "127.0.0.1:${OPENCLAW_GATEWAY_PORT:-18789}:18789"
       - "127.0.0.1:${OPENCLAW_BRIDGE_PORT:-18790}:18790"
       - "127.0.0.1:${OPENCLAW_BROWSER_PORT:-18791}:18791"
     env_file:
@@ -130,8 +130,8 @@ services:
       - ${HOME:-${USERPROFILE:-/tmp}}/.claude/skills:/home/node/.claude/skills:ro
       # .agents/skills 只读共享
       - ${HOME:-${USERPROFILE:-/tmp}}/.agents/skills:/home/node/.agents/skills:ro
-      # ClawHub CLI 凭据 (macOS: ~/Library/Application Support/clawhub)
-      - ${HOME}/Library/Application\ Support/clawhub:/home/node/.config/clawhub:rw
+      # ClawHub CLI 凭据 (跨平台: macOS/Linux/Windows)
+      - ${HOST_CLAWHUB_DIR}:/home/node/.config/clawhub:rw
 
       # ─────────────────────────────────────────────────────────────────
       # Layer 4: 脚本 (只读)
