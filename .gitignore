@@ -4,7 +4,8 @@
 .env.*.local
 
 # Claude Code
-.claude/
+.claude/settings.json
+.claude/settings.local.json
 
 # macOS
 .DS_Store

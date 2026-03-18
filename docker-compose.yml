@@ -43,6 +43,7 @@ x-openclaw-common: &openclaw-common
     # ─────────────────────────────────────────────────────────────────
     # Runtime Configuration
     # ─────────────────────────────────────────────────────────────────
+    TZ: ${TZ:-Asia/Shanghai}
     PLAYWRIGHT_BROWSERS_PATH: /home/node/.cache/ms-playwright
     NOTEBOOKLM_STORAGE: /home/node/.notebooklm/storage_state.json
   # Requires Docker Engine 20.10+ for host-gateway special value.

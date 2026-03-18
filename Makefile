@@ -236,10 +236,13 @@ define wait-for-healthy
 			printf "\r$(GREEN)[$$BAR]$(NC) $(BOLD)%3d%%$(NC) $(GREEN)✓ Ready!$(NC) ($${i}s)\n" "$$PCT"; \
 			exit 0; \
 		elif [ "$$STATUS" = "unhealthy" ]; then \
-			echo ""; \
-			printf "\r$(RED)[✗ Service Failed]$(NC) unhealthy status detected\n"; \
-			echo "  执行 $(BOLD)make logs$(NC) 查看详细日志"; \
-			exit 1; \
+			UNHEALTHY_COUNT=$$((UNHEALTHY_COUNT + 1)); \
+			if [ $$UNHEALTHY_COUNT -ge 3 ]; then \
+				echo ""; \
+				printf "\r$(RED)[✗ Service Failed]$(NC) unhealthy status detected (连续 $$UNHEALTHY_COUNT 次)\n"; \
+				echo "  执行 $(BOLD)make logs$(NC) 查看详细日志"; \
+				exit 1; \
+			fi; \
 		fi; \
 		PCT=$$((i * 100 / $(1))); \
 		FILLED=$$((i * PROGRESS_BAR_WIDTH / $(1))); \
