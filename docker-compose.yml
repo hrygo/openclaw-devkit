@@ -44,7 +44,6 @@ x-openclaw-common: &openclaw-common
     # Runtime Configuration
     # ─────────────────────────────────────────────────────────────────
     PLAYWRIGHT_BROWSERS_PATH: /home/node/.cache/ms-playwright
-    # NotebookLM config path (shared with host via bind mount)
     NOTEBOOKLM_STORAGE: /home/node/.notebooklm/storage_state.json
   # Requires Docker Engine 20.10+ for host-gateway special value.
   # On older Docker versions (pre-20.10), replace host-gateway with:
@@ -72,12 +71,11 @@ x-openclaw-common: &openclaw-common
 # ------------------------------------------------------------------------------
 volumes:
   # Claude Code 专用命名卷: 持久化 .claude/ (session, memory, skills state)
-  # 与 openclaw-devkit-home 完全隔离，重建后保留
+  # 重建后自动保留，无须 seed 拷贝
   openclaw-claude-home:
     name: openclaw-claude-home
 
-  # 统一命名卷: 工具链 + Go 生态 + 浏览器缓存 + node_modules
-  # 替代原来分散的 6 个独立命名卷
+  # 工具链 + Go 生态 + 浏览器缓存命名卷
   openclaw-devkit-home:
     name: openclaw-devkit-home
 
@@ -97,11 +95,7 @@ services:
       - .env
     environment:
       <<: *common-env
-      OPENCLAW_CONFIG_DIR: /home/node/.openclaw
-      OPENCLAW_WORKSPACE_DIR: /home/node/.openclaw/workspace
       OPENCLAW_HOME: /home/node
-      # 宿主机 OpenClaw 安装目录（用于存量配置迁移）
-      HOST_OPENCLAW_DIR: ${HOME}/.openclaw
       # Node.js package managers (npm/pnpm/bun)
       npm_config_prefix: /home/node/.global
       pnpm_config_global_dir: /home/node/.global/pnpm
@@ -122,44 +116,34 @@ services:
       - openclaw-claude-home:/home/node/.claude:rw
 
       # ─────────────────────────────────────────────────────────────────
-      # 数据层 1: 持久化存储 (命名卷)
-      #    - 工具链 (.global, .local/bin)
-      #    - Go 生态 (go/pkg/mod, go/bin, .cache/go-build)
-      #    - 浏览器缓存 (.cache/ms-playwright)
-      #    - .openclaw/: 由 entrypoint 从 HOST_OPENCLAW_DIR 迁移填充
-      #    - 特性：容器重启后全部保留，无需重建
-      #
-      # 挂载顺序说明:
-      #   devkit-home (/home/node) 声明在 bind mount 之后，
-      #   因此 devkit-home 遮蔽 bind mount 的 .openclaw 目录。
-      #   .openclaw-in-docker 目录作为迁移源由 entrypoint 维护。
+      # 数据层 1: 工具链持久化 (命名卷)
+      #    - .global/, .local/, go/, .cache/
+      #    - 容器重启后保留，无需重建
       # ─────────────────────────────────────────────────────────────────
-      - ${HOME:-${USERPROFILE:-/tmp}}/.openclaw-in-docker:/home/node/.openclaw-in-docker:rw
       - openclaw-devkit-home:/home/node:rw
 
       # ─────────────────────────────────────────────────────────────────
-      # 数据层 2: Claude Code 只读配置 (host → container, ro)
+      # 数据层 2: OpenClaw 配置共享 (宿主 → 容器，bind mount)
+      #    - HOST_OPENCLAW_DIR: 宿主机 OpenClaw 目录（存量用户直接使用）
+      #    - 宿主机与容器实时双向共享，无迁移
+      # ─────────────────────────────────────────────────────────────────
+      - ${HOST_OPENCLAW_DIR:-${HOME}/.openclaw}:/home/node/.openclaw:rw
+
+      # ─────────────────────────────────────────────────────────────────
+      # 数据层 3: Claude Code 只读配置 (host → container)
       #    - settings.json: Claude Code 全局配置，Host 管理，容器只读
       #    - skills/: Claude Code skills，Host 管理，容器只读
-      #    - 挂载到 .claude 专用卷上方，遮蔽命名卷中的同名路径
       # ─────────────────────────────────────────────────────────────────
       - ${HOME:-${USERPROFILE:-/tmp}}/.claude/settings.json:/home/node/.claude/settings.json:ro
       - ${HOME:-${USERPROFILE:-/tmp}}/.claude/skills:/home/node/.claude/skills:ro
 
       # ─────────────────────────────────────────────────────────────────
-      # 数据层 3: 双向同步 (读写挂载)
-      #    - .openclaw: Gateway 配置读写
-      #    - workspace: AI 代码工作区
-      #    - .notebooklm: CLI 状态写入
-      #    - 特性：与宿主机共享读写
+      # 数据层 4: NotebookLM CLI 状态共享 (host ↔ container)
       # ─────────────────────────────────────────────────────────────────
-      - ${HOME:-${USERPROFILE:-/tmp}}/.openclaw-in-docker:/home/node/.openclaw:rw
-      - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace:rw
       - ${HOME:-${USERPROFILE:-/tmp}}/.notebooklm:/home/node/.notebooklm:rw
 
       # ─────────────────────────────────────────────────────────────────
-      # 数据层 4: 只读配置文件 (单向同步)
-      #    - .agents/skills: Host 管理的 skills 目录
+      # 数据层 5: .agents/skills 只读共享
       # ─────────────────────────────────────────────────────────────────
       - ${HOME:-${USERPROFILE:-/tmp}}/.agents/skills:/home/node/.agents/skills:ro
 

@@ -264,7 +264,6 @@ endef
 
 up: ## 启动服务
 	@mkdir -p "$(HOME)/.agents/skills"
-	@mkdir -p "$(HOME)/.openclaw-in-docker"
 	@echo "$(INFO) 启动 OpenClaw 服务..."
 	@docker compose up -d
 	@echo ""

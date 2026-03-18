@@ -50,44 +50,6 @@ validate_pkg_name() {
     return 0
 }
 
-# ------------------------------------------------------------------------------
-# Workspace Path Overlap Detection
-#    Validates that OPENCLAW_WORKSPACE_DIR does NOT overlap with the home volume
-#    mount point. If workspace is a subdirectory of ~/.openclaw-in-docker, the
-#    bind mount would shadow the named volume at that path, causing data loss.
-# ------------------------------------------------------------------------------
-_validate_workspace_path() {
-    local workspace_host_dir="${OPENCLAW_WORKSPACE_DIR:-}"
-    local home_host_dir="${HOME:-${USERPROFILE:-}}/.openclaw-in-docker"
-
-    if [[ -z "${workspace_host_dir}" ]]; then
-        return 0
-    fi
-
-    # Normalize paths for comparison
-    local norm_workspace norm_home
-    norm_workspace=$(realpath "${workspace_host_dir}" 2>/dev/null || echo "${workspace_host_dir}")
-    norm_home=$(realpath "${home_host_dir}" 2>/dev/null || echo "${home_host_dir}")
-
-    # Check if workspace is inside or equals the home directory
-    if [[ "${norm_workspace}" == "${norm_home}" ]]; then
-        echo "ERROR: OPENCLAW_WORKSPACE_DIR cannot be the same as the home volume root (${home_host_dir})." >&2
-        echo "       Please set OPENCLAW_WORKSPACE_DIR to a path OUTSIDE ~/.openclaw-in-docker." >&2
-        return 1
-    fi
-
-    case "${norm_workspace}" in
-        "${norm_home}"/*)
-            echo "ERROR: OPENCLAW_WORKSPACE_DIR must NOT be inside ~/.openclaw-in-docker." >&2
-            echo "       Current: ${workspace_host_dir}" >&2
-            echo "       The workspace bind mount would shadow the named volume at that path." >&2
-            echo "       Please set OPENCLAW_WORKSPACE_DIR to a path OUTSIDE ~/.openclaw-in-docker." >&2
-            return 1
-            ;;
-    esac
-
-    return 0
-}
 
 # ------------------------------------------------------------------------------
 # 0. Cleanup stale temporary files from previous runs
@@ -95,10 +57,6 @@ _validate_workspace_path() {
 find "${CONFIG_DIR}" -name "*.tmp" -type f -delete 2>/dev/null || true
 find "${CONFIG_DIR}" -name "*.bak" -type f -delete 2>/dev/null || true
 
-# Validate workspace path before any mount operations
-if ! _validate_workspace_path; then
-    exit 1
-fi
 
 # ------------------------------------------------------------------------------
 # 1. Smart Permission Fix (only when needed)
@@ -251,45 +209,8 @@ if [[ -f "${CONFIG_FILE}" ]]; then
         echo "--> Configuration previously repaired, skipping surgery and health check."
     fi
 else
-    # No config file - named volume was empty, attempt migration
+    # No config file - bind mount (HOST_OPENCLAW_DIR) is empty or new
     echo "==> Initializing fresh OpenClaw environment..."
-
-    # Determine migration source (priority order):
-    #   1. HOST_OPENCLAW_DIR  — 宿主机原始 OpenClaw 安装目录 (存量用户)
-    #   2. ~/.openclaw-in-docker — Docker 旧版 staging 目录 (向后兼容)
-    #   3. none — 真正的全新安装
-    MIGRATION_SRC=""
-    if [[ -n "${HOST_OPENCLAW_DIR:-}" ]] && \
-       [[ -f "${HOST_OPENCLAW_DIR}/openclaw.json" || -d "${HOST_OPENCLAW_DIR}/agents" ]]; then
-        MIGRATION_SRC="${HOST_OPENCLAW_DIR}"
-    elif [[ -f "/home/node/.openclaw-in-docker/openclaw.json" ]] || \
-         [[ -d "/home/node/.openclaw-in-docker/agents" ]]; then
-        MIGRATION_SRC="/home/node/.openclaw-in-docker"
-    fi
-
-    if [[ -n "${MIGRATION_SRC}" ]]; then
-        echo "--> 检测到宿主机 OpenClaw 配置，正在迁移..."
-        echo "--> 迁移源: ${MIGRATION_SRC}"
-        echo "--> 迁移目标: ${CONFIG_DIR}"
-
-        # Use rsync if available (preserves permissions, excludes workspace)
-        if command -v rsync >/dev/null 2>&1; then
-            rsync -a --exclude='workspace/' \
-                "${MIGRATION_SRC}/" \
-                "${CONFIG_DIR}/"
-            echo "--> 迁移完成 (rsync)"
-        else
-            # Fallback: cp without overwrite (-n) to avoid clobbering user edits
-            for item in "${MIGRATION_SRC}"/*; do
-                [[ "$(basename "$item")" == "workspace" ]] && continue
-                cp -rn "$item" "${CONFIG_DIR}/" 2>/dev/null || true
-            done
-            echo "--> 迁移完成 (cp)"
-        fi
-        echo "--> workspace 目录通过独立 bind mount 与宿主机共享"
-    else
-        echo "--> 未检测到宿主机配置，初始化新环境..."
-    fi
 
     # Ensure openclaw.json exists (run official setup if still missing)
     if [[ ! -f "${CONFIG_FILE}" ]]; then
