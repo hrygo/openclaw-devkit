@@ -48,8 +48,10 @@ RUN mkdir -p /home/node/.local/lib && \
 
 # Install notebooklm-py (Google NotebookLM CLI - persisted via volume)
 # Note: Only install if Python and uv are available (office variant has Python)
+# Note: DO NOT use --system flag, as it conflicts with UV_SYSTEM_PYTHON=0 in docker-compose.yml
+#       Using --system would install to /usr/lib instead of /home/node/.local
 RUN if command -v python3 >/dev/null 2>&1 && command -v uv >/dev/null 2>&1; then \
-        uv pip install --system --break-system-packages --no-cache notebooklm-py; \
+        uv pip install --break-system-packages --no-cache notebooklm-py; \
     fi
 
 # Add unified global bin to PATH (for all package managers)
@@ -59,13 +61,18 @@ ENV pnpm_config_global_dir=/home/node/.global/pnpm
 ENV pnpm_config_global_bin_dir=/home/node/.global/bin
 
 # Install Tier 3 Fast-Updating AI Agents
-# Positioned here so updating these tools doesn't trigger a rebuild of the entire app layer
+# Note: These tools are installed into the image (not volume-mounted) because:
+#   1. They use shell install scripts that may not support custom directories
+#   2. DevKit rebuilds are infrequent, so re-installing is acceptable
+#   3. Tools are small, image overhead is minimal
 # We use root to install but ensure they are on path or globally accessible
 RUN npm install -g @anthropic-ai/claude-code@latest && \
-    # Install placeholder for OpenCode and Pi-Mono
-    echo "Installing AI Agents..." && \
-    curl -fsSL https://opencode.ai/install.sh | INSTALL_DIR=/usr/local/bin bash || true && \
-    curl -fsSL https://pimono.ai/install.sh | INSTALL_DIR=/usr/local/bin bash || true
+    # Install OpenCode CLI
+    echo "Installing opencode.ai..." && \
+    (curl -fsSL https://opencode.ai/install.sh | INSTALL_DIR=/usr/local/bin bash 2>&1 || echo "Warning: opencode.ai installation failed") && \
+    # Install Pi-Mono CLI
+    echo "Installing pi-mono..." && \
+    (curl -fsSL https://pimono.ai/install.sh | INSTALL_DIR=/usr/local/bin bash 2>&1 || echo "Warning: pi-mono installation failed")
 
 # Post-installation setup
 # (redundant user creation removed - now in base)
