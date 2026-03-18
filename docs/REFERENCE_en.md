@@ -174,7 +174,7 @@ Dual-track persistence ensures container non-volatility:
    - Path: `~/.openclaw/`
    - Purpose: **Initial setup only**. Mounted as read-only `/home/node/.openclaw-seed` to populate state on first boot.
 
-4. **Global Tools** - v1.7.3+ New
+4. **Global Tools** - v1.8.0 New
    - Named Volumes: `openclaw-global` + `openclaw-python-local`
    - Purpose: Persist CLI tools installed at runtime (npm/pnpm/bun/uv)
    - Container paths:
