@@ -224,7 +224,7 @@ fi
 # Create empty JSON object if missing to prevent "configuration file not found" warnings.
 # This file stores userID, project configs, MCP servers, and other CLI runtime state.
 # Ref: https://code.claude.com/docs/en/settings
-CLAUDE_JSON="${HOME}/.claude.json"
+CLAUDE_JSON="/home/node/.claude.json"
 if [[ ! -f "${CLAUDE_JSON}" ]]; then
     echo "--> Creating empty .claude.json configuration file..."
     run_as_node sh -c "echo '{}' > '${CLAUDE_JSON}'"
