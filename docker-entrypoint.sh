@@ -13,13 +13,13 @@ set -e
 # - RW bind: .openclaw, .notebooklm (bind mount, NOTEBOOKLM_STORAGE env var controls path)
 #
 # Performance optimizations:
+# - Always chown named volumes (cheap, prevents stale root ownership)
 # - One-time surgery + one-time doctor (gateway manages config afterwards)
 # ==============================================================================
 
 CONFIG_DIR="/home/node/.openclaw"
 CONFIG_FILE="${CONFIG_DIR}/openclaw.json"
 # Flags in named volume (writable) - avoids read-only mount conflicts
-INIT_FLAG="/home/node/.entrypoint_initialized"
 SURGERY_FLAG="/home/node/.openclaw_initialized"
 
 # Global tools path for node user
@@ -59,40 +59,33 @@ find "${CONFIG_DIR}" -name "*.bak" -type f -delete 2>/dev/null || true
 
 
 # ------------------------------------------------------------------------------
-# 1. Smart Permission Fix (only when needed)
-#    - Named volume dirs: always fix (.claude, tools, caches, node_modules)
-#    - Bind mounts: fix only if empty (preserve host data)
+# 1. Volume Permission Fix
+#    - Named volume dirs: always chown to node (cheap, prevents stale root ownership)
+#    - Bind mounts: fix only if empty or wrong owner (preserves host data)
 # ------------------------------------------------------------------------------
 if [[ "$(id -u)" = "0" ]]; then
-    # Check if we've already initialized (skip redundant fixes)
-    if [[ -f "${INIT_FLAG}" ]]; then
-        echo "--> Permissions already initialized, skipping chown..."
-    else
-        echo "--> Running one-time permission initialization..."
+    # Always fix named volume permissions (chown is cheap, ~5ms, avoids stale root ownership).
+    # Bind mounts: fix only if empty or not already owned by node user (preserves host data).
+    echo "--> Checking volume permissions..."
 
-        # Named volume directories: always fix ownership
-        # (.claude, tools, caches, node_modules)
-        for dir in "/home/node/.global" "/home/node/.local" "/home/node/go" "/home/node/.cache" "/app"; do
-            if [[ -d "${dir}" ]]; then
+    # Named volume directories: always chown to node (idempotent, prevents stale root ownership)
+    for dir in "/home/node/.claude" "/home/node/.global" "/home/node/.local" "/home/node/go" "/home/node/.cache" "/app"; do
+        if [[ -d "${dir}" ]]; then
+            chown -R node:node "${dir}" 2>/dev/null || true
+        fi
+    done
+
+    # Bind mount directories: only fix if empty or wrong owner (preserve host data)
+    for dir in "/home/node/.openclaw" "/home/node/.notebooklm"; do
+        if [[ -d "${dir}" ]]; then
+            if [[ -z "$(ls -A "${dir}" 2>/dev/null)" ]] || \
+               [[ "$(stat -c '%u' "${dir}" 2>/dev/null)" != "1000" ]]; then
                 chown -R node:node "${dir}" 2>/dev/null || true
             fi
-        done
+        fi
+    done
 
-        # Bind mount directories: only fix if empty or wrong owner
-        # (.openclaw, .notebooklm)
-        for dir in "/home/node/.openclaw" "/home/node/.notebooklm"; do
-            if [[ -d "${dir}" ]]; then
-                if [[ -z "$(ls -A "${dir}" 2>/dev/null)" ]] || \
-                   [[ "$(stat -c '%u' "${dir}" 2>/dev/null)" != "1000" ]]; then
-                    chown -R node:node "${dir}" 2>/dev/null || true
-                fi
-            fi
-        done
-
-        # Mark as initialized to skip on subsequent runs
-        touch "${INIT_FLAG}"
-        echo "--> Permission initialization complete."
-    fi
+    echo "--> Volume permissions OK."
 fi
 
 # ------------------------------------------------------------------------------
