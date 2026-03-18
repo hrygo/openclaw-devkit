@@ -7,9 +7,10 @@ set -e
 # Optimized for DevKit development environments.
 #
 # Architecture (v4):
-# - Named volume: openclaw-devkit-home:/home/node (tools, .claude, caches)
-# - RO files: settings.json, .agents/skills (host-managed)
-# - RW mounts: .openclaw, .notebooklm, workspace
+# - Named volume: openclaw-devkit-home:/home/node (tools, caches)
+# - Named volume: openclaw-claude-home:/home/node/.claude (session, memory)
+# - RO bind: settings.json, skills/ (host-managed)
+# - RW bind: .openclaw, .notebooklm, workspace
 #
 # Performance optimizations:
 # - One-time surgery + one-time doctor (gateway manages config afterwards)
@@ -113,7 +114,7 @@ if [[ "$(id -u)" = "0" ]]; then
 
         # Named volume directories: always fix ownership
         # (.claude, tools, caches, node_modules)
-        for dir in "/home/node/.claude" "/home/node/.global" "/home/node/.local" "/home/node/go" "/home/node/.cache" "/app"; do
+        for dir in "/home/node/.global" "/home/node/.local" "/home/node/go" "/home/node/.cache" "/app"; do
             if [[ -d "${dir}" ]]; then
                 chown -R node:node "${dir}" 2>/dev/null || true
             fi
@@ -267,18 +268,11 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 4. Claude Code Embedded Skills
-#    Re-injects skills from staging layer into .claude directory
-#    Note: .claude is in named volume, settings.json is read-only mount
+# 4. Claude Code Session Persistence
+#    .claude/ is backed by openclaw-claude-home named volume.
+#    settings.json and skills/ are read-only bind mounts from host.
+#    No seed copying needed - session/memory persist across rebuilds.
 # ------------------------------------------------------------------------------
-CLAUDE_DIR="/home/node/.claude"
-CLAUDE_SEED="/opt/claude_seed"
-if [[ -d "${CLAUDE_SEED}" ]]; then
-    echo "--> Verifying Claude embedded skills integrity..."
-    run_as_node mkdir -p "${CLAUDE_DIR}"
-    # Copy missing/updated skills (-n to not overwrite user edits)
-    run_as_node cp -Rn "${CLAUDE_SEED}"/* "${CLAUDE_DIR}/" 2>/dev/null || true
-fi
 
 # ------------------------------------------------------------------------------
 # 5. NotebookLM CLI

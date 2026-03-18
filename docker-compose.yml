@@ -71,6 +71,11 @@ x-openclaw-common: &openclaw-common
 # Named Volumes
 # ------------------------------------------------------------------------------
 volumes:
+  # Claude Code 专用命名卷: 持久化 .claude/ (session, memory, skills state)
+  # 与 openclaw-devkit-home 完全隔离，重建后保留
+  openclaw-claude-home:
+    name: openclaw-claude-home
+
   # 统一命名卷: 工具链 + Go 生态 + 浏览器缓存 + node_modules
   # 替代原来分散的 6 个独立命名卷
   openclaw-devkit-home:
@@ -107,22 +112,31 @@ services:
     stop_grace_period: 30s
     volumes:
       # ─────────────────────────────────────────────────────────────────
+      # 数据层 0: Claude Code 专用命名卷 (持久化)
+      #    - session, memory, skills state
+      #    - 重建后自动保留，无须 seed 拷贝
+      #    - settings.json 和 skills/ 通过只读 bind mount 覆盖
+      # ─────────────────────────────────────────────────────────────────
+      - openclaw-claude-home:/home/node/.claude:rw
+
+      # ─────────────────────────────────────────────────────────────────
       # 数据层 1: 持久化存储 (命名卷)
       #    - 工具链 (.global, .local/bin)
-      #    - Claude Code (.claude/ 全目录，包含 session/memory)
       #    - Go 生态 (go/pkg/mod, go/bin, .cache/go-build)
       #    - 浏览器缓存 (.cache/ms-playwright)
+      #    - 特性：容器重启后全部保留，无需重建
       #    - 注意：.openclaw/.notebooklm/workspace 被数据层 3 的 bind mount 遮蔽
       # ─────────────────────────────────────────────────────────────────
       - openclaw-devkit-home:/home/node:rw
 
       # ─────────────────────────────────────────────────────────────────
-      # 数据层 2: 只读配置文件 (单向同步)
-      #    - settings.json: Claude Code 配置，Host 管理，容器只读
-      #    - .agents/skills: Host 管理的 skills 目录
+      # 数据层 2: Claude Code 只读配置 (host → container, ro)
+      #    - settings.json: Claude Code 全局配置，Host 管理，容器只读
+      #    - skills/: Claude Code skills，Host 管理，容器只读
+      #    - 挂载到 .claude 专用卷上方，遮蔽命名卷中的同名路径
       # ─────────────────────────────────────────────────────────────────
       - ${HOME:-${USERPROFILE:-/tmp}}/.claude/settings.json:/home/node/.claude/settings.json:ro
-      - ${HOME:-${USERPROFILE:-/tmp}}/.agents/skills:/home/node/.agents/skills:ro
+      - ${HOME:-${USERPROFILE:-/tmp}}/.claude/skills:/home/node/.claude/skills:ro
 
       # ─────────────────────────────────────────────────────────────────
       # 数据层 3: 双向同步 (读写挂载)
@@ -134,6 +148,12 @@ services:
       - ${HOME:-${USERPROFILE:-/tmp}}/.openclaw-in-docker:/home/node/.openclaw:rw
       - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace:rw
       - ${HOME:-${USERPROFILE:-/tmp}}/.notebooklm:/home/node/.notebooklm:rw
+
+      # ─────────────────────────────────────────────────────────────────
+      # 数据层 4: 只读配置文件 (单向同步)
+      #    - .agents/skills: Host 管理的 skills 目录
+      # ─────────────────────────────────────────────────────────────────
+      - ${HOME:-${USERPROFILE:-/tmp}}/.agents/skills:/home/node/.agents/skills:ro
 
       # ─────────────────────────────────────────────────────────────────
       # 脚本层: 入口脚本 (只读)
