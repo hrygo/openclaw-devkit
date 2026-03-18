@@ -92,6 +92,7 @@ RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
     npm install -g openclaw@latest && \
     npm install -g @anthropic-ai/claude-code@latest && \
     npm install -g @mariozechner/pi-coding-agent && \
+    npm install -g clawhub@latest && \
     # Fix ownership for node user
     chown -R node:node /home/node/.global
 
