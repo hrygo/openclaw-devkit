@@ -120,6 +120,9 @@ HEALTHCHECK --interval=3m --timeout=10s --start-period=15s --retries=3 \
 
 EXPOSE 18789 18790
 
-USER node
+# Ensure /home/node/.notebooklm exists (will be replaced by bind mount at runtime if host path exists)
+RUN mkdir -p /home/node/.notebooklm
+
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["openclaw", "gateway", "--allow-unconfigured"]
+USER node

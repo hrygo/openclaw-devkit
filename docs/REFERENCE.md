@@ -60,7 +60,7 @@ make onboard
 - **App Token**：企业聊天机器人集成所需
 - **Workspace ID**：AI 感知特定协作空间所需
 
-> 配置完成后，`openclaw.json` 存储在容器内 `/home/node/.openclaw/`（对应宿主机 `~/.openclaw-in-docker/`），容器启动时自动热加载。
+> 配置完成后，`openclaw.json` 存储在容器内 `/home/node/.openclaw/`（对应宿主机 `~/.openclaw/`，直接 bind mount 共享），容器启动时自动热加载。
 
 ---
 
@@ -160,27 +160,24 @@ make upgrade office
 
 ## 5. 数据持久化
 
-双轨持久化设计保证容器非易失性：
+分层命名卷 + Bind Mount 共享设计：
 
-1. **活动配置 (Active Config)**
-   - 宿主机路径：`~/.openclaw-in-docker/` (对应容器内 `~/.openclaw/`)
-   - 用途：存放网关运行时的活动配置文件 `openclaw.json`。**修改配置请编辑此宿主机路径下的文件**，随后执行 `make restart`。
+1. **命名卷：openclaw-claude-home**
+   - 容器内路径：`~/.claude/`
+   - 用途：Claude Code Session、Memory、Skills 状态，**重建镜像不丢失**
 
-2. **工作区 (Workspace)**
-   - 路径：`~/.openclaw/workspace/`
-   - 用途：开发案板，容器内外文件秒级同步。
+2. **命名卷：openclaw-devkit-home**
+   - 容器内路径：`~/.global/`、`~/.local/`、`~/.cache/`、`~/.go/`
+   - 用途：运行时安装的 CLI 工具（npm/pnpm/bun/uv/Go），**重建镜像不丢失**
 
-3. **配置种子 (Seed)**
-   - 路径：`~/.openclaw/`
-   - 用途：**仅作为初始化种子**。其内容在容器内被挂载为只读的 `/home/node/.openclaw-seed`，仅在首次启动时用于填充状态。
+3. **Bind Mount：HOST_OPENCLAW_DIR**（默认 `~/.openclaw/`）
+   - 宿主机 `~/.openclaw/` ↔ 容器 `/home/node/.openclaw/`
+   - 用途：配置文件实时双向同步，**直接编辑宿主机的 `openclaw.json` 即可热加载**
 
-4. **全局工具 (Global Tools)** - v1.8.0 新增
-   - Named Volumes: `openclaw-global` + `openclaw-python-local`
-   - 用途：持久化运行时安装的 CLI 工具（npm/pnpm/bun/uv）
-   - 容器内路径：
-     - `/home/node/.global/` - Node.js 工具 (npm/pnpm/bun)
-     - `/home/node/.local/` - Python 工具 (uv pip install --user)
-   - **无需任何配置**，OpenClaw 安装的工具自动持久化，重启后依然存在
+4. **只读 Bind Mount**
+   - `~/.claude/settings.json` → 容器 `~/.claude/settings.json`（只读）
+   - `~/.claude/skills/` → 容器 `~/.claude/skills/`（只读）
+   - `~/.agents/skills/` → 容器 `~/.agents/skills/`（只读）
 
 ---
 
@@ -232,12 +229,15 @@ Makefile 根据环境变量动态重组 Compose 文件：
 
 容器启动时，`docker-entrypoint.sh` 执行以下操作：
 
-1. **UID 适配**：检测宿主机用户 ID，执行 `chown` 修复挂载目录权限。
-2. **种子填充**：工作区为空时，从 `/home/node/.openclaw-seed` 自动填充。
-3. **环境自愈 (Self-Healing)**：
+1. **宿主机 OpenClaw 冲突检测**：检测 launchd / systemd / 直接进程，自动停止并提示卸载方法。
+2. **UID 适配**：检测宿主机用户 ID，执行 `chown` 修复挂载目录权限。
+3. **热初始化**：若 `~/.openclaw/openclaw.json` 不存在，运行 `openclaw onboard --non-interactive` 初始化。
+4. **.claude.json 保护**：若 `~/.claude.json` 不存在，自动创建空占位符。
+5. **环境自愈 (Self-Healing)**：
    - **路径手术 (Path Surgery)**：自动将泄露的宿主机路径（Mac/Linux）替换为容器标准路径，防止 `EACCES`。
    - **秘密清理 (Phantom Secret Cleanup)**：自动清理引用了缺失环境变量的无效模型配置，确保网关 100% 启动成功。
-4. **网络绑定**：锁定网关端口，绑定地址设为 `lan` 以穿透 Docker 桥接网卡。
+6. **Gateway 配置强化**：锁定 `gateway.bind=lan`、`gateway.mode=local`，自动追加 allowedOrigins。
+7. **全局工具目录**：确保 `/home/node/.global/`、`/home/node/.local/` 存在并修复权限。
 
 ---
 
@@ -257,7 +257,7 @@ Makefile 根据环境变量动态重组 Compose 文件：
 2. 确认代理软件已开启 "Allow LAN"
 
 ### Q: 找不到 agent.json 配置文件？
-检查 `OPENCLAW_CONFIG_DIR` 实际挂载路径，默认在 `~/.openclaw`
+检查 `HOST_OPENCLAW_DIR` 实际路径，默认在 `~/.openclaw`
 
 ---
 
@@ -268,11 +268,10 @@ Makefile 根据环境变量动态重组 Compose 文件：
 | **编排** | `COMPOSE_FILE` | `docker-compose.yml` | 定义编排分层 |
 | | `OPENCLAW_SKIP_BUILD`| `true` | true=拉镜像, false=本地构建 |
 | | `OPENCLAW_IMAGE` | `...:latest` | Docker 镜像标签 |
-| **宿主机路径** | `OPENCLAW_CONFIG_DIR`| `~/.openclaw` | 配置种子 (挂载为 seed) |
-| | `OPENCLAW_WORKSPACE_DIR`| `~/.openclaw/workspace` | 工作区 (双向同步) |
+| **宿主机路径** | `HOST_OPENCLAW_DIR`| `~/.openclaw` | 宿主机配置目录 (直接 bind mount 共享) |
 | **容器内路径** | `OPENCLAW_HOME` | `/home/node` | 容器根目录 |
-| | 运行时配置 | `/home/node/.openclaw` | 对应宿主机 `~/.openclaw-in-docker/` |
 | **网络** | `OPENCLAW_GATEWAY_PORT`| `18789` | 网关端口 |
+| | `OPENCLAW_GATEWAY_BIND`| `lan` | 监听模式 (lan=所有网卡, local=127.0.0.1) |
 | | `OPENCLAW_GATEWAY_TOKEN`| (Hex) | CLI-Gateway 握手凭证 |
 | | `HTTP[S]_PROXY` | - | 容器外网出口 |
 | **镜像加速** | `DOCKER_MIRROR` | `docker.io` | Docker Hub 加速 |

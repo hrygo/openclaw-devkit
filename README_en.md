@@ -154,15 +154,28 @@ Modify `OPENCLAW_IMAGE` in `.env`, then execute `make upgrade <variant>`.
 <details>
 <summary><b>Q: Where are config files? How to modify them from host?</b></summary>
 
-DevKit uses **dual-track mounting**, separating "config seed" from "runtime state":
+DevKit uses **direct bind mount sharing**:
 
-| Host Path | Purpose | Description |
+| Host Path | Container Path | Purpose |
 |:----------|:--------|:------------|
-| `~/.openclaw-in-docker/openclaw.json` | **Runtime config** | Edit this file to modify config |
-| `~/.openclaw/openclaw.json` | Config seed | First-time initialization only |
-| `~/.openclaw/workspace/` | Workspace | AI code directory, bidirectional sync |
+| `~/.openclaw/` | `/home/node/.openclaw/` | Config files, real-time bidirectional sync |
 
-**Modify config**: Edit `~/.openclaw-in-docker/openclaw.json` directly, then run `make restart`.
+**Modify config**: Edit `~/.openclaw/openclaw.json` directly on host, hot-loaded on startup.
+</details>
+
+<details>
+<summary><b>Q: Host already has OpenClaw installed, how to resolve conflict?</b></summary>
+
+Container and host modes compete for port 18789. `./docker-setup.sh` automatically detects and attempts to stop the host service.
+
+To handle manually:
+```bash
+# View uninstall guide
+make uninstall-host
+
+# Recommended one-command uninstall
+npx -y openclaw uninstall --all --yes --non-interactive
+```
 </details>
 
 ---

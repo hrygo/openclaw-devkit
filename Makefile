@@ -107,8 +107,7 @@ ERROR   := $(RED)$(BOLD)✖$(NC)
 # 环境变量自动导出 (Ensure Docker Compose receives variables)
 # ============================================================
 export OPENCLAW_IMAGE
-export OPENCLAW_CONFIG_DIR
-export OPENCLAW_WORKSPACE_DIR
+export HOST_OPENCLAW_DIR
 export OPENCLAW_GATEWAY_PORT
 export OPENCLAW_BRIDGE_PORT
 export OPENCLAW_GATEWAY_TOKEN
@@ -177,6 +176,9 @@ help: ## 显示帮助信息
 	@printf "  $(BOLD)$(CYAN)💾  持久化维护 $(NC)\n"
 	@printf "    $(BOLD)make backup-config$(NC)     配置全量备份\n"
 	@printf "    $(BOLD)make update$(NC)            从 GH 同步源码 openclaw-devkit\n"
+	@printf "\n"
+	@printf "  $(BOLD)$(CYAN)🗑️  宿主机冲突解决 $(NC)\n"
+	@printf "    $(BOLD)make uninstall-host$(NC)    停止并卸载宿主机 OpenClaw\n"
 	@printf "\n"
 	@printf "  $(BOLD)══════════════════════════════════════════════════════════$(NC)\n"
 	@printf "  分级调用:  make <cmd> <version>\n"
@@ -264,7 +266,6 @@ endef
 
 up: ## 启动服务
 	@mkdir -p "$(HOME)/.agents/skills"
-	@mkdir -p "$(HOME)/.openclaw-in-docker"
 	@echo "$(INFO) 启动 OpenClaw 服务..."
 	@docker compose up -d
 	@echo ""
@@ -278,7 +279,7 @@ start: up ## 启动服务 (别名)
 
 onboard: ## 启动交互式引导程序
 	@echo "$(INFO) 启动交互式引导程序..."
-	@docker compose run --rm -it -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 openclaw-gateway openclaw onboard
+	@docker compose run --rm -it -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 openclaw-gateway openclaw onboard
 	@echo ""
 	@echo "$(SUCCESS) 配置完毕! 接下来请执行:"
 	@echo "  ⚡ $(BOLD)make up$(NC)                正式启动服务"
@@ -290,6 +291,45 @@ down: ## 停止服务
 	@echo "$(SUCCESS) 服务已停止"
 
 stop: down ## 停止服务 (别名)
+
+uninstall-host: ## 停止并卸载宿主机 OpenClaw
+	@echo ""
+	@echo "$(INFO) 检测宿主机 OpenClaw 安装..."
+	@echo ""
+	@if command -v openclaw >/dev/null 2>&1; then \
+		echo ""; \
+		echo "  $(WARN) OpenClaw CLI 已安装"; \
+		echo ""; \
+		echo "  推荐：使用官方卸载命令（最彻底）"; \
+		echo "    npx -y openclaw uninstall --all --yes --non-interactive"; \
+		echo ""; \
+		echo "  分步卸载："; \
+		echo ""; \
+		echo "  Step 1 - 停止服务"; \
+		echo "    macOS (launchd CLI):   launchctl bootout gui/$$UID/bot.molt.gateway"; \
+		echo "    macOS (App):           launchctl bootout gui/$$UID/ai.openclaw.mac"; \
+		echo "    Linux (systemd user):   systemctl --user stop openclaw-gateway.service"; \
+		echo "    直接进程:              pkill -f openclaw-gateway"; \
+		echo ""; \
+		echo "  Step 2 - 卸载 CLI"; \
+		echo "    npm:  npm uninstall -g openclaw"; \
+		echo "    pnpm: pnpm remove -g openclaw"; \
+		echo "    bun:  bun remove -g openclaw"; \
+		echo ""; \
+		echo "  Step 3 - 清理残留服务文件"; \
+		echo "    macOS (CLI plist):     rm -f ~/Library/LaunchAgents/bot.molt.gateway.plist"; \
+		echo "    macOS (App plist):     rm -f ~/Library/LaunchAgents/ai.openclaw.mac.plist"; \
+		echo "    Linux (systemd unit):   rm -f ~/.config/systemd/user/openclaw-gateway.service"; \
+		echo ""; \
+		echo "  Step 4 - 清理配置（按需）"; \
+		echo "    rm -rf ~/.openclaw"; \
+		echo ""; \
+		echo "  跳过停止，直接卸载:"; \
+		echo "    npx -y openclaw uninstall --all --yes --non-interactive"; \
+	else \
+		echo "  $(SUCCESS) 未检测到宿主机 OpenClaw CLI，无冲突。"; \
+	fi
+	@echo ""
 
 restart: ## 重启服务
 	@echo "$(INFO) 重启服务..."
@@ -462,7 +502,7 @@ health: gateway-health ## 检查健康状态 (别名)
  
 doctor: ## 🛠️  一键诊断并修复容器配置
 	@echo "$(INFO) 正在诊断容器配置..."
-	@docker compose exec -it -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw openclaw-gateway openclaw doctor --fix
+	@docker compose exec -it openclaw-gateway openclaw doctor --fix
 	@echo "$(SUCCESS) 诊断与修复完成！"
 
 test-proxy: ## 测试代理连接 (默认端口: HTTP=7897, Claude API=15721)

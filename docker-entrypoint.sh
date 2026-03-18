@@ -6,11 +6,11 @@ set -e
 # Handles permission fixes, config seeding, Git identity, and privilege drop.
 # Optimized for DevKit development environments.
 #
-# Architecture (v3):
-# - Named volume: openclaw-devkit-home:/home/node (tools, caches, node_modules)
-# - RW bind mounts: .claude, .openclaw, .notebooklm (session/config/state)
-# - RO bind mount: .agents/skills (host-managed)
-# - RW bind mount: workspace, entrypoint script
+# Architecture (v4):
+# - Named volume: openclaw-devkit-home:/home/node (tools, caches)
+# - Named volume: openclaw-claude-home:/home/node/.claude (session, memory)
+# - RO bind: settings.json, skills/ (host-managed)
+# - RW bind: .openclaw, .notebooklm (bind mount, NOTEBOOKLM_STORAGE env var controls path)
 #
 # Performance optimizations:
 # - One-time surgery + one-time doctor (gateway manages config afterwards)
@@ -50,44 +50,6 @@ validate_pkg_name() {
     return 0
 }
 
-# ------------------------------------------------------------------------------
-# Workspace Path Overlap Detection
-#    Validates that OPENCLAW_WORKSPACE_DIR does NOT overlap with the home volume
-#    mount point. If workspace is a subdirectory of ~/.openclaw-in-docker, the
-#    bind mount would shadow the named volume at that path, causing data loss.
-# ------------------------------------------------------------------------------
-_validate_workspace_path() {
-    local workspace_host_dir="${OPENCLAW_WORKSPACE_DIR:-}"
-    local home_host_dir="${HOME:-${USERPROFILE:-}}/.openclaw-in-docker"
-
-    if [[ -z "${workspace_host_dir}" ]]; then
-        return 0
-    fi
-
-    # Normalize paths for comparison
-    local norm_workspace norm_home
-    norm_workspace=$(realpath "${workspace_host_dir}" 2>/dev/null || echo "${workspace_host_dir}")
-    norm_home=$(realpath "${home_host_dir}" 2>/dev/null || echo "${home_host_dir}")
-
-    # Check if workspace is inside or equals the home directory
-    if [[ "${norm_workspace}" == "${norm_home}" ]]; then
-        echo "ERROR: OPENCLAW_WORKSPACE_DIR cannot be the same as the home volume root (${home_host_dir})." >&2
-        echo "       Please set OPENCLAW_WORKSPACE_DIR to a path OUTSIDE ~/.openclaw-in-docker." >&2
-        return 1
-    fi
-
-    case "${norm_workspace}" in
-        "${norm_home}"/*)
-            echo "ERROR: OPENCLAW_WORKSPACE_DIR must NOT be inside ~/.openclaw-in-docker." >&2
-            echo "       Current: ${workspace_host_dir}" >&2
-            echo "       The workspace bind mount would shadow the named volume at that path." >&2
-            echo "       Please set OPENCLAW_WORKSPACE_DIR to a path OUTSIDE ~/.openclaw-in-docker." >&2
-            return 1
-            ;;
-    esac
-
-    return 0
-}
 
 # ------------------------------------------------------------------------------
 # 0. Cleanup stale temporary files from previous runs
@@ -95,14 +57,10 @@ _validate_workspace_path() {
 find "${CONFIG_DIR}" -name "*.tmp" -type f -delete 2>/dev/null || true
 find "${CONFIG_DIR}" -name "*.bak" -type f -delete 2>/dev/null || true
 
-# Validate workspace path before any mount operations
-if ! _validate_workspace_path; then
-    exit 1
-fi
 
 # ------------------------------------------------------------------------------
 # 1. Smart Permission Fix (only when needed)
-#    - Named volume dirs: always fix (tools, caches, node_modules)
+#    - Named volume dirs: always fix (.claude, tools, caches, node_modules)
 #    - Bind mounts: fix only if empty (preserve host data)
 # ------------------------------------------------------------------------------
 if [[ "$(id -u)" = "0" ]]; then
@@ -113,7 +71,7 @@ if [[ "$(id -u)" = "0" ]]; then
         echo "--> Running one-time permission initialization..."
 
         # Named volume directories: always fix ownership
-        # (tools, caches, node_modules)
+        # (.claude, tools, caches, node_modules)
         for dir in "/home/node/.global" "/home/node/.local" "/home/node/go" "/home/node/.cache" "/app"; do
             if [[ -d "${dir}" ]]; then
                 chown -R node:node "${dir}" 2>/dev/null || true
@@ -121,8 +79,8 @@ if [[ "$(id -u)" = "0" ]]; then
         done
 
         # Bind mount directories: only fix if empty or wrong owner
-        # (.claude, .openclaw, .notebooklm)
-        for dir in "/home/node/.claude" "/home/node/.openclaw" "/home/node/.notebooklm"; do
+        # (.openclaw, .notebooklm)
+        for dir in "/home/node/.openclaw" "/home/node/.notebooklm"; do
             if [[ -d "${dir}" ]]; then
                 if [[ -z "$(ls -A "${dir}" 2>/dev/null)" ]] || \
                    [[ "$(stat -c '%u' "${dir}" 2>/dev/null)" != "1000" ]]; then
@@ -251,57 +209,37 @@ if [[ -f "${CONFIG_FILE}" ]]; then
         echo "--> Configuration previously repaired, skipping surgery and health check."
     fi
 else
-    # No config file - fresh init (named volume was empty)
+    # No config file - bind mount (HOST_OPENCLAW_DIR) is empty or new
     echo "==> Initializing fresh OpenClaw environment..."
 
-    # Try to copy from host bind mount
-    if [[ -d "/home/node/.openclaw" ]] && [[ "$(ls -A "/home/node/.openclaw" 2>/dev/null)" ]]; then
-        echo "--> Copying initial configuration from host..."
-        run_as_node cp -rn /home/node/.openclaw/* "${CONFIG_DIR}/" 2>/dev/null || true
-    fi
-
-    # If still missing, run official setup
+    # Ensure openclaw.json exists (run official setup if still missing)
     if [[ ! -f "${CONFIG_FILE}" ]]; then
-        echo "--> Running official OpenClaw onboarding (non-interactive)..."
+        echo "--> 运行 OpenClaw 初始化向导..."
         run_as_node openclaw onboard --non-interactive --accept-risk || true
     fi
 fi
 
 # ------------------------------------------------------------------------------
-# 4. Claude Code Embedded Skills
-#    Re-injects skills from staging layer into .claude directory
-#    Note: .claude is a rw bind mount, skills inject directly
+# 4. Claude Code Runtime Files
+#    .claude/ is backed by openclaw-claude-home named volume.
+#    settings.json and skills/ are read-only bind mounts from host.
+#    No seed copying needed - session/memory persist across rebuilds.
 # ------------------------------------------------------------------------------
-CLAUDE_DIR="/home/node/.claude"
-CLAUDE_SEED="/opt/claude_seed"
-if [[ -d "${CLAUDE_SEED}" ]]; then
-    echo "--> Verifying Claude embedded skills integrity..."
-    run_as_node mkdir -p "${CLAUDE_DIR}"
-    # Copy missing/updated skills (-n to not overwrite user edits)
-    run_as_node cp -Rn "${CLAUDE_SEED}"/* "${CLAUDE_DIR}/" 2>/dev/null || true
+# Ensure .claude.json exists (Claude Code CLI requires this file)
+# Create empty JSON object if missing to prevent "configuration file not found" warnings.
+# This file stores userID, project configs, MCP servers, and other CLI runtime state.
+# Ref: https://code.claude.com/docs/en/settings
+CLAUDE_JSON="${HOME}/.claude.json"
+if [[ ! -f "${CLAUDE_JSON}" ]]; then
+    echo "--> Creating empty .claude.json configuration file..."
+    run_as_node sh -c "echo '{}' > '${CLAUDE_JSON}'"
+    if [[ "$(id -u)" = "0" ]]; then
+        chown node:node "${CLAUDE_JSON}" 2>/dev/null || true
+    fi
 fi
 
 # ------------------------------------------------------------------------------
-# 4b. Claude Code Settings Protection
-#    Ensure settings.json is read-only to prevent accidental modification
-# ------------------------------------------------------------------------------
-CLAUDE_SETTINGS="${CLAUDE_DIR}/settings.json"
-if [[ -f "${CLAUDE_SETTINGS}" ]]; then
-    chmod a-w "${CLAUDE_SETTINGS}" 2>/dev/null || true
-    echo "--> Protected settings.json (read-only)"
-fi
-
-# ------------------------------------------------------------------------------
-# 5. NotebookLM CLI
-# Ensure symlink for config directory (CLI looks in /root/.notebooklm)
-# ------------------------------------------------------------------------------
-if [[ -d "/home/node/.notebooklm" ]] && [[ ! -d "/root/.notebooklm" ]]; then
-    ln -sf /home/node/.notebooklm /root/.notebooklm
-    echo "--> Linked /root/.notebooklm -> /home/node/.notebooklm"
-fi
-
-# ------------------------------------------------------------------------------
-# 6. Git Identity Injection
+# 5. Git Identity Injection
 #    Allows configuring Git identity via .env without host .gitconfig dependency
 # ------------------------------------------------------------------------------
 if [[ -n "${GIT_USER_NAME:-}" ]]; then
@@ -323,7 +261,7 @@ if [[ -d "${PROJECTS_DIR}" ]]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 7. Ensure Gateway Configuration
+# 6. Ensure Gateway Configuration
 #    Always set these values to ensure consistency across restarts and upgrades
 # ------------------------------------------------------------------------------
 run_as_node openclaw config set gateway.mode local --strict-json >/dev/null 2>&1 || true
@@ -336,18 +274,15 @@ if [[ -n "${OPENCLAW_GATEWAY_TOKEN:-}" ]]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 8. Unified Global Tools Directory
-#    Pre-configured in Dockerfile, ensure symlink exists at runtime
+# 7. Unified Global Tools Directory
+#    .global/.local/.agents mounted via named volume
 # ------------------------------------------------------------------------------
 mkdir -p /home/node/.global
 mkdir -p /home/node/.local
 mkdir -p /home/node/.agents
-if [[ -d "/home/node/.global/bin" ]] && [[ ! -L "/usr/local/bin/global" ]]; then
-    ln -sf /home/node/.global/bin /usr/local/bin/global
-fi
 
 # ------------------------------------------------------------------------------
-# 10. Execute CMD (drop privileges if root)
+# 8. Execute CMD (drop privileges if root)
 #    Ensures all files created by the app belong to 'node' user
 # ------------------------------------------------------------------------------
 echo "==> Starting OpenClaw..."

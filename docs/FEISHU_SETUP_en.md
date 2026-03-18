@@ -53,12 +53,10 @@ Expected output:
 
 ### Step 2: Configure OpenClaw
 
-> **⚠️ Mount Note**: Container runtime config is stored on host via bind mount at `~/.openclaw-in-docker/`.
->
-> **Host's `~/.openclaw/` is initialization seed only**, not used after first startup.
+> **⚠️ Mount Note**: Container runtime config is stored on host via bind mount at `~/.openclaw/`.
 >
 > **Configuration methods**:
-> - **Method 1**: Edit host's `~/.openclaw-in-docker/openclaw.json` directly
+> - **Method 1**: Edit host's `~/.openclaw/openclaw.json` directly
 > - **Method 2**: Use CLI commands
 > - **Method 3**: Enter container and edit
 
@@ -66,7 +64,7 @@ Expected output:
 
 ```bash
 # Edit runtime config on host
-vi ~/.openclaw-in-docker/openclaw.json
+vi ~/.openclaw/openclaw.json
 
 # Restart after editing
 make restart
@@ -223,13 +221,8 @@ DevKit uses a **dual-track mount** design, separating "config seed" from "runtim
 ┌─────────────────────────────────────────────────────────────┐
 │                      Host Machine                           │
 │                                                             │
-│  ~/.openclaw/                    ← Config seed (read-only)  │
-│  └── openclaw.json                                           │
-│                                                             │
-│  ~/.openclaw-in-docker/          ← Runtime state (rw)       │
-│  └── openclaw.json              ← **Actual config in use**  │
-│                                                             │
-│  ~/.openclaw/workspace/          ← Workspace (rw)           │
+│  ~/.openclaw/                    ← Config (rw, real-time sync)  │
+│  └── openclaw.json              ← **Actual config in use**        │
 └───────────────────────────│─────────────────────────────────┘
                             │
           ┌─────────────────┼─────────────────┐
@@ -238,19 +231,18 @@ DevKit uses a **dual-track mount** design, separating "config seed" from "runtim
 ┌─────────────────────────────────────────────────────────────┐
 │                     Docker Container                        │
 │                                                             │
-│  /home/node/.openclaw-seed/     ← Read-only mount (seed)    │
-│  /home/node/.openclaw/          ← Read-write mount (runtime)│
-│  └── openclaw.json              ← Maps to host's            │
-│                                     ~/.openclaw-in-docker/  │
-│  /home/node/.openclaw/workspace/ ← Workspace                │
+│  /home/node/.openclaw/        ← Bind Mount (rw)            │
+│  └── openclaw.json            ← Maps to host's ~/.openclaw/│
+│  /home/node/.claude/          ← Named volume (Session/Mem) │
+│  /home/node/.global/          ← Named volume (Toolchain)   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 **Key Points**:
-- **Dual-track isolation**: `~/.openclaw/` (seed) and `~/.openclaw-in-docker/` (runtime) are separate
-- **Host-editable**: Runtime config is stored in `~/.openclaw-in-docker/`, directly editable from host
+- **Real-time sharing**: `~/.openclaw/` is bind-mounted and synced in real-time — edit directly on host
+- **Claude Code persistence**: Session/Memory stored in `openclaw-claude-home` named volume, survives rebuilds
 - **Modification methods**:
-  - ✅ Edit `~/.openclaw-in-docker/openclaw.json` on host
+  - ✅ Edit `~/.openclaw/openclaw.json` on host
   - ✅ Use CLI commands `make cli CMD="config set ..."`
   - ✅ Enter container with `make shell`
 
@@ -280,8 +272,8 @@ Make sure you're editing the correct configuration file:
 
 ```bash
 # ✅ Correct: Directly edit host's runtime config
-nano ~/.openclaw-in-docker/openclaw.json
-vi ~/.openclaw-in-docker/openclaw.json
+nano ~/.openclaw/openclaw.json
+vi ~/.openclaw/openclaw.json
 
 # ✅ Correct: Use CLI commands
 make cli CMD="config set channels.feishu.enabled true"
@@ -310,8 +302,8 @@ make down && make up
 
 ```bash
 # Method 1: On host machine (recommended)
-cp ~/.openclaw-in-docker/openclaw.json ~/.openclaw-in-docker/openclaw.json.backup
-rm ~/.openclaw-in-docker/openclaw.json
+cp ~/.openclaw/openclaw.json ~/.openclaw/openclaw.json.backup
+rm ~/.openclaw/openclaw.json
 make restart  # Will re-initialize from seed
 
 # Method 2: Enter container
