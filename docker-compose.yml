@@ -130,6 +130,8 @@ services:
       - ${HOME:-${USERPROFILE:-/tmp}}/.claude/skills:/home/node/.claude/skills:ro
       # .agents/skills 只读共享
       - ${HOME:-${USERPROFILE:-/tmp}}/.agents/skills:/home/node/.agents/skills:ro
+      # ClawHub CLI 凭据 (macOS: ~/Library/Application Support/clawhub)
+      - ${HOME}/Library/Application\ Support/clawhub:/home/node/.config/clawhub:rw
 
       # ─────────────────────────────────────────────────────────────────
       # Layer 4: 脚本 (只读)
