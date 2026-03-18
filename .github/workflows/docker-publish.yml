@@ -80,7 +80,7 @@ jobs:
             SHOULD_PUBLISH="true"
             SHOULD_BUILD="true"
           # Publish on workflow_dispatch if force is enabled
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]] && [[ "${{ github.inputs.force_publish }}" == "true" ]]; then
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]] && [[ "${{ inputs.force_publish }}" == "true" ]]; then
             echo "workflow_dispatch with force_publish - will build and publish"
             SHOULD_PUBLISH="true"
             SHOULD_BUILD="true"

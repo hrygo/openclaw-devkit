@@ -12,11 +12,19 @@ openclaw-devkit 开发工具箱套件 - 为 [OpenClaw](https://github.com/opencl
 openclaw-devkit/
 ├── Makefile                # Docker 运维命令入口
 ├── docker-compose.yml      # Docker Compose 配置 (支持 dev/go/java/office)
-├── Dockerfile             # 开发环境镜像定义 (标准版)
-├── Dockerfile.base        # 基础镜像 (Debian + Node.js)
-├── Dockerfile.stacks      # 技术栈镜像 (Go/Java/Office 变体)
-└── docker-setup.sh       # 交互式初始化脚本
+├── Dockerfile             # 应用层镜像 (最终用户镜像)
+├── Dockerfile.base        # 统一基础镜像 (Debian + Node.js)
+├── Dockerfile.stacks      # 技术栈基座 (Go/Java/Office 变体)
+└── docker-entrypoint.sh   # 容器启动脚本
 ```
+
+### 分层架构说明
+
+1. **Dockerfile.base** → `openclaw-runtime:base` - 统一基础层（Debian + Node.js + 基础工具）
+2. **Dockerfile.stacks** → `openclaw-runtime:{go,java,office}` - 技术栈层（Go/JDK/Office）
+3. **Dockerfile** → `openclaw-devkit:{variant}` - 应用层（CLI 工具 + 配置）
+
+构建顺序：`make build-base` → `make build-stacks` → `make build-{variant}`
 
 ## Common Commands (Makefile)
 
@@ -34,15 +42,22 @@ make restart          # 重启服务
 make status           # 查看服务状态
 
 # 构建与更新
-make build            # 构建标准版镜像
-make build-go         # 构建 Go 版镜像
-make build-java       # 构建 Java 版镜像
-make build-office     # 构建 Office 版镜像
+make build-base        # 构建统一基础镜像 (Debian + Node.js)
+make build-stacks      # 构建全套技术栈基座 (Go, Java, Office)
+make build            # 构建标准版镜像 (openclaw-devkit:latest)
+make build-go         # 构建 Go 版镜像 (openclaw-devkit:go)
+make build-java       # 构建 Java 版镜像 (openclaw-devkit:java)
+make build-office     # 构建 Office 版镜像 (openclaw-devkit:office)
+make upgrade-base     # 升级基础镜像并重启服务
+make upgrade-stacks   # 升级技术栈镜像并重启服务
 make upgrade          # 升级镜像并重启服务
 make upgrade-go       # 升级 Go 版并重启
 make upgrade-java     # 升级 Java 版并重启
 make upgrade-office   # 升级 Office 版并重启
 make update           # 从 GitHub 同步最新代码
+
+# 强制重建工具层
+make build-go CLI_VERSION=2  # 改变版本号强制重新安装 CLI 工具
 
 # 调试诊断
 make logs             # 查看 Gateway 日志
@@ -84,14 +99,24 @@ make clean-volumes    # 清理所有数据卷 (危险!)
 
 ## Docker Image Variants
 
-| Variant | Image                      | Use Case                    |
-|---------|----------------------------|-----------------------------|
-| latest  | ghcr.io/hrygo/openclaw-devkit:latest | 标准开发版 (Node.js + Python) |
-| go      | ghcr.io/hrygo/openclaw-devkit:go    | Go 开发版 (包含 Go 1.26 + 工具) |
-| java    | ghcr.io/hrygo/openclaw-devkit:java  | Java 支持 (包含 JDK 21)       |
-| office  | ghcr.io/hrygo/openclaw-devkit:office | 办公环境集成 (PDF/OCR)    |
+| Variant | Local Build | Remote (ghcr.io) | Use Case |
+|---------|-------------|-------------------|----------|
+| latest  | openclaw-devkit:latest | ghcr.io/hrygo/openclaw-devkit:latest | 标准开发版 (Node.js + Python) |
+| go      | openclaw-devkit:go | ghcr.io/hrygo/openclaw-devkit:go | Go 开发版 (包含 Go 1.26 + 工具) |
+| java    | openclaw-devkit:java | ghcr.io/hrygo/openclaw-devkit:java | Java 支持 (包含 JDK 21) |
+| office  | openclaw-devkit:office | ghcr.io/hrygo/openclaw-devkit:office | 办公环境集成 (PDF/OCR) |
 
-选择版本: `make install <variant>` 或 `make upgrade <variant>`
+**使用方式**：
+```bash
+# 本地构建
+make build-go         # → openclaw-devkit:go
+
+# 远程拉取
+OPENCLAW_IMAGE=ghcr.io/hrygo/openclaw-devkit:go make up
+
+# 或使用本地镜像
+OPENCLAW_IMAGE=openclaw-devkit:go make up
+```
 
 ## Configuration
 
@@ -174,6 +199,17 @@ GITHUB_TOKEN=xxx
 - 使用 `make exec CMD="openclaw config list"` 查看 OpenClaw 配置
 - Gateway 日志位于容器内 `/tmp/openclaw-gateway.log`
 - 进入容器后可直接运行 `openclaw` 命令
+
+### 容器内已安装的 CLI 工具
+
+| 工具 | 命令 | 说明 |
+|------|------|------|
+| OpenClaw | `openclaw` | 主 CLI |
+| Claude Code | `claude` | Anthropic AI 编码助手 |
+| Pi | `pi` | 终端编码工具 (原 pi-mono) |
+| OpenCode | `opencode` | OpenCode AI 助手 |
+
+> **注意**: 工具安装在 `/home/node/.global/bin/`，login shell 会自动加载 PATH。
 
 ### CI 调试命令
 

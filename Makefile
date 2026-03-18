@@ -127,7 +127,7 @@ GATEWAY_PORT ?= $(if $(OPENCLAW_GATEWAY_PORT),$(OPENCLAW_GATEWAY_PORT),18789)
 OPENCLAW_BIN := openclaw
 
 # 镜像配置
-INITIAL_IMAGE_NAME := ghcr.io/hrygo/openclaw-devkit
+INITIAL_IMAGE_NAME := openclaw-devkit
 IMAGE_NAME := $(if $(OPENCLAW_IMAGE),$(OPENCLAW_IMAGE),$(INITIAL_IMAGE_NAME):latest)
 
 # Docker 构建公共参数
@@ -176,7 +176,7 @@ help: ## 显示帮助信息
 	@printf "\n"
 	@printf "  $(BOLD)$(CYAN)💾  持久化维护 $(NC)\n"
 	@printf "    $(BOLD)make backup-config$(NC)     配置全量备份\n"
-	@printf "    $(BOLD)make update$(NC)            从 GH 同步最新逻辑基因\n"
+	@printf "    $(BOLD)make update$(NC)            从 GH 同步源码 openclaw-devkit\n"
 	@printf "\n"
 	@printf "  $(BOLD)══════════════════════════════════════════════════════════$(NC)\n"
 	@printf "  分级调用:  make <cmd> <version>\n"
@@ -254,8 +254,8 @@ define wait-for-healthy
 	done; \
 	echo ""; \
 	printf "\r$(YELLOW)[░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] Timeout$(NC)\n"; \
-	echo "$(WARN) 服务启动超时，请检查日志: $(BOLD)make logs$(NC)"; \
-	exit 1
+	echo "$(WARN) 服务启动超时 (等待 $(1)s)，容器可能仍在启动中"; \
+	echo "$(INFO) 可用 $(BOLD)make status$(NC) 查看状态，或 $(BOLD)make logs$(NC) 查看日志"
 endef
 
 # ============================================================
@@ -268,7 +268,7 @@ up: ## 启动服务
 	@echo "$(INFO) 启动 OpenClaw 服务..."
 	@docker compose up -d
 	@echo ""
-	$(call wait-for-healthy,120)
+	$(call wait-for-healthy,90)
 	@echo ""
 	@echo "$(SUCCESS) 访问地址: $(BOLD)http://127.0.0.1:$(GATEWAY_PORT)/$(NC)"
 	@echo "  $(INFO) 仪表盘: 执行 $(BOLD)make dashboard$(NC) 获取一键直通链接"
@@ -429,9 +429,17 @@ approve: ## 🔐 一键批准最新的配对请求
 	fi
 
 verify: ## 验证镜像工具版本 (最佳实践检查)
+	@$(call select_image,$(MAKECMDGOALS))
 	@echo "$(INFO) 验证目标镜像: $(BOLD)$(YELLOW)$(IMAGE_NAME)$(NC)"
-	@docker run --rm $(IMAGE_NAME) node -v | grep -q "v22" && echo "$(SUCCESS) Node.js v22 (LTS) OK" || echo "$(ERROR) Node.js version mismatch"
-	@docker run --rm $(IMAGE_NAME) go version 2>/dev/null | grep -qE "^go1\.[2-9][0-9]" && echo "$(SUCCESS) Go 1.2x OK" || echo "$(WARN) Go (Office版无)"
+	@docker run --rm --entrypoint bash $(IMAGE_NAME) -c ' \
+		echo "  [Debug] PATH: $$PATH"; \
+		node -v >/dev/null 2>&1 && echo "  $(SUCCESS) Node.js OK" || echo "  $(ERROR) Node.js missing"; \
+		command -v opencode >/dev/null 2>&1 && echo "  $(SUCCESS) OpenCode CLI OK" || (echo "  $(ERROR) OpenCode CLI missing" && ls -l /home/node/.opencode/bin/opencode 2>/dev/null || echo "    (File /home/node/.opencode/bin/opencode not found)"); \
+		command -v openclaw >/dev/null 2>&1 && echo "  $(SUCCESS) OpenClaw Gateway OK" || echo "  $(ERROR) OpenClaw Gateway missing"; \
+		command -v claude >/dev/null 2>&1 && echo "  $(SUCCESS) Claude Code CLI OK" || echo "  $(ERROR) Claude Code CLI missing"; \
+		command -v go >/dev/null 2>&1 && echo "  $(SUCCESS) Go OK" || (echo "  $(WARN) Go missing/unsupported" && command -v go || echo "    (Check variant: $$(echo $(IMAGE_NAME) | cut -d: -f2))"); \
+		command -v uv >/dev/null 2>&1 && echo "  $(SUCCESS) Python UV OK" || echo "  $(ERROR) Python UV missing" \
+	'
 
 exec: ## 执行命令 (需要 CMD="..." 参数)
 	@docker compose exec openclaw-gateway $(CMD)
@@ -501,7 +509,7 @@ endif
 			echo "✓ 已恢复 config"; \
 		fi'
 
-update: ## 从 GitHub 同步最新代码
+update: ## 从 GitHub 同步源码 openclaw-devkit
 	@echo "$(INFO) 正在从 GitHub 同步最新代码..."
 	@if ! git diff --quiet 2>/dev/null; then \
 		echo "$(WARNING) 存在未暂存的更改，请先提交或暂存"; \
@@ -553,11 +561,14 @@ $(call select_image,$(2))
 else \
 	echo "==> 正在构建镜像: $(IMAGE_NAME) (基于新分层架构)"; \
 	BASE_IMG=$(if $(filter go,$(1)),openclaw-runtime:go,$(if $(filter java,$(1)),openclaw-runtime:java,$(if $(filter office,$(1)),openclaw-runtime:office,openclaw-runtime:base))); \
+	CLI_VER_ARG=""; \
+	if [ -n "$(CLI_VERSION)" ]; then CLI_VER_ARG="--build-arg CLI_VERSION=$(CLI_VERSION)"; fi; \
 	docker build \
 		-t $(IMAGE_NAME) \
 		-f Dockerfile \
 		$(DOCKER_BUILD_ARGS) \
 		--build-arg BASE_IMAGE=$$BASE_IMG \
+		$$CLI_VER_ARG \
 		.; \
 fi
 endef

@@ -11,89 +11,107 @@ ARG INSTALL_BROWSER=1
 ENV NODE_ENV=production
 ENV OPENCLAW_PREFER_PNPM=1
 
-# Install OpenClaw via npm
-RUN npm install -g openclaw@latest
-
 # ==============================================================================
-# Unified Global Tools Persistence
-# Configure ALL package managers to use a shared directory that persists
-# across container restarts via named volume.
-# Directory: /home/node/.global
+# Layer 1: Base Configuration (rarely changes)
+# - Directory creation and permissions
+# - Package manager configuration
+# - Environment variables
 # ==============================================================================
 
-# Create unified global directory
+# Create directories and configure package managers in single layer
 RUN mkdir -p /home/node/.global && \
-    chown -R node:node /home/node/.global
-
-# Configure npm to use unified global directory
-RUN npm config set prefix '/home/node/.global' && \
-    npm config set cache '/home/node/.global/_npm-cache'
-
-# Configure pnpm to use unified global directory
-RUN pnpm config set global-dir '/home/node/.global/pnpm' && \
+    mkdir -p /home/node/.local/lib && \
+    mkdir -p /home/node/.local/bin && \
+    chown -R node:node /home/node/.global && \
+    chown -R node:node /home/node/.local && \
+    # npm config
+    npm config set prefix '/home/node/.global' && \
+    npm config set cache '/home/node/.global/_npm-cache' && \
+    # pnpm config
+    pnpm config set global-dir '/home/node/.global/pnpm' && \
     pnpm config set global-bin-dir '/home/node/.global/bin'
 
-# Configure bun to use unified global directory
-# Bun uses BUN_INSTALL_PREFIX environment variable
+# Environment variables
 ENV BUN_INSTALL_PREFIX=/home/node/.global
-
-# Configure uv to use user-level installation for Python tools
-# This ensures Python packages installed via `uv pip install` persist across restarts
 ENV UV_NO_PROGRESS=1
 ENV UV_LINK_MODE=copy
-# Use user site-packages for Python tools persistence
-RUN mkdir -p /home/node/.local/lib && \
-    mkdir -p /home/node/.local/bin && \
-    chown -R node:node /home/node/.local
+# Base PATH - variant-specific paths added via /etc/profile.d
+ENV PATH="/home/node/.opencode/bin:/home/node/.global/bin:/home/node/.local/bin:${PATH}"
 
-# Install notebooklm-py (Google NotebookLM CLI - persisted via volume)
-# Note: Only install if Python and uv are available (office variant has Python)
-# Note: DO NOT use --system flag, as it conflicts with UV_SYSTEM_PYTHON=0 in docker-compose.yml
-#       Using --system would install to /usr/lib instead of /home/node/.local
-RUN if command -v python3 >/dev/null 2>&1 && command -v uv >/dev/null 2>&1; then \
-        uv pip install --break-system-packages --no-cache notebooklm-py; \
+# Variant-specific environment setup (Go/Java)
+# Detect variant from BASE_IMAGE and configure paths
+RUN mkdir -p /etc/profile.d && \
+    # Check if base image contains Go (openclaw-runtime:go)
+    if echo "${BASE_IMAGE}" | grep -q "openclaw-runtime:go"; then \
+        echo 'export PATH="/usr/local/go/bin:/home/node/go/bin:$PATH"' >> /etc/profile.d/variant-env.sh; \
+        echo 'export GOPATH=/home/node/go' >> /etc/profile.d/variant-env.sh; \
+        echo 'export GOPROXY=https://goproxy.cn,direct' >> /etc/profile.d/variant-env.sh; \
+    fi && \
+    # Check if base image contains Java (openclaw-runtime:java)
+    if echo "${BASE_IMAGE}" | grep -q "openclaw-runtime:java"; then \
+        echo 'export PATH="/usr/lib/jvm/java-21/bin:$PATH"' >> /etc/profile.d/variant-env.sh; \
+        echo 'export JAVA_HOME=/usr/lib/jvm/java-21' >> /etc/profile.d/variant-env.sh; \
     fi
 
-# Add unified global bin to PATH (for all package managers)
-ENV PATH="/home/node/.global/bin:/home/node/.local/bin:${PATH}"
 ENV npm_config_prefix=/home/node/.global
 ENV pnpm_config_global_dir=/home/node/.global/pnpm
 ENV pnpm_config_global_bin_dir=/home/node/.global/bin
 
-# Install Tier 3 Fast-Updating AI Agents
-# Note: These tools are installed into the image (not volume-mounted) because:
-#   1. They use shell install scripts that may not support custom directories
-#   2. DevKit rebuilds are infrequent, so re-installing is acceptable
-#   3. Tools are small, image overhead is minimal
-# We use root to install but ensure they are on path or globally accessible
-RUN npm install -g @anthropic-ai/claude-code@latest && \
-    # Install OpenCode CLI
-    echo "Installing opencode.ai..." && \
-    (curl -fsSL https://opencode.ai/install.sh | INSTALL_DIR=/usr/local/bin bash 2>&1 || echo "Warning: opencode.ai installation failed") && \
-    # Install Pi-Mono CLI
-    echo "Installing pi-mono..." && \
-    (curl -fsSL https://pimono.ai/install.sh | INSTALL_DIR=/usr/local/bin bash 2>&1 || echo "Warning: pi-mono installation failed")
+# Fix PATH for login shells - append global bin to PATH in /etc/profile
+RUN echo '' >> /etc/profile && \
+    echo '# OpenClaw: add global bin to PATH' >> /etc/profile && \
+    echo 'export PATH="/home/node/.opencode/bin:/home/node/.global/bin:/home/node/.local/bin:$PATH"' >> /etc/profile
 
-# Post-installation setup
-# (redundant user creation removed - now in base)
+# ==============================================================================
+# Layer 2: Static Files
+# ==============================================================================
 
-# Set permissions for /app if it was created by the install script
-# The install script usually installs to a specific path, if it follows standard conventions
-# Let's assume it puts things in /usr/local/bin or similar, and/or an app dir.
-# If it installs to /home/node/.openclaw, we'll handle that in entrypoint or setup.
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Install Playwright browsers if requested
+# Bake best-practice shell environment
+COPY .bashrc.devkit /home/node/.bashrc
+RUN chown node:node /home/node/.bashrc
+
+# ==============================================================================
+# Layer 3: Frequently Updated Tools (TOP LAYER)
+# - All CLI tools (npm + Python) in single layer
+# - Using cache mount for faster installs
+# - Use --build-arg CLI_VERSION=xxx to force rebuild
+# ==============================================================================
+
+ARG CLI_VERSION=1
+
+# Install Python tools (notebooklm-py)
+RUN if command -v python3 >/dev/null 2>&1 && command -v uv >/dev/null 2>&1; then \
+        uv pip install --system --break-system-packages --no-cache notebooklm-py; \
+    fi
+
+# Install npm global tools (using cache mount)
+RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
+    npm install -g openclaw@latest && \
+    npm install -g @anthropic-ai/claude-code@latest && \
+    npm install -g @mariozechner/pi-coding-agent && \
+    # Fix ownership for node user
+    chown -R node:node /home/node/.global
+
+# Install OpenCode CLI (shell script installer - installs to ~/.opencode/bin)
+RUN --mount=type=cache,target=/root/.cache,uid=1000,gid=1000 \
+    mkdir -p /home/node/.opencode/bin && \
+    chown -R node:node /home/node/.opencode && \
+    # Run installer as node user to ensure correct installation path
+    runuser -u node -- sh -c 'curl -fsSL https://opencode.ai/install | INSTALL_DIR=/home/node/.opencode/bin bash'
+
+# ==============================================================================
+# Layer 4: Optional Components
+# ==============================================================================
+
 RUN if [ "${INSTALL_BROWSER}" = "1" ]; then \
     mkdir -p /home/node/.cache/ms-playwright && \
     npx playwright install --with-deps chromium && \
     chown -R node:node /home/node/.cache/ms-playwright; \
     fi
 
-# Copy local entrypoint if needed, or use the one from install script
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-# Environment variables
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
 
 # Healthcheck

@@ -102,8 +102,6 @@ services:
       OPENCLAW_CONFIG_DIR: /home/node/.openclaw
       OPENCLAW_WORKSPACE_DIR: /home/node/.openclaw/workspace
       OPENCLAW_HOME: /home/node
-      # Ensure global tools are on PATH at runtime (npm/pnpm/bun + Python user bin)
-      PATH: /home/node/.global/bin:/home/node/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
       # Node.js package managers (npm/pnpm/bun)
       npm_config_prefix: /home/node/.global
       pnpm_config_global_dir: /home/node/.global/pnpm
@@ -143,10 +141,10 @@ services:
     healthcheck: &common-healthcheck
       # Use 127.0.0.1 for more stable local check
       test: [ "CMD", "node", "-e", "require('http').get('http://127.0.0.1:18789/healthz', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))" ]
-      interval: 20s
-      timeout: 15s
-      retries: 10
-      start_period: 60s
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     labels:
       - "openclaw.service=gateway"
       - "openclaw.environment=dev"
