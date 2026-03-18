@@ -103,6 +103,7 @@ services:
       # ─────────────────────────────────────────────────────────────────
       # 数据层 1: 持久化存储 (命名卷)
       #    - 工具链 (.global, .local/bin)
+      #    - Claude Code (.claude/ 全目录，包含 session/memory)
       #    - Go 生态 (go/pkg/mod, go/bin, .cache/go-build)
       #    - 浏览器缓存 (.cache/ms-playwright)
       #    - node_modules (/app)
@@ -111,31 +112,29 @@ services:
       - openclaw-devkit-home:/home/node:rw
 
       # ─────────────────────────────────────────────────────────────────
-      # 数据层 2: 双向同步 (读写挂载)
-      #    - .claude: Claude Code session/memory 写入
-      #    - .openclaw: Gateway 配置读写
-      #    - .notebooklm: CLI 状态写入
-      #    - workspace: AI 代码工作区
-      #    - 特性：与宿主机共享读写
+      # 数据层 2: 只读配置文件 (单向同步)
+      #    - settings.json: Claude Code 配置，Host 管理，容器只读
+      #    - .agents/skills: Host 管理的 skills 目录
       # ─────────────────────────────────────────────────────────────────
-      - ${HOME:-${USERPROFILE:-/tmp}}/.claude:/home/node/.claude:rw
-      - ${HOME:-${USERPROFILE:-/tmp}}/.openclaw-in-docker:/home/node/.openclaw:rw
-      - ${HOME:-${USERPROFILE:-/tmp}}/.notebooklm:/home/node/.notebooklm:rw
-      - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace:rw
+      - ${HOME:-${USERPROFILE:-/tmp}}/.claude/settings.json:/home/node/.claude/settings.json:ro
+      - ${HOME:-${USERPROFILE:-/tmp}}/.agents/skills:/home/node/.agents/skills:ro
 
       # ─────────────────────────────────────────────────────────────────
-      # 数据层 3: 单向同步 (只读挂载)
-      #    - .agents/skills: Host 管理的 skills 目录
-      #    - 特性：容器只读，Host 管理内容
+      # 数据层 3: 双向同步 (读写挂载)
+      #    - .openclaw: Gateway 配置读写
+      #    - workspace: AI 代码工作区
+      #    - .notebooklm: CLI 状态写入
+      #    - 特性：与宿主机共享读写
       # ─────────────────────────────────────────────────────────────────
-      - ${HOME:-${USERPROFILE:-/tmp}}/.agents/skills:/home/node/.agents/skills:ro
+      - ${HOME:-${USERPROFILE:-/tmp}}/.openclaw-in-docker:/home/node/.openclaw:rw
+      - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace:rw
+      - ${HOME:-${USERPROFILE:-/tmp}}/.notebooklm:/home/node/.notebooklm:rw
 
       # ─────────────────────────────────────────────────────────────────
       # 脚本层: 入口脚本 (只读)
       # ─────────────────────────────────────────────────────────────────
       - ./docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
     healthcheck: &common-healthcheck
-      # Use 127.0.0.1 for more stable local check
       test: [ "CMD", "node", "-e", "require('http').get('http://127.0.0.1:18789/healthz', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))" ]
       interval: 10s
       timeout: 10s

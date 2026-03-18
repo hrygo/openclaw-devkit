@@ -6,11 +6,10 @@ set -e
 # Handles permission fixes, config seeding, Git identity, and privilege drop.
 # Optimized for DevKit development environments.
 #
-# Architecture (v3):
-# - Named volume: openclaw-devkit-home:/home/node (tools, caches, node_modules)
-# - RW bind mounts: .claude, .openclaw, .notebooklm (session/config/state)
-# - RO bind mount: .agents/skills (host-managed)
-# - RW bind mount: workspace, entrypoint script
+# Architecture (v4):
+# - Named volume: openclaw-devkit-home:/home/node (tools, .claude, caches)
+# - RO files: settings.json, .agents/skills (host-managed)
+# - RW mounts: .openclaw, .notebooklm, workspace
 #
 # Performance optimizations:
 # - One-time surgery + one-time doctor (gateway manages config afterwards)
@@ -102,7 +101,7 @@ fi
 
 # ------------------------------------------------------------------------------
 # 1. Smart Permission Fix (only when needed)
-#    - Named volume dirs: always fix (tools, caches, node_modules)
+#    - Named volume dirs: always fix (.claude, tools, caches, node_modules)
 #    - Bind mounts: fix only if empty (preserve host data)
 # ------------------------------------------------------------------------------
 if [[ "$(id -u)" = "0" ]]; then
@@ -113,16 +112,16 @@ if [[ "$(id -u)" = "0" ]]; then
         echo "--> Running one-time permission initialization..."
 
         # Named volume directories: always fix ownership
-        # (tools, caches, node_modules)
-        for dir in "/home/node/.global" "/home/node/.local" "/home/node/go" "/home/node/.cache" "/app"; do
+        # (.claude, tools, caches, node_modules)
+        for dir in "/home/node/.claude" "/home/node/.global" "/home/node/.local" "/home/node/go" "/home/node/.cache" "/app"; do
             if [[ -d "${dir}" ]]; then
                 chown -R node:node "${dir}" 2>/dev/null || true
             fi
         done
 
         # Bind mount directories: only fix if empty or wrong owner
-        # (.claude, .openclaw, .notebooklm)
-        for dir in "/home/node/.claude" "/home/node/.openclaw" "/home/node/.notebooklm"; do
+        # (.openclaw, .notebooklm)
+        for dir in "/home/node/.openclaw" "/home/node/.notebooklm"; do
             if [[ -d "${dir}" ]]; then
                 if [[ -z "$(ls -A "${dir}" 2>/dev/null)" ]] || \
                    [[ "$(stat -c '%u' "${dir}" 2>/dev/null)" != "1000" ]]; then
@@ -270,7 +269,7 @@ fi
 # ------------------------------------------------------------------------------
 # 4. Claude Code Embedded Skills
 #    Re-injects skills from staging layer into .claude directory
-#    Note: .claude is a rw bind mount, skills inject directly
+#    Note: .claude is in named volume, settings.json is read-only mount
 # ------------------------------------------------------------------------------
 CLAUDE_DIR="/home/node/.claude"
 CLAUDE_SEED="/opt/claude_seed"
@@ -279,16 +278,6 @@ if [[ -d "${CLAUDE_SEED}" ]]; then
     run_as_node mkdir -p "${CLAUDE_DIR}"
     # Copy missing/updated skills (-n to not overwrite user edits)
     run_as_node cp -Rn "${CLAUDE_SEED}"/* "${CLAUDE_DIR}/" 2>/dev/null || true
-fi
-
-# ------------------------------------------------------------------------------
-# 4b. Claude Code Settings Protection
-#    Ensure settings.json is read-only to prevent accidental modification
-# ------------------------------------------------------------------------------
-CLAUDE_SETTINGS="${CLAUDE_DIR}/settings.json"
-if [[ -f "${CLAUDE_SETTINGS}" ]]; then
-    chmod a-w "${CLAUDE_SETTINGS}" 2>/dev/null || true
-    echo "--> Protected settings.json (read-only)"
 fi
 
 # ------------------------------------------------------------------------------
