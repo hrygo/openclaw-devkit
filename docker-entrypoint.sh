@@ -10,7 +10,7 @@ set -e
 # - Named volume: openclaw-devkit-home:/home/node (tools, caches)
 # - Named volume: openclaw-claude-home:/home/node/.claude (session, memory)
 # - RO bind: settings.json, skills/ (host-managed)
-# - RW bind: .openclaw, .notebooklm, workspace
+# - RW bind: .openclaw, .notebooklm (bind mount, NOTEBOOKLM_STORAGE env var controls path)
 #
 # Performance optimizations:
 # - One-time surgery + one-time doctor (gateway manages config afterwards)
@@ -239,19 +239,7 @@ if [[ ! -f "${CLAUDE_JSON}" ]]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 5. NotebookLM CLI
-# Ensure symlink for config directory (CLI looks in /root/.notebooklm)
-# ------------------------------------------------------------------------------
-if [[ -d "/home/node/.notebooklm" ]] && [[ ! -d "/root/.notebooklm" ]]; then
-    if ln -sf /home/node/.notebooklm /root/.notebooklm 2>/dev/null; then
-        echo "--> Linked /root/.notebooklm -> /home/node/.notebooklm"
-    else
-        echo "--> Warning: Cannot create /root/.notebooklm symlink (read-only /root?), skipping"
-    fi
-fi
-
-# ------------------------------------------------------------------------------
-# 6. Git Identity Injection
+# 5. Git Identity Injection
 #    Allows configuring Git identity via .env without host .gitconfig dependency
 # ------------------------------------------------------------------------------
 if [[ -n "${GIT_USER_NAME:-}" ]]; then
@@ -273,7 +261,7 @@ if [[ -d "${PROJECTS_DIR}" ]]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 7. Ensure Gateway Configuration
+# 6. Ensure Gateway Configuration
 #    Always set these values to ensure consistency across restarts and upgrades
 # ------------------------------------------------------------------------------
 run_as_node openclaw config set gateway.mode local --strict-json >/dev/null 2>&1 || true
@@ -286,18 +274,15 @@ if [[ -n "${OPENCLAW_GATEWAY_TOKEN:-}" ]]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 8. Unified Global Tools Directory
-#    Pre-configured in Dockerfile, ensure symlink exists at runtime
+# 7. Unified Global Tools Directory
+#    .global/.local/.agents mounted via named volume
 # ------------------------------------------------------------------------------
 mkdir -p /home/node/.global
 mkdir -p /home/node/.local
 mkdir -p /home/node/.agents
-if [[ -d "/home/node/.global/bin" ]] && [[ ! -L "/usr/local/bin/global" ]]; then
-    ln -sf /home/node/.global/bin /usr/local/bin/global 2>/dev/null || true
-fi
 
 # ------------------------------------------------------------------------------
-# 10. Execute CMD (drop privileges if root)
+# 8. Execute CMD (drop privileges if root)
 #    Ensures all files created by the app belong to 'node' user
 # ------------------------------------------------------------------------------
 echo "==> Starting OpenClaw..."
