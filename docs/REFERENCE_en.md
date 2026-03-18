@@ -60,7 +60,7 @@ make onboard
 - **App Token**: Required for enterprise chat bot integration
 - **Workspace ID**: Required if AI needs awareness of specific collaborative spaces
 
-> Once complete, `openclaw.json` is stored in container's `/home/node/.openclaw/` (maps to host's `~/.openclaw-in-docker/`) and hot-loaded on startup.
+> Once complete, `openclaw.json` is stored in container's `/home/node/.openclaw/` (maps to host's `~/.openclaw/`, directly shared via bind mount) and hot-loaded on startup.
 
 ---
 
@@ -160,27 +160,24 @@ make upgrade office
 
 ## 5. Data Persistence
 
-Dual-track persistence ensures container non-volatility:
+Layered named volumes + bind mount sharing:
 
-1. **Runtime Configuration**
-   - Path: `~/.openclaw-in-docker/openclaw.json`
-   - Purpose: The active configuration file for the running gateway. **Edit this file to modify settings**, then run `make restart`.
+1. **Named Volume: openclaw-claude-home**
+   - Container path: `~/.claude/`
+   - Purpose: Claude Code Session, Memory, Skills state — **survives image rebuilds**
 
-2. **Workspace (Bidirectional Sync)**
-   - Path: `~/.openclaw/workspace/`
-   - Purpose: Development workbench, millisecond-level sync between host and container.
+2. **Named Volume: openclaw-devkit-home**
+   - Container path: `~/.global/`, `~/.local/`, `~/.cache/`, `~/.go/`
+   - Purpose: Runtime-installed CLI tools (npm/pnpm/bun/uv/Go) — **survives image rebuilds**
 
-3. **Configuration Seed**
-   - Path: `~/.openclaw/`
-   - Purpose: **Initial setup only**. Mounted as read-only `/home/node/.openclaw-seed` to populate state on first boot.
+3. **Bind Mount: HOST_OPENCLAW_DIR** (default `~/.openclaw/`)
+   - Host `~/.openclaw/` ↔ Container `/home/node/.openclaw/`
+   - Purpose: Config file real-time bidirectional sync — **edit host's `openclaw.json` for hot-reload**
 
-4. **Global Tools** - v1.8.0 New
-   - Named Volumes: `openclaw-global` + `openclaw-python-local`
-   - Purpose: Persist CLI tools installed at runtime (npm/pnpm/bun/uv)
-   - Container paths:
-     - `/home/node/.global/` - Node.js tools (npm/pnpm/bun)
-     - `/home/node/.local/` - Python tools (uv pip install --user)
-   - **No configuration needed** - OpenClaw-installed tools automatically persist across restarts
+4. **Read-only Bind Mounts**
+   - `~/.claude/settings.json` → Container `~/.claude/settings.json` (ro)
+   - `~/.claude/skills/` → Container `~/.claude/skills/` (ro)
+   - `~/.agents/skills/` → Container `~/.agents/skills/` (ro)
 
 ---
 
@@ -232,12 +229,15 @@ Makefile dynamically reassembles Compose files based on environment variables:
 
 On container start, `docker-entrypoint.sh` executes:
 
-1. **UID Adaptation**: Detect host User ID, execute `chown` to fix mounted directory permissions.
-2. **Seed Population**: If workspace is empty, automatically populate from `/home/node/.openclaw-seed`.
-3. **Self-Healing Mechanics**:
+1. **Host OpenClaw Conflict Detection**: Detects launchd/systemd/processes, auto-stops and prompts uninstall guide.
+2. **UID Adaptation**: Detect host User ID, execute `chown` to fix mounted directory permissions.
+3. **Hot Initialization**: If `~/.openclaw/openclaw.json` does not exist, run `openclaw onboard --non-interactive` to initialize.
+4. **.claude.json Protection**: If `~/.claude.json` does not exist, automatically create empty placeholder.
+5. **Self-Healing Mechanics**:
    - **Path Surgery**: Automatically migrates leaked host paths (Mac/Linux) to container-standard paths, preventing `EACCES`.
    - **Phantom Secret Cleanup**: Automatically prunes invalid model configs referencing missing environment variables, ensuring 100% gateway startup success.
-4. **Network Binding**: Lock gateway port, set bind address to `lan` to bypass Docker bridge isolation.
+6. **Gateway Config Hardening**: Locks `gateway.bind=lan`, `gateway.mode=local`, auto-appends allowedOrigins.
+7. **Global Tools Directories**: Ensures `/home/node/.global/`, `/home/node/.local/` exist and fixes permissions.
 
 ---
 
@@ -257,7 +257,7 @@ On container start, `docker-entrypoint.sh` executes:
 2. Verify proxy software has "Allow LAN" enabled
 
 ### Q: Why is my agent.json config file missing?
-Verify actual mount path of `OPENCLAW_CONFIG_DIR`, defaults to `~/.openclaw`
+Check actual path of `HOST_OPENCLAW_DIR`, defaults to `~/.openclaw`
 
 ---
 
@@ -268,11 +268,10 @@ Verify actual mount path of `OPENCLAW_CONFIG_DIR`, defaults to `~/.openclaw`
 | **Orchestration** | `COMPOSE_FILE` | `docker-compose.yml` | Defines orchestration layers |
 | | `OPENCLAW_SKIP_BUILD`| `true` | true=pull, false=build |
 | | `OPENCLAW_IMAGE` | `...:latest` | Docker image tag |
-| **Host Paths** | `OPENCLAW_CONFIG_DIR`| `~/.openclaw` | Config seed (mounted as seed) |
-| | `OPENCLAW_WORKSPACE_DIR`| `~/.openclaw/workspace` | Workspace (bidirectional sync) |
+| **Host Paths** | `HOST_OPENCLAW_DIR`| `~/.openclaw` | Host config directory (direct bind mount share) |
 | **Container Paths** | `OPENCLAW_HOME` | `/home/node` | Container root home |
-| | Runtime config | `/home/node/.openclaw` | Maps to host `~/.openclaw-in-docker/` |
 | **Network** | `OPENCLAW_GATEWAY_PORT`| `18789` | Gateway port |
+| | `OPENCLAW_GATEWAY_BIND`| `lan` | Bind mode (lan=all interfaces, local=127.0.0.1 only) |
 | | `OPENCLAW_GATEWAY_TOKEN`| (Hex) | CLI-Gateway handshake |
 | | `HTTP[S]_PROXY` | - | Container outbound proxy |
 | **Acceleration** | `DOCKER_MIRROR` | `docker.io` | Docker Hub mirror |

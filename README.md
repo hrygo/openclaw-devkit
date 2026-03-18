@@ -154,15 +154,28 @@ make upgrade
 <details>
 <summary><b>Q: 配置文件在哪？如何从宿主机修改？</b></summary>
 
-DevKit 采用**双轨挂载**设计，分离"配置种子"与"运行时状态"：
+DevKit 采用**直接 Bind Mount 共享**设计：
 
-| 宿主机路径 | 用途 | 说明 |
-|:----------|:-----|:-----|
-| `~/.openclaw-in-docker/openclaw.json` | **运行时配置** | 直接编辑此文件修改配置 |
-| `~/.openclaw/openclaw.json` | 配置种子 | 仅用于首次初始化 |
-| `~/.openclaw/workspace/` | 工作区 | AI 代码目录，双向同步 |
+| 宿主机路径 | 容器路径 | 用途 |
+|:----------|:--------|:-----|
+| `~/.openclaw/` | `/home/node/.openclaw/` | 配置文件，双向实时同步 |
 
-**修改配置**：直接编辑 `~/.openclaw-in-docker/openclaw.json`，然后执行 `make restart`。
+**修改配置**：直接编辑宿主机的 `~/.openclaw/openclaw.json`，无需重启即可热加载。
+</details>
+
+<details>
+<summary><b>Q: 宿主机已安装 OpenClaw，冲突怎么办？</b></summary>
+
+容器与宿主机模式会争夺端口 18789。运行 `./docker-setup.sh` 时会自动检测并尝试停止宿主机服务。
+
+若需手动处理：
+```bash
+# 查看卸载指南
+make uninstall-host
+
+# 推荐一键卸载
+npx -y openclaw uninstall --all --yes --non-interactive
+```
 </details>
 
 ---

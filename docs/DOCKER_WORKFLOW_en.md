@@ -139,10 +139,9 @@ Push to GHCR:
 
 | Variable | Default | Description |
 | :----------------------- | :------------------------------ | :----------- |
-| `OPENCLAW_CONFIG_DIR` | `/home/node/.openclaw` | Config directory (in-container path) |
-| `OPENCLAW_WORKSPACE_DIR` | `/home/node/.openclaw/workspace` | Workspace (in-container path) |
-| `OPENCLAW_HOME` | `/home/node` | OpenClaw home directory (important) |
+| `HOST_OPENCLAW_DIR` | `~/.openclaw` | Host config directory (direct bind mount) |
 | `OPENCLAW_GATEWAY_PORT` | `18789` | Gateway port |
+| `OPENCLAW_GATEWAY_BIND` | `lan` | Gateway bind mode (lan=all interfaces, local=127.0.0.1 only) |
 
 ---
 
@@ -180,25 +179,28 @@ Traditional Docker mounts can cause `EACCES` or path errors due to host-containe
 
 ### Directory Mapping and Mount Logic (Mount Hierarchy)
 
-DevKit uses a "Seed Mapping" and "State Sharding" separated design to ensure environment sync speed without losing runtime state.
+DevKit uses **layered named volumes + bind mount sharing**:
 
-| Host Path | Container Path | Permission | Purpose |
+| Host Path | Container Path | Type | Purpose |
 | :--- | :--- | :--- | :--- |
-| `~/.openclaw/` | `/home/node/.openclaw-seed` | `ro` | **Config seed**. Initial config copied from here on first boot. |
-| `~/.openclaw/workspace/` | `/home/node/.openclaw/workspace` | `rw` | **Development workspace**. Where AI writes code, real-time bidirectional sync. |
-| `~/.openclaw-in-docker/`| `/home/node/.openclaw` | `rw` | **Runtime state**. Contains `openclaw.json`, Sessions, Audit logs, etc. |
+| `openclaw-devkit-home` | `/home/node/` | Named Volume | **Toolchain persistence**. npm/pnpm/bun packages, Go ecosystem, Playwright cache. |
+| `openclaw-claude-home` | `/home/node/.claude/` | Named Volume | **Claude Code persistence**. Session, Memory, Skills state, survives rebuilds. |
+| `~/.openclaw/` | `/home/node/.openclaw/` | Bind Mount (rw) | **User config sharing**. openclaw.json, identity, agents — real-time bidirectional sync. |
+| `~/.notebooklm/` | `/home/node/.notebooklm/` | Bind Mount (rw) | NotebookLM CLI state |
+| `~/.claude/settings.json` | `/home/node/.claude/settings.json` | Bind Mount (ro) | Claude Code config read-only share |
+| `~/.claude/skills/` | `/home/node/.claude/skills/` | Bind Mount (ro) | Claude Code Skills read-only share |
+| `~/.agents/skills/` | `/home/node/.agents/skills/` | Bind Mount (ro) | .agents Skills read-only share |
 
 #### How to Modify Config?
-- **Runtime Modifications**: To modify running gateway config, edit **`~/.openclaw-in-docker/openclaw.json`** directly on host, then run `make restart`.
-- **Template Modifications**: Editing `~/.openclaw/openclaw.json` only takes effect on first install or when state volume is cleared.
+- Edit **`~/.openclaw/openclaw.json`** directly on host, hot-loaded in container on save — no restart needed.
 
 ### Permission Migration
-Container entrypoint script automatically fixes read/write permissions for `~/.openclaw-in-docker/` (host) and `/home/node/.openclaw/` (container).
+Container entrypoint script automatically fixes UID/GID permissions on host-mounted directories.
 
 ### Cleanup
 ```bash
 make clean            # Containers and dangling images
-make clean-volumes   # All data volumes (use with caution!)
+make clean-volumes   # All data volumes (careful! loses npm/Go/Claude Code cache)
 ```
 
 ---
@@ -243,22 +245,19 @@ OpenClaw container supports installing any tools at runtime (npm/pnpm/bun/uv), a
 ### 11.1 Persistence Principle
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│  Named Volume: openclaw-global                                     │
-│  ┌─────────────────────────────────────────────────────────────────┐│
-│  │ /home/node/.global/                                            ││
-│  │ ├── bin/ (npm/pnpm/bun tools)                                  ││
-│  │ ├── pnpm/                                                      ││
-│  │ └── _npm-cache/                                               ││
-│  └─────────────────────────────────────────────────────────────────┘│
-├─────────────────────────────────────────────────────────────────────┤
-│  Named Volume: openclaw-python-local                               │
-│  ┌─────────────────────────────────────────────────────────────────┐│
-│  │ /home/node/.local/                                             ││
-│  │ ├── bin/ (Python CLI tools)                                    ││
-│  │ └── lib/python3.x/site-packages/                              ││
-│  └─────────────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Named Volume: openclaw-devkit-home                                        │
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │ /home/node/.global/  (npm/pnpm/bun tools)                            ││
+│  │ /home/node/.local/    (Python CLI tools, uv pip install --user)       ││
+│  │ /home/node/.cache/   (Playwright browser cache etc.)                   ││
+│  │ /home/node/go/       (Go SDK and toolchain)                           ││
+│  └─────────────────────────────────────────────────────────────────────────┘│
+│  Named Volume: openclaw-claude-home                                        │
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │ /home/node/.claude/ (Session, Memory, Skills state)                   ││
+│  └─────────────────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 11.2 Supported Package Managers
@@ -305,5 +304,5 @@ which my-tool  # Tool still exists!
 - **Tool Migration**: Previously installed tools in old locations won't auto-migrate, need manual reinstall
 - **Cleanup**: To clear all persisted tools, run:
   ```bash
-  docker volume rm openclaw-global openclaw-python-local
+  docker volume rm openclaw-devkit-home openclaw-claude-home
   ```

@@ -107,8 +107,7 @@ ERROR   := $(RED)$(BOLD)✖$(NC)
 # 环境变量自动导出 (Ensure Docker Compose receives variables)
 # ============================================================
 export OPENCLAW_IMAGE
-export OPENCLAW_CONFIG_DIR
-export OPENCLAW_WORKSPACE_DIR
+export HOST_OPENCLAW_DIR
 export OPENCLAW_GATEWAY_PORT
 export OPENCLAW_BRIDGE_PORT
 export OPENCLAW_GATEWAY_TOKEN
@@ -280,7 +279,7 @@ start: up ## 启动服务 (别名)
 
 onboard: ## 启动交互式引导程序
 	@echo "$(INFO) 启动交互式引导程序..."
-	@docker compose run --rm -it -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 openclaw-gateway openclaw onboard
+	@docker compose run --rm -it -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 openclaw-gateway openclaw onboard
 	@echo ""
 	@echo "$(SUCCESS) 配置完毕! 接下来请执行:"
 	@echo "  ⚡ $(BOLD)make up$(NC)                正式启动服务"
@@ -503,7 +502,7 @@ health: gateway-health ## 检查健康状态 (别名)
  
 doctor: ## 🛠️  一键诊断并修复容器配置
 	@echo "$(INFO) 正在诊断容器配置..."
-	@docker compose exec -it -e OPENCLAW_CONFIG_DIR=/home/node/.openclaw openclaw-gateway openclaw doctor --fix
+	@docker compose exec -it openclaw-gateway openclaw doctor --fix
 	@echo "$(SUCCESS) 诊断与修复完成！"
 
 test-proxy: ## 测试代理连接 (默认端口: HTTP=7897, Claude API=15721)
