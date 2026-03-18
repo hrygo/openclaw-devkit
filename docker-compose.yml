@@ -65,22 +65,11 @@ x-openclaw-common: &openclaw-common
 # Named Volumes
 # ------------------------------------------------------------------------------
 volumes:
-  openclaw-node-modules:
-    name: openclaw-node-modules
-  openclaw-go-mod:
-    name: openclaw-go-mod
-  openclaw-playwright-cache:
-    name: openclaw-playwright-cache
-  openclaw-playwright-bin:
-    name: openclaw-playwright-bin
-  # Unified global tools persistence - solves container restart tool loss issue
-  # Persists ALL package managers: npm, pnpm, bun, uv (Python)
-  openclaw-global:
-    name: openclaw-global
-  # Python user packages (uv pip install --user)
-  openclaw-python-local:
-    name: openclaw-python-local
-  # Unified state storage for sessions, identities, and logs - REMOVED for host mapping
+  # Unified home directory volume - replaces all scattered mounts
+  # Contains: .global, .local, .opencode, .openclaw, .claude, .notebooklm,
+  #           .agents, .cache, go/, /app (node_modules)
+  openclaw-devkit-home:
+    name: openclaw-devkit-home
 
 services:
   # ============================================================================
@@ -112,32 +101,27 @@ services:
       UV_NO_PROGRESS: "1"
     init: true
     volumes:
-      # === 必需挂载 (Required Mounts) ===
-      # 1. 配置种子: 宿主机 ~/.openclaw → 容器 seed (只读，仅用于首次初始化)
-      - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw-seed:ro
-      # 2. 工作区: AI 代码目录 (双向同步)
-      - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace:rw
-      # 3. 运行时状态: 宿主机 ~/.openclaw-in-docker → 容器 /home/node/.openclaw (读写)
-      #    设计目的: 与宿主机原生 ~/.openclaw 分离，可在宿主机直接编辑容器配置
-      - ${HOME:-${USERPROFILE}}/.openclaw-in-docker:/home/node/.openclaw:rw
-      # 4. 入口脚本: 无需重建即可应用修复
-      - ./docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
+      # ─────────────────────────────────────────────────────────────────
+      # 1. 全量命名卷（核心）替代所有分散挂载
+      #    包含: .global, .local, .opencode, .openclaw, .claude
+      #          .notebooklm, .agents, .cache, go/, /app
+      # ─────────────────────────────────────────────────────────────────
+      - openclaw-devkit-home:/home/node:rw
 
-      # === 可选挂载 (Optional) - 根据需求选择 ===
-      # Claude Code session state (shared with host)
-      - ${HOME:-${USERPROFILE:-/tmp}}/.claude:/home/node/.claude:rw
-      # NotebookLM auth and config (shared with host)
-      - ${HOME:-${USERPROFILE:-/tmp}}/.notebooklm:/home/node/.notebooklm:rw
-      # Agents skills (read-only, shared with host)
+      # ─────────────────────────────────────────────────────────────────
+      # 2. 只读挂载：CLI 工具配置文件（容器内可读，宿主机可编辑）
+      #    注意：必须只读，避免宿主机编辑器锁文件或权限问题
+      # ─────────────────────────────────────────────────────────────────
+      - ${HOME:-${USERPROFILE:-/tmp}}/.claude:/home/node/.claude:ro
+      - ${HOME:-${USERPROFILE:-/tmp}}/.openclaw-in-docker:/home/node/.openclaw:ro
+      - ${HOME:-${USERPROFILE:-/tmp}}/.notebooklm:/home/node/.notebooklm:ro
       - ${HOME:-${USERPROFILE:-/tmp}}/.agents/skills:/home/node/.agents/skills:ro
-      # Named volumes for caches (optional, speeds up restarts)
-      - openclaw-node-modules:/app/node_modules:rw
-      - openclaw-go-mod:/home/node/go/pkg/mod:rw
-      - openclaw-playwright-cache:/home/node/.cache/ms-playwright:rw
-      # Unified global tools - persist ALL package managers (npm/pnpm/bun)
-      - openclaw-global:/home/node/.global:rw
-      # Python user packages (for uv pip install --user persistence)
-      - openclaw-python-local:/home/node/.local:rw
+
+      # ─────────────────────────────────────────────────────────────────
+      # 3. 读写挂载：初始化脚本和动态工作区
+      # ─────────────────────────────────────────────────────────────────
+      - ./docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
+      - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace:rw
     healthcheck: &common-healthcheck
       # Use 127.0.0.1 for more stable local check
       test: [ "CMD", "node", "-e", "require('http').get('http://127.0.0.1:18789/healthz', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))" ]

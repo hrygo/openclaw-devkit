@@ -84,7 +84,7 @@ make restore FILE=<file>  # 恢复配置
 
 # 清理
 make clean            # 清理容器和悬空镜像
-make clean-volumes    # 清理所有数据卷 (危险!)
+make clean-volumes    # 清理数据卷（包括 openclaw-devkit-home，⚠️ 会丢失所有工具链和缓存）
 ```
 
 ## Key Services
