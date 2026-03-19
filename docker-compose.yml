@@ -135,7 +135,7 @@ services:
       # .agents/skills 只读共享
       - ${HOME:-${USERPROFILE:-/tmp}}/.agents/skills:/home/node/.agents/skills:ro
       # ClawHub CLI 凭据 (跨平台: macOS/Linux/Windows)
-      - ${HOST_CLAWHUB_DIR}:/home/node/.config/clawhub:rw
+      - ${HOST_CLAWHUB_DIR:-${HOME}/.config/clawhub}:/home/node/.config/clawhub:rw
 
       # ─────────────────────────────────────────────────────────────────
       # Layer 4: 脚本 (只读)

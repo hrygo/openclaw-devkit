@@ -661,8 +661,20 @@ fi
 info "同步环境变量文件: ${CYAN}$ENV_FILE${NC}"
 # Use host paths for .env (required for docker-compose volume mounting)
 # The application inside will still use the internal paths via compose environment overrides.
+
+# 根据平台自动设置 HOST_CLAWHUB_DIR (覆盖 .env.example 的 macOS 默认值)
+if [[ "$IS_WINDOWS" == "true" ]]; then
+  export HOST_CLAWHUB_DIR="$(cygpath -u "$APPDATA")/clawhub"
+elif [[ "$IS_MACOS" == "true" ]]; then
+  export HOST_CLAWHUB_DIR="${HOME}/Library/Application Support/clawhub"
+else
+  # Linux 及 WSL 默认路径
+  export HOST_CLAWHUB_DIR="${HOME}/.config/clawhub"
+fi
+
 upsert_env "$ENV_FILE" \
   HOST_OPENCLAW_DIR \
+  HOST_CLAWHUB_DIR \
   OPENCLAW_GATEWAY_PORT \
   OPENCLAW_BRIDGE_PORT \
   OPENCLAW_GATEWAY_TOKEN \
