@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.10.4] - 2026-03-19
+
+### Fixed
+- **HOST_CLAWHUB_DIR**: Added default value in `docker-compose.yml` to prevent "empty section between colons" error on Linux. Added platform auto-detection in `docker-setup.sh` for correct ClawHub path across macOS/Linux/Windows.
+
 ## [v1.10.3] - 2026-03-19
 
 ### Optimized
