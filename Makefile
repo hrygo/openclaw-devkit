@@ -443,7 +443,7 @@ tui: ## 启动 OpenClaw TUI 终端界面
 
 dashboard: ## 🚀 一键直达仪表盘 (自动带 token)
 	@echo "$(INFO) 正在生成直通链接..."
-	@URL=$$(docker compose exec -T openclaw-gateway openclaw dashboard --no-open | grep "Dashboard URL:" | cut -d' ' -f3); \
+	@URL=$$(docker compose exec -T openclaw-gateway sh -c "openclaw dashboard --no-open | grep 'Dashboard URL:' | cut -d' ' -f3"); \
 	if [ -n "$$URL" ]; then \
 		echo "$(SUCCESS) 仪表盘已就绪:"; \
 		echo "  $(BOLD)$(CYAN)$$URL$(NC)"; \
@@ -461,7 +461,7 @@ devices: ## 列举所有配对设备及请求
 
 approve: ## 🔐 一键批准最新的配对请求
 	@echo "$(INFO) 正在全自动识别待处理请求..."
-	@REQ_ID=$$(docker compose exec -T openclaw-gateway openclaw devices list --json | jq -r '.pending[0].requestId // empty'); \
+	@REQ_ID=$$(docker compose exec -T openclaw-gateway sh -c "openclaw devices list --json | jq -r '.pending[0].requestId // empty'"); \
 	if [ -n "$$REQ_ID" ]; then \
 		echo "$(INFO) 检测到请求 ID: $$REQ_ID"; \
 		docker compose exec -T openclaw-gateway openclaw devices approve "$$REQ_ID"; \

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.10.3] - 2026-03-19
+
+### Optimized
+- **Makefile (Host Independence)**: Removed host-side dependency on `jq`, `grep`, and `cut` by moving all JSON and text processing into the Docker container. This ensures full cross-platform compatibility for Windows, macOS, and Linux开发者机器。
+
 ## [v1.10.2] - 2026-03-19
 
 ### Added
