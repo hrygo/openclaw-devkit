@@ -27,7 +27,7 @@ openclaw-devkit/
 
 1. **Dockerfile.base** → `openclaw-runtime:base` - 统一基础层（Debian + Node.js + 基础工具）
 2. **Dockerfile.stacks** → `openclaw-runtime:{go,java,office}` - 技术栈层（Go/JDK/Office）
-3. **Dockerfile** → `openclaw-devkit:{variant}` - 应用层（CLI 工具 + 配置）
+3. **Dockerfile** → `ghcr.io/hrygo/openclaw-devkit:{variant}` - 应用层（CLI 工具 + 配置）
 
 构建顺序：`make build-base` → `make build-stacks` → `make build-{variant}`
 
@@ -60,10 +60,11 @@ make logs-all         # 查看所有容器日志
 make shell            # 进入 Gateway 容器 (bash)
 make exec CMD="..."   # 在容器中执行命令
 make cli CMD="..."    # 执行 OpenClaw CLI 命令
-make dashboard        # 一键直达仪表盘
-make approve          # 批准配对请求
-make pairing          # 频道配对
-make verify           # 验证镜像工具版本
+make tui               # 🖥️ 启动 TUI 终端界面
+make dashboard         # 🚀 一键直达仪表盘
+make approve           # 🔐 一键批准最新的配对请求
+make devices           # 列举所有配对设备及请求
+make verify            # 验证镜像工具版本
 
 # 健康与测试
 make health           # 检查健康状态
@@ -166,9 +167,12 @@ make approve          # 如显示 "pairing required"，然后刷新浏览器
 
 ### Shell 脚本换行符问题
 
-**症状**: `make up` 报错 `env: 'bash\r': No such file or directory`
+**症状**: `make up` 报错 `env: 'bash\r': No such file or directory` 或类似 `\r` 错误。
+
+**原因**: Windows 下 Git 自动将换行符转为 CRLF。
 
 **解决**:
+DevKit 已内置 `.gitattributes` 强制执行 LF。若仍手动修改导致此问题，可执行：
 ```bash
 sed -i 's/\r$//' docker-entrypoint.sh docker-setup.sh
 make down && make up

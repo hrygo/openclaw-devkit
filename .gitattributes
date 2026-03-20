@@ -1,4 +1,17 @@
-# Force LF for shell scripts and Makefile to prevent Docker mounting issues on Windows
+# Enforce LF line endings for all text files
+* text=auto eol=lf
+
+# Explicitly mark shell scripts and Makefiles as LF
 *.sh text eol=lf
 Makefile text eol=lf
-.env.example text eol=lf
+.bashrc* text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

@@ -32,7 +32,12 @@ endif
 
 # Determine Home Directory
 ifeq ($(PLATFORM),Windows)
-    HOME_DIR := $(USERPROFILE)
+    # Use USERPROFILE on Windows, but convert to POSIX path if in Git Bash
+    ifneq ($(strip $(MSYSTEM)),)
+        HOME_DIR := $(shell cygpath -u "$(USERPROFILE)")
+    else
+        HOME_DIR := $(USERPROFILE)
+    endif
 else
     HOME_DIR := $(HOME)
 endif
@@ -40,8 +45,15 @@ endif
 # Export HOME for docker compose visibility on Windows
 export HOME := $(HOME_DIR)
 
+# Git Bash Path Conversion Fix (Windows only)
+# Prevents Git Bash from converting /home/node to C:/Program Files/Git/home/node
+ifeq ($(PLATFORM),Windows)
+    ifneq ($(strip $(MSYSTEM)),)
+        export MSYS_NO_PATHCONV := 1
+    endif
+endif
+
 # Check shell environment on Windows
-# Detect MSYSTEM for Git Bash / MSYS2 / Cygwin
 ifeq ($(OS),Windows_NT)
     ifeq ($(strip $(MSYSTEM)),)
         # Not in a POSIX environment - issue warning but continue
@@ -126,7 +138,7 @@ GATEWAY_PORT ?= $(if $(OPENCLAW_GATEWAY_PORT),$(OPENCLAW_GATEWAY_PORT),18789)
 OPENCLAW_BIN := openclaw
 
 # 镜像配置
-INITIAL_IMAGE_NAME := openclaw-devkit
+INITIAL_IMAGE_NAME := ghcr.io/hrygo/openclaw-devkit
 IMAGE_NAME := $(if $(OPENCLAW_IMAGE),$(OPENCLAW_IMAGE),$(INITIAL_IMAGE_NAME):latest)
 
 # Docker 构建公共参数
@@ -436,10 +448,10 @@ logs-all: ## 查看所有容器日志
 	@LANG=C.UTF-8 LC_ALL=C.UTF-8 docker compose logs --tail 100 -f
 
 shell: ## 进入 Gateway 容器 (以 node 用户登录，切换到 node 主目录)
-	@docker compose exec -u node -w /home/node openclaw-gateway bash -l
+	@docker compose exec -u node -w /home/node -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 openclaw-gateway bash -l
 
 tui: ## 启动 OpenClaw TUI 终端界面
-	@docker compose exec -it openclaw-gateway openclaw tui
+	@docker compose exec -it -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 openclaw-gateway openclaw tui
 
 dashboard: ## 🚀 一键直达仪表盘 (自动带 token)
 	@echo "$(INFO) 正在生成直通链接..."
@@ -485,7 +497,7 @@ verify: ## 验证镜像工具版本 (最佳实践检查)
 	'
 
 exec: ## 执行命令 (需要 CMD="..." 参数)
-	@docker compose exec openclaw-gateway $(CMD)
+	@docker compose exec -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 openclaw-gateway $(CMD)
 
 cli: ## 执行 OpenClaw CLI 命令 (需要 CMD="..." 参数)
 	@docker compose exec openclaw-gateway $(OPENCLAW_BIN) $(CMD)

@@ -34,7 +34,7 @@
 ### General Requirements
 - **Docker**: V2 (Docker Desktop for macOS/Windows, Docker Engine for Linux)
 - **Docker Compose**: V2 (built into Docker Desktop)
-- **Make**: Pre-installed on macOS/Linux. Windows users are **strongly recommended** to install and use [Git Bash](https://git-scm.com/download/win) (Native Windows CLI tools may have compatibility issues)
+- **Make**: Pre-installed on macOS/Linux. Windows users just need [Git Bash](https://git-scm.com/download/win) for full compatibility (built-in `Makefile` is optimized for Git Bash path conversion).
 
 ### Windows-Specific Requirements
 
@@ -184,9 +184,9 @@ npx -y openclaw uninstall --all --yes --non-interactive
 
 | Document | Description | Key Points |
 | :--- | :--- | :--- |
-| [Image Variants](./docs/IMAGE_VARIANTS.md) | 1+3 architecture and version differences | `latest`, `go`, `java`, `office` tags |
-| [Docker Workflow](./docs/DOCKER_WORKFLOW.md) | Local development and CI/CD process | `make` commands, GitHub Actions logic |
-| [Quick Start Guide](./docs/USER_ONBOARDING.md) | Configuration and environment variables | `.env` setup, Claude API configuration |
+| [Image Variants](./docs/IMAGE_VARIANTS_en.md) | 1+3 architecture and version differences | `latest`, `go`, `java`, `office` tags |
+| [Docker Workflow](./docs/DOCKER_WORKFLOW_en.md) | Local development and CI/CD process | `make` commands, GitHub Actions logic |
+| [Quick Start Guide](./docs/USER_ONBOARDING_en.md) | Configuration and environment variables | `.env` setup, Claude API configuration |
 | [Feishu Setup](./docs/FEISHU_SETUP_en.md) | Feishu chat app integration | Bot creation, Webhook configuration |
 | [Slack Setup](./docs/SLACK_SETUP_BEGINNER_en.md) | Slack integration with OpenClaw | Bot creation, Socket Mode setup |
 | [NotebookLM Skill](./docs/NOTEBOOKLM_SKILL_en.md) | NotebookLM CLI integration guide | Podcast generation, source management, export |

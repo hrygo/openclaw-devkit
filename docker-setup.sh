@@ -16,7 +16,16 @@ IMAGE_NAME="${OPENCLAW_IMAGE:-ghcr.io/hrygo/openclaw-devkit:latest}"
 
 # OS Detection
 IS_WINDOWS=false
-[[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]] && IS_WINDOWS=true
+IS_MACOS=false
+IS_LINUX=false
+
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+    IS_WINDOWS=true
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    IS_MACOS=true
+else
+    IS_LINUX=true
+fi
 
 # Self-Healing: Fix CRLF line endings in docker-entrypoint.sh if on Windows
 if [ -f "$ROOT_DIR/docker-entrypoint.sh" ]; then
@@ -504,6 +513,14 @@ case "$HOST_OPENCLAW_DIR" in
     \~*) HOST_OPENCLAW_DIR="$HOME${HOST_OPENCLAW_DIR#\~}" ;;
 esac
 
+# Convert to absolute path if on Windows Git Bash (ensure it's a Windows-friendly path for Docker)
+if [[ "$IS_WINDOWS" == "true" ]]; then
+    # Use cygpath to ensure Docker Desktop (Windows) understands the path
+    HOST_OPENCLAW_DIR=$(cygpath -w "$HOST_OPENCLAW_DIR")
+    # Convert back to forward slashes for consistency in .env
+    HOST_OPENCLAW_DIR="${HOST_OPENCLAW_DIR//\\//}"
+fi
+
 # 验证路径
 validate_mount_path_value "HOST_OPENCLAW_DIR" "$HOST_OPENCLAW_DIR"
 if [[ -n "$HOME_VOLUME_NAME" ]]; then
@@ -664,12 +681,13 @@ info "同步环境变量文件: ${CYAN}$ENV_FILE${NC}"
 
 # 根据平台自动设置 HOST_CLAWHUB_DIR (覆盖 .env.example 的 macOS 默认值)
 if [[ "$IS_WINDOWS" == "true" ]]; then
-  export HOST_CLAWHUB_DIR="$(cygpath -u "$APPDATA")/clawhub"
+    # Git Bash uses $APPDATA which is usually C:\Users\xxx\AppData\Roaming
+    HOST_CLAWHUB_DIR="$(cygpath -u "$APPDATA")/clawhub"
 elif [[ "$IS_MACOS" == "true" ]]; then
-  export HOST_CLAWHUB_DIR="${HOME}/Library/Application Support/clawhub"
+    HOST_CLAWHUB_DIR="${HOME}/Library/Application Support/clawhub"
 else
-  # Linux 及 WSL 默认路径
-  export HOST_CLAWHUB_DIR="${HOME}/.config/clawhub"
+    # Linux 及 WSL 默认路径
+    HOST_CLAWHUB_DIR="${HOME}/.config/clawhub"
 fi
 
 upsert_env "$ENV_FILE" \
