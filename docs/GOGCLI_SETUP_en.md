@@ -5,6 +5,8 @@
 > **Use case**: Users who need OpenClaw Agents to operate on their Google data.
 >
 > **Required**: No (optional configuration)
+>
+> **Design principle**: Google account authentication is done on the **host machine**, then the refresh token is exported and imported into the container. **No browser authorization needed inside the container**.
 
 ---
 
