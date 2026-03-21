@@ -70,7 +70,7 @@ if [[ "$(id -u)" = "0" ]]; then
 
     # Named volume directories: create if missing (empty volumes have no contents from image),
     # then chown to node (idempotent, cheap ~5ms, prevents stale root ownership).
-    for dir in "/home/node/.claude" "/home/node/.global" "/home/node/.local" "/home/node/.agents" "/home/node/go" "/home/node/.cache" "/app"; do
+    for dir in "/home/node/.claude" "/home/node/.global" "/home/node/.local" "/home/node/.agents" "/home/node/go" "/home/node/.cache" "/app" "/var/tmp/openclaw-compile-cache"; do
         if [[ ! -d "${dir}" ]]; then
             mkdir -p "${dir}"
         fi
@@ -86,6 +86,22 @@ if [[ "$(id -u)" = "0" ]]; then
             fi
         fi
     done
+
+    # Ensure extension plugins have correct ownership (root-owned to pass ownership checks)
+    # OpenClaw plugin loader checks ownership of non-bundled plugins:
+    #   - Must match process uid (root=0) OR be root-owned (uid=0)
+    #   - Root ownership signals "system-managed" and bypasses user-writeable-path checks
+    # We chown to root (0:0) since entrypoint runs as root; node-owned plugins are blocked.
+    # Note: acpx is bundled via npm package (in node_modules), mem9/lark are user-installed.
+    if [[ -d "/home/node/.openclaw/extensions/mem9" ]]; then
+        chown -R 0:0 /home/node/.openclaw/extensions/mem9 2>/dev/null || true
+    fi
+    if [[ -d "/home/node/.openclaw/extensions/openclaw-lark" ]]; then
+        chown -R 0:0 /home/node/.openclaw/extensions/openclaw-lark 2>/dev/null || true
+    fi
+    if [[ -d "/home/node/.global/lib/node_modules/openclaw/extensions/acpx" ]]; then
+        chown -R 0:0 /home/node/.global/lib/node_modules/openclaw/extensions/acpx 2>/dev/null || true
+    fi
 
     echo "--> Volume permissions OK."
 fi
@@ -186,12 +202,21 @@ if [[ -f "${CONFIG_FILE}" ]]; then
 
                 config.gateway.controlUi.allowedOrigins = [...new Set([...baseOrigins, ...customOrigins])];
 
+                // Security hardening: enforce Slack channel allowlist policy
+                if (config.channels?.slack && config.channels.slack.groupPolicy !== "allowlist") {
+                    config.channels.slack.groupPolicy = "allowlist";
+                    console.log("--> Slack channel policy hardened to allowlist.");
+                }
+
                 fs.writeFileSync(path, JSON.stringify(config, null, 2));
                 console.log("--> OpenClaw configuration surgically optimized for DevKit.");
             } catch (e) {
                 console.error("Warning: Configuration surgery failed: " + e.message);
             }
         ' || true
+
+        # Security hardening: lock down config file (contains tokens/secrets)
+        chmod 600 "${CONFIG_FILE}" 2>/dev/null || true
 
         # 2b. Run doctor once after surgery to ensure config is valid
         echo "--> Running post-surgery health check..."
@@ -295,7 +320,8 @@ fi
 
 if [[ "$(id -u)" = "0" ]]; then
     export HOME="/home/node"
-    # Use runuser to correctly preserve arguments and handle PATH
+    # Use runuser -m to preserve container environment (NODE_COMPILE_CACHE, etc.)
+    # Only override PATH and HOME to ensure correct values for the node user.
     exec runuser -u node -m -- env PATH="${NODE_GLOBAL_PATH}:$PATH" "$@"
 else
     exec "$@"

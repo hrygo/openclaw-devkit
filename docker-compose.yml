@@ -46,6 +46,10 @@ x-openclaw-common: &openclaw-common
     TZ: ${TZ:-Asia/Shanghai}
     PLAYWRIGHT_BROWSERS_PATH: /home/node/.cache/ms-playwright
     NOTEBOOKLM_STORAGE: /home/node/.notebooklm/storage_state.json
+    # gogcli keyring password (for Google Workspace CLI)
+    GOG_KEYRING_PASSWORD: ${GOG_KEYRING_PASSWORD:-}
+    NODE_COMPILE_CACHE: /var/tmp/openclaw-compile-cache  # compile cache in named volume (survives container recreation)
+    OPENCLAW_NO_RESPAWN: "1"  # disable gateway auto-respawn (DevKit manages lifecycle)
   # Requires Docker Engine 20.10+ for host-gateway special value.
   # On older Docker versions (pre-20.10), replace host-gateway with:
   #   Linux:   "$(ip route show default | awk '/default/ {print $3}')"

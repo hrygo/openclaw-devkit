@@ -238,6 +238,7 @@ install: ## 首次安装/初始化环境
 define wait-for-healthy
 	@echo "$(INFO) 等待服务就绪..."; \
 	PROGRESS_BAR_WIDTH=40; \
+	CONSECUTIVE_UNHEALTHY=0; \
 	for i in $$(seq 1 $(1)); do \
 		STATUS=$$(docker inspect --format='{{.State.Health.Status}}' openclaw-gateway 2>/dev/null || echo "starting"); \
 		if [ "$$STATUS" = "healthy" ]; then \
@@ -248,13 +249,15 @@ define wait-for-healthy
 			printf "\r$(GREEN)[$$BAR]$(NC) $(BOLD)%3d%%$(NC) $(GREEN)✓ Ready!$(NC) ($${i}s)\n" "$$PCT"; \
 			exit 0; \
 		elif [ "$$STATUS" = "unhealthy" ]; then \
-			UNHEALTHY_COUNT=$$((UNHEALTHY_COUNT + 1)); \
-			if [ $$UNHEALTHY_COUNT -ge 3 ]; then \
+			CONSECUTIVE_UNHEALTHY=$$((CONSECUTIVE_UNHEALTHY + 1)); \
+			if [ $$CONSECUTIVE_UNHEALTHY -ge 3 ]; then \
 				echo ""; \
-				printf "\r$(RED)[✗ Service Failed]$(NC) unhealthy status detected (连续 $$UNHEALTHY_COUNT 次)\n"; \
+				printf "\r$(RED)[✗ Service Failed]$(NC) unhealthy status detected (连续 $$CONSECUTIVE_UNHEALTHY 次)\n"; \
 				echo "  执行 $(BOLD)make logs$(NC) 查看详细日志"; \
 				exit 1; \
 			fi; \
+		else \
+			CONSECUTIVE_UNHEALTHY=0; \
 		fi; \
 		PCT=$$((i * 100 / $(1))); \
 		FILLED=$$((i * PROGRESS_BAR_WIDTH / $(1))); \
