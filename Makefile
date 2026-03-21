@@ -20,6 +20,14 @@
 # ==============================================================================
 
 # ============================================================
+# Shell Configuration
+# ============================================================
+# Require bash for cross-platform consistency (macOS/Linux/Windows+GitBash)
+SHELL := /bin/bash
+# Disable POSIX sh mode - rely on bash features (seq, [[ ]], etc.)
+SHELL_OPTS := +O globstar
+
+# ============================================================
 # Visual Styling (Whitepaper Grade)
 # ============================================================
 
