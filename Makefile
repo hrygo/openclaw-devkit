@@ -253,8 +253,6 @@ define wait-for-healthy
 	CONSECUTIVE_UNHEALTHY=0; \
 	for i in $$(seq 1 $(1)); do \
 		STATUS=$$(docker inspect --format='{{.State.Health.Status}}' openclaw-gateway 2>/dev/null || echo "none"); \
-		\
-		# ── 成功: Docker health check 标记 healthy ──────────────────; \
 		if [ "$$STATUS" = "healthy" ]; then \
 			echo ""; \
 			FILLED=$$((PROGRESS_BAR_WIDTH)); \
@@ -263,26 +261,19 @@ define wait-for-healthy
 			printf "\r$${BAR} $(BOLD)%3d%%$(NC) $(GREEN)✓ Ready!$(NC) ($${i}s)\n" "$$PCT"; \
 			exit 0; \
 		fi; \
-		\
-		# ── unhealthy 处理 ──────────────────────────────────────────; \
 		if [ "$$STATUS" = "unhealthy" ]; then \
 			CONSECUTIVE_UNHEALTHY=$$((CONSECUTIVE_UNHEALTHY + 1)); \
-			\
-			# 预热期内：只警告，不计数; \
 			if [ $$i -le $$MIN_GRACE_PERIOD ]; then \
 				:; \
-			# 超过预热期 + 连续次数达标：判定失败; \
 			elif [ $$CONSECUTIVE_UNHEALTHY -ge $$UNHEALTHY_THRESHOLD ]; then \
 				echo ""; \
-				printf "\r$(RED)[✗ Service Failed]$(NC) unhealthy 状态持续约 $$$$((CONSECUTIVE_UNHEALTHY * 10))s (连续 $$$$CONSECUTIVE_UNHEALTHY 次轮询失败，超过 $$$${MIN_GRACE_PERIOD}s 预热期)\n"; \
+				printf "\r$(RED)[✗ Service Failed]$(NC) unhealthy 状态持续约 $$((CONSECUTIVE_UNHEALTHY * 10))s (连续 $$CONSECUTIVE_UNHEALTHY 次轮询失败，超过 $${MIN_GRACE_PERIOD}s 预热期)\n"; \
 				echo "  执行 $(BOLD)make logs$(NC) 查看详细日志"; \
 				exit 1; \
 			fi; \
 		else \
 			CONSECUTIVE_UNHEALTHY=0; \
 		fi; \
-		\
-		# ── 进度条渲染 ────────────────────────────────────────────; \
 		PCT=$$((i * 100 / $(1))); \
 		FILLED=$$((i * PROGRESS_BAR_WIDTH / $(1))); \
 		BAR=$$(printf '█%.0s' $$(seq 1 $$FILLED 2>/dev/null))$$(printf '░%.0s' $$(seq 1 $$((PROGRESS_BAR_WIDTH - FILLED)) 2>/dev/null)); \
@@ -293,8 +284,6 @@ define wait-for-healthy
 		[ "$$STATUS" = "unhealthy" ] && STATUS_ICON="✗" && STATUS_COLOR="$(RED)"; \
 		[ "$$STATUS" = "none"      ] && STATUS_ICON="?" && STATUS_COLOR="$(DIM)" && STATUS="no-health-check"; \
 		printf "\r$($$STATUS_COLOR)[$$BAR]$(NC) $(BOLD)%3d%%$(NC) $$STATUS_ICON %ds/$(1)s [$$STATUS]   " "$$PCT" "$$i"; \
-		\
-		# 每 8 秒打印一次最新日志; \
 		if [ $$((i % 8)) -eq 0 ]; then \
 			LOG_LINE="$$(docker compose logs --tail 1 openclaw-gateway 2>/dev/null | sed 's/^openclaw-gateway  | //' | head -c 60)"; \
 			[ -n "$$LOG_LINE" ] && printf "\n  $(DIM)%s...$(NC)\n" "$$LOG_LINE"; \
