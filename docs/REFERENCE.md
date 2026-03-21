@@ -16,7 +16,7 @@
 - [5. 数据持久化](#5-数据持久化) - Bind Mount vs. Named Volumes
 - [6. Roles 开发流](#6-roles-开发流) - 软链接隔离最佳实践
 - [7. 自定义镜像](#7-自定义镜像) - 无侵入扩展机制
-- [附：Slack 接入指南](SLACK_SETUP_BEGINNER.md) | [飞书接入指南](FEISHU_SETUP_BEGINNER.md)
+- [附：Slack 接入指南](SLACK_SETUP_BEGINNER.md) | [飞书接入指南](FEISHU_SETUP_BEGINNER.md) | [gogcli 接入指南](GOGCLI_SETUP.md)
 
 ### 架构篇：底层逻辑
 - [8. 分层编排](#8-分层编排) - docker-compose 动态注入机制

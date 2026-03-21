@@ -132,6 +132,7 @@ make down             # 停止服务
 - 容器内已安装 `gh` CLI，可用于 GitHub 操作
 - 使用 `make exec CMD="openclaw config list"` 查看 OpenClaw 配置
 - Gateway 日志位于容器内 `/tmp/openclaw-gateway.log`
+- **gogcli**（Google Workspace CLI）：可选配置，详见 `docs/GOGCLI_SETUP.md`，支持 Gmail/Calendar/Drive/Sheets/Docs/Contacts
 
 ### 容器内已安装的 CLI 工具
 
@@ -141,6 +142,7 @@ make down             # 停止服务
 | Claude Code | `claude` | Anthropic AI 编码助手 |
 | Pi | `pi` | 终端编码工具 |
 | OpenCode | `opencode` | OpenCode AI 助手 |
+| gogcli | `gog` | Google Workspace CLI（可选，需手动配置，详见 `docs/GOGCLI_SETUP.md`）|
 
 > 工具安装在 `/home/node/.global/bin/`，login shell 会自动加载 PATH。
 

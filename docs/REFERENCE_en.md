@@ -16,7 +16,7 @@ This document serves as the definitive technical specification and operational g
 - [5. Data Persistence](#5-data-persistence) - Bind Mount vs. Named Volumes
 - [6. Roles Workflow](#6-roles-workflow) - Symlink isolation best practices
 - [7. Custom Images](#7-custom-images) - Non-intrusive extensibility
-- [Appendix: Slack Setup](SLACK_SETUP_BEGINNER_en.md) | [Feishu Setup](FEISHU_SETUP_BEGINNER_en.md)
+- [Appendix: Slack Setup](SLACK_SETUP_BEGINNER_en.md) | [Feishu Setup](FEISHU_SETUP_BEGINNER_en.md) | [gogcli Setup](GOGCLI_SETUP_en.md)
 
 ### Architect Tier: Architecture
 - [8. Layered Orchestration](#8-layered-orchestration) - Docker Compose dynamic injection
