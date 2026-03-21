@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.10.6] - 2026-03-21
+
+### Added
+- **Makefile (Shell Declaration)**: Explicitly declare `SHELL := /bin/bash` to document POSIX/sh compatibility assumptions and ensure bash features (seq, `[[ ]]`, brace expansion) work reliably across macOS, Linux, and Windows + Git Bash.
+
 ## [v1.10.5] - 2026-03-21
 
 ### Added
