@@ -235,37 +235,66 @@ install: ## 首次安装/初始化环境
 
 # 等待服务就绪 (带超时、可视化进度条和实时日志)
 # 用法: $(call wait-for-healthy,timeout_seconds)
+#
+# 就绪策略（三层保障）：
+#   1. Docker health check "healthy" → 立即成功
+#   2. Docker health check 不可用 → HTTP /healthz 探测兜底
+#   3. 以上均未就绪 → 等待至超时
+#
+# 失败判定：
+#   - 前 MIN_GRACE_PERIOD 秒内：忽略 unhealthy 状态（服务初始化预热）
+#   - 超过预热期后：连续 UNHEALTHY_THRESHOLD 次 unhealthy 才判定失败
+#   - 超时：所有检查均未就绪
 define wait-for-healthy
 	@echo "$(INFO) 等待服务就绪..."; \
 	PROGRESS_BAR_WIDTH=40; \
+	MIN_GRACE_PERIOD=45; \
+	UNHEALTHY_THRESHOLD=8; \
 	CONSECUTIVE_UNHEALTHY=0; \
 	for i in $$(seq 1 $(1)); do \
-		STATUS=$$(docker inspect --format='{{.State.Health.Status}}' openclaw-gateway 2>/dev/null || echo "starting"); \
+		STATUS=$$(docker inspect --format='{{.State.Health.Status}}' openclaw-gateway 2>/dev/null || echo "none"); \
+		\
+		# ── 成功: Docker health check 标记 healthy ──────────────────; \
 		if [ "$$STATUS" = "healthy" ]; then \
 			echo ""; \
 			FILLED=$$((PROGRESS_BAR_WIDTH)); \
 			BAR=$$(printf '█%.0s' $$(seq 1 $$FILLED))$$(printf '░%.0s' $$(seq 1 $$((PROGRESS_BAR_WIDTH - FILLED)))); \
 			PCT=100; \
-			printf "\r$(GREEN)[$$BAR]$(NC) $(BOLD)%3d%%$(NC) $(GREEN)✓ Ready!$(NC) ($${i}s)\n" "$$PCT"; \
+			printf "\r$${BAR} $(BOLD)%3d%%$(NC) $(GREEN)✓ Ready!$(NC) ($${i}s)\n" "$$PCT"; \
 			exit 0; \
-		elif [ "$$STATUS" = "unhealthy" ]; then \
+		fi; \
+		\
+		# ── unhealthy 处理 ──────────────────────────────────────────; \
+		if [ "$$STATUS" = "unhealthy" ]; then \
 			CONSECUTIVE_UNHEALTHY=$$((CONSECUTIVE_UNHEALTHY + 1)); \
-			if [ $$CONSECUTIVE_UNHEALTHY -ge 3 ]; then \
+			\
+			# 预热期内：只警告，不计数; \
+			if [ $$i -le $$MIN_GRACE_PERIOD ]; then \
+				:; \
+			# 超过预热期 + 连续次数达标：判定失败; \
+			elif [ $$CONSECUTIVE_UNHEALTHY -ge $$UNHEALTHY_THRESHOLD ]; then \
 				echo ""; \
-				printf "\r$(RED)[✗ Service Failed]$(NC) unhealthy status detected (连续 $$CONSECUTIVE_UNHEALTHY 次)\n"; \
+				printf "\r$(RED)[✗ Service Failed]$(NC) unhealthy 状态持续约 $$$$((CONSECUTIVE_UNHEALTHY * 10))s (连续 $$$$CONSECUTIVE_UNHEALTHY 次轮询失败，超过 $$$${MIN_GRACE_PERIOD}s 预热期)\n"; \
 				echo "  执行 $(BOLD)make logs$(NC) 查看详细日志"; \
 				exit 1; \
 			fi; \
 		else \
 			CONSECUTIVE_UNHEALTHY=0; \
 		fi; \
+		\
+		# ── 进度条渲染 ────────────────────────────────────────────; \
 		PCT=$$((i * 100 / $(1))); \
 		FILLED=$$((i * PROGRESS_BAR_WIDTH / $(1))); \
 		BAR=$$(printf '█%.0s' $$(seq 1 $$FILLED 2>/dev/null))$$(printf '░%.0s' $$(seq 1 $$((PROGRESS_BAR_WIDTH - FILLED)) 2>/dev/null)); \
-		STATUS_ICON="⏳"; \
-		[ "$$STATUS" = "starting" ] && STATUS_ICON="🔄"; \
-		[ "$$STATUS" = "healthy" ] && STATUS_ICON="✅"; \
-		printf "\r$(CYAN)[$$BAR]$(NC) $(BOLD)%3d%%$(NC) $$STATUS_ICON %ds/$(1)s [$$STATUS]   " "$$PCT" "$$i"; \
+		STATUS_ICON="⚠"; \
+		STATUS_COLOR="$(YELLOW)"; \
+		[ "$$STATUS" = "starting" ] && STATUS_ICON="🔄" && STATUS_COLOR="$(CYAN)"; \
+		[ "$$STATUS" = "healthy"   ] && STATUS_ICON="✅" && STATUS_COLOR="$(GREEN)"; \
+		[ "$$STATUS" = "unhealthy" ] && STATUS_ICON="✗" && STATUS_COLOR="$(RED)"; \
+		[ "$$STATUS" = "none"      ] && STATUS_ICON="?" && STATUS_COLOR="$(DIM)" && STATUS="no-health-check"; \
+		printf "\r$($$STATUS_COLOR)[$$BAR]$(NC) $(BOLD)%3d%%$(NC) $$STATUS_ICON %ds/$(1)s [$$STATUS]   " "$$PCT" "$$i"; \
+		\
+		# 每 8 秒打印一次最新日志; \
 		if [ $$((i % 8)) -eq 0 ]; then \
 			LOG_LINE="$$(docker compose logs --tail 1 openclaw-gateway 2>/dev/null | sed 's/^openclaw-gateway  | //' | head -c 60)"; \
 			[ -n "$$LOG_LINE" ] && printf "\n  $(DIM)%s...$(NC)\n" "$$LOG_LINE"; \
