@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.10.5] - 2026-03-21
+
+### Added
+- **gogcli Integration**: Added optional Google Workspace CLI (gogcli) integration for Gmail, Calendar, Drive, Sheets, Docs, and Contacts access. Includes setup guide, `GOG_KEYRING_PASSWORD` env var, and documentation in `docs/GOGCLI_SETUP.md`.
+
 ## [v1.10.4] - 2026-03-19
 
 ### Fixed
