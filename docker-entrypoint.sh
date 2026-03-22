@@ -294,6 +294,35 @@ if [[ -n "${OPENCLAW_GATEWAY_TOKEN:-}" ]]; then
 fi
 
 # ------------------------------------------------------------------------------
+# 6. Skills Configuration
+#    Configure extraDirs to scan skills from centralized .agents/skills directory.
+#    This replaces the legacy symlink approach which breaks with OpenClaw 2026-03-07+
+#    security update (skills with symlinks pointing outside ~/.openclaw/skills/ root
+#    are now rejected to prevent path traversal attacks).
+# ------------------------------------------------------------------------------
+run_as_node openclaw config set skills.load.extraDirs '["/home/node/.agents/skills"]' --strict-json >/dev/null 2>&1 || true
+
+# Cleanup legacy symlinks in ~/.openclaw/skills/ that point outside the skills root.
+# These were created by clawhub install run from wrong working directory (~/.openclaw/).
+# OpenClaw now rejects such symlinks for security reasons (realpath validation).
+if [[ -d "/home/node/.openclaw/skills" ]]; then
+    for entry in /home/node/.openclaw/skills/*; do
+        [[ -L "${entry}" ]] || continue
+        target=$(readlink "${entry}" 2>/dev/null) || continue
+        case "${target}" in
+            ../*)
+                # Relative symlinks pointing outside - check if they resolve outside skills root
+                resolved=$(readlink -f "${entry}" 2>/dev/null) || continue
+                if [[ "${resolved}" != /home/node/.openclaw/skills/* ]]; then
+                    echo "--> Removing legacy symlink: ${entry} -> ${target}"
+                    rm -f "${entry}"
+                fi
+                ;;
+        esac
+    done
+fi
+
+# ------------------------------------------------------------------------------
 # 7. Unified Global Tools Directory
 #    .global/.local/.agents mounted via named volume
 # ------------------------------------------------------------------------------

@@ -179,6 +179,36 @@ Docker Health Check on Windows / WSL:
 
 ## 8. FAQ
 
+### Q: Logs show `Skipping skill path that resolves outside its configured root`?
+
+**Reason**: OpenClaw 2026-03-07+ security update rejects skills with symlinks pointing outside `~/.openclaw/skills/`. This usually happens when running `clawhub install` from `~/.openclaw/` directory, creating symlinks to `~/.agents/skills/`.
+
+**Fix** (automatic, integrated into container startup):
+- DevKit configures `skills.load.extraDirs` automatically on container startup
+- Automatically cleans up invalid symlinks in `~/.openclaw/skills/`
+
+**Manual Fix**:
+```bash
+# Enter container and clean symlinks
+make shell
+rm -f ~/.openclaw/skills/*
+
+# Verify skills config
+openclaw config set skills.load.extraDirs '["/home/node/.agents/skills"]'
+openclaw skills check
+```
+
+**Prevention**: When installing ClawHub skills, run from home directory, not `~/.openclaw/`:
+```bash
+# ✅ Correct
+cd ~
+clawhub install brainstorming
+
+# ❌ Wrong (causes path issues)
+cd ~/.openclaw
+clawhub install brainstorming
+```
+
 ### Q: Startup failed with "container is unhealthy"?
 
 **Reason**: Incompatible legacy config file.

@@ -179,6 +179,36 @@ Windows / WSL 环境的 Docker 健康检查配置：
 
 ## 8. 常见问题
 
+### Q: 日志中显示 `Skipping skill path that resolves outside its configured root`？
+
+**原因**: OpenClaw 2026-03-07+ 安全更新后，不再允许技能路径指向 `~/.openclaw/skills/` 目录之外。这通常是因为在 `~/.openclaw/` 目录下运行了 `clawhub install`，创建了指向 `~/.agents/skills/` 的符号链接。
+
+**解决**（自动，已集成到容器启动脚本）：
+- DevKit 容器启动时自动配置 `skills.load.extraDirs`
+- 自动清理 `~/.openclaw/skills/` 中的无效符号链接
+
+**手动修复**：
+```bash
+# 进入容器清理符号链接
+make shell
+rm -f ~/.openclaw/skills/*
+
+# 确认技能配置正确
+openclaw config set skills.load.extraDirs '["/home/node/.agents/skills"]'
+openclaw skills check
+```
+
+**预防**：安装 ClawHub 技能时，请确保在 home 目录执行，而非 `~/.openclaw/`：
+```bash
+# ✅ 正确
+cd ~
+clawhub install brainstorming
+
+# ❌ 错误（会导致路径问题）
+cd ~/.openclaw
+clawhub install brainstorming
+```
+
 ### Q: 启动失败显示 "container is unhealthy"？
 
 **原因**: 旧版本配置文件不兼容

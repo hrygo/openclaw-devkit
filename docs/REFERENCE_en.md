@@ -179,6 +179,12 @@ Layered named volumes + bind mount sharing:
    - `~/.claude/skills/` → Container `~/.claude/skills/` (ro)
    - `~/.agents/skills/` → Container `~/.agents/skills/` (ro)
 
+5. **Skills System**
+   - Skills are stored in `~/.agents/skills/` (container path: `/home/node/.agents/skills/`)
+   - OpenClaw config `skills.load.extraDirs` points to the centralized skills directory
+   - **Security Note**: OpenClaw 2026-03-07+ security update rejects skills with symlinks pointing outside `~/.openclaw/skills/` root (triggers `Skipping skill path that resolves outside its configured root` warning)
+   - **ClawHub Install Tip**: Run `clawhub install` from your home directory (`~`) not from `~/.openclaw/`
+
 ---
 
 ## 6. Roles Workflow

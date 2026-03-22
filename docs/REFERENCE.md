@@ -179,6 +179,12 @@ make upgrade office
    - `~/.claude/skills/` → 容器 `~/.claude/skills/`（只读）
    - `~/.agents/skills/` → 容器 `~/.agents/skills/`（只读）
 
+5. **技能系统 (Skills)**
+   - 技能存储在 `~/.agents/skills/`（容器内 `/home/node/.agents/skills/`）
+   - OpenClaw 配置 `skills.load.extraDirs` 指向集中管理的技能目录
+   - **安全说明**：OpenClaw 2026-03-07+ 安全更新后，不再支持将技能符号链接到 `~/.openclaw/skills/` 外部路径（会触发 `Skipping skill path that resolves outside its configured root` 警告）
+   - **ClawHub 安装注意**：运行 `clawhub install` 时请在 home 目录（`~`）而非 `~/.openclaw/` 下执行
+
 ---
 
 ## 6. Roles 开发流
