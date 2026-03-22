@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.10.7] - 2026-03-22
+
+### Fixed
+- **Skills Symlink Security Fix**: OpenClaw 2026-03-07+ security update validates symlink `realpath` and rejects skills pointing outside `~/.openclaw/skills/`. Added automatic `skills.load.extraDirs` configuration pointing to `~/.agents/skills/`, and cleanup of legacy symlinks in `docker-entrypoint.sh`. Documented the issue and resolution in `docs/REFERENCE.md` and `docs/USER_ONBOARDING.md`.
+
 ## [v1.10.6] - 2026-03-21
 
 ### Added
