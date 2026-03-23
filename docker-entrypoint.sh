@@ -250,17 +250,23 @@ fi
 # This file stores userID, project configs, MCP servers, and other CLI runtime state.
 # Ref: https://code.claude.com/docs/en/settings
 CLAUDE_JSON="/home/node/.claude.json"
+if [[ ! -f "${CLAUDE_JSON}" ]]; then
+    echo "--> Creating empty .claude.json configuration file..."
+    run_as_node sh -c "echo '{}' > '${CLAUDE_JSON}'"
+    if [[ "$(id -u)" = "0" ]]; then
+        chown node:node "${CLAUDE_JSON}" 2>/dev/null || true
+    fi
+fi
+
 echo "--> Optimizing Claude Code runtime configuration..."
 run_as_node node -e '
     const fs = require("fs");
     const path = "'"${CLAUDE_JSON}"'";
     let config = {};
-    if (fs.existsSync(path)) {
-        try {
-            config = JSON.parse(fs.readFileSync(path, "utf8"));
-            if (typeof config !== "object" || config === null) config = {};
-        } catch (e) { config = {}; }
-    }
+    try {
+        config = JSON.parse(fs.readFileSync(path, "utf8"));
+        if (typeof config !== "object" || config === null) config = {};
+    } catch (e) { config = {}; }
 
     // Clean up isolated userID field (prevents login prompts)
     delete config.userID;
@@ -270,9 +276,6 @@ run_as_node node -e '
 
     fs.writeFileSync(path, JSON.stringify(config, null, 2));
 '
-if [[ "$(id -u)" = "0" ]]; then
-    chown node:node "${CLAUDE_JSON}" 2>/dev/null || true
-fi
 
 # ------------------------------------------------------------------------------
 # 5. Git Identity Injection
