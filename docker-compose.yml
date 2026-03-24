@@ -113,9 +113,13 @@ services:
     stop_grace_period: 30s
     volumes:
       # ─────────────────────────────────────────────────────────────────
-      # Layer 1: 工具链命名卷 (base layer, provides .global/.local/go/.cache)
+      # Layer 1: 工具链命名卷 (persistent data, preserves image /home/node/.global)
+      # Mount specific subdirectories to avoid overwriting pre-installed tools
       # ─────────────────────────────────────────────────────────────────
-      - openclaw-devkit-home:/home/node:rw
+      - openclaw-devkit-home:/home/node/.local:rw
+      - openclaw-devkit-home:/home/node/.cache:rw
+      - openclaw-devkit-home:/home/node/go:rw
+      - openclaw-devkit-home:/home/node/.agents:rw
 
       # ─────────────────────────────────────────────────────────────────
       # Layer 2: Claude Code 命名卷 (session/memory persist across rebuilds)
