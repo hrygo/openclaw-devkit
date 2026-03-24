@@ -131,8 +131,14 @@ jobs:
           VERSION=$(curl -fsSL "https://api.github.com/repos/openclaw/openclaw/releases/latest" | jq -r '.tag_name')
           # Remove 'v' prefix to match npm version format (e.g., v2026.3.23 -> 2026.3.23)
           NPM_VERSION="${VERSION#v}"
-          echo "version=${NPM_VERSION:-latest}" >> $GITHUB_OUTPUT
-          echo "github_version=${VERSION:-latest}" >> $GITHUB_OUTPUT
+          # Ensure version is never empty - use fallback if curl/jq fails
+          if [[ -z "$NPM_VERSION" || "$NPM_VERSION" == "null" ]]; then
+            echo "ERROR: Failed to fetch upstream version, using latest"
+            NPM_VERSION="latest"
+          fi
+          echo "version=${NPM_VERSION}" >> $GITHUB_OUTPUT
+          echo "github_version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "::notice::Building with OpenClaw version ${NPM_VERSION}"
       - name: Get repo owner
         id: repo
         run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
