@@ -56,54 +56,64 @@ jobs:
           LATEST=$(curl -fsSL "https://api.github.com/repos/openclaw/openclaw/releases/latest" | jq -r '.tag_name')
           echo "latest_version=${LATEST}" >> $GITHUB_OUTPUT
 
-          # Get current stored version from secret
-          CURRENT="${{ secrets.OPENCLAW_VERSION }}"
-          if [ -z "$CURRENT" ]; then
-            CURRENT="v0.0.0"
+          # Skip version check if requested (manual override)
+          if [[ "${{ inputs.skip_version_check }}" == "true" ]]; then
+            echo "::notice::skip_version_check=true - will build and publish"
+            echo "has_new_version=true" >> $GITHUB_OUTPUT
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            exit 0
           fi
-
-          echo "Current stored version: ${CURRENT}"
-          echo "Latest upstream version: ${LATEST}"
-
-          # Determine if should publish
-          SHOULD_PUBLISH="false"
-          SHOULD_BUILD="false"
 
           # Always publish on tag push (manual release)
           if [[ "${{ github.ref }}" == "refs/tags/"* ]]; then
             echo "Tag push detected - will build and publish"
-            SHOULD_PUBLISH="true"
-            SHOULD_BUILD="true"
-          # Publish on repository_dispatch (upstream triggered)
-          elif [[ "${{ github.event_name }}" == "repository_dispatch" ]]; then
-            echo "repository_dispatch triggered - will build and publish"
-            SHOULD_PUBLISH="true"
-            SHOULD_BUILD="true"
-          # Publish on workflow_dispatch if force is enabled
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]] && [[ "${{ inputs.force_publish }}" == "true" ]]; then
-            echo "workflow_dispatch with force_publish - will build and publish"
-            SHOULD_PUBLISH="true"
-            SHOULD_BUILD="true"
-          # Check for new version on schedule
-          elif [[ "${{ github.event_name }}" == "schedule" ]]; then
-            if [[ "$LATEST" != "$CURRENT" ]]; then
-              echo "New version detected (${LATEST} vs ${CURRENT}) - will build and publish"
-              SHOULD_PUBLISH="true"
-              SHOULD_BUILD="true"
-              echo "has_new_version=true" >> $GITHUB_OUTPUT
-            else
-              echo "No new version - skipping"
-              echo "has_new_version=false" >> $GITHUB_OUTPUT
-            fi
-          # PR or push to main: build only (no publish)
-          else
-            echo "Build verification only (PR/push to main) - will build but not publish"
-            SHOULD_BUILD="true"
-            echo "has_new_version=false" >> $GITHUB_OUTPUT
+            echo "has_new_version=true" >> $GITHUB_OUTPUT
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            exit 0
           fi
 
-          echo "should_publish=${SHOULD_PUBLISH}" >> $GITHUB_OUTPUT
-          echo "should_build=${SHOULD_BUILD}" >> $GITHUB_OUTPUT
+          # Publish on repository_dispatch (upstream triggered)
+          if [[ "${{ github.event_name }}" == "repository_dispatch" ]]; then
+            echo "repository_dispatch triggered - will build and publish"
+            echo "has_new_version=true" >> $GITHUB_OUTPUT
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Publish on workflow_dispatch if force is enabled
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] && [[ "${{ inputs.force_publish }}" == "true" ]]; then
+            echo "workflow_dispatch with force_publish - will build and publish"
+            echo "has_new_version=true" >> $GITHUB_OUTPUT
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Schedule or push to main: publish if new version detected
+          if [[ "${{ github.event_name }}" == "schedule" ]] || \
+             [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            if [[ "$LATEST" != "" ]]; then
+              echo "New version detected: ${LATEST} - will build and publish"
+              echo "has_new_version=true" >> $GITHUB_OUTPUT
+              echo "should_publish=true" >> $GITHUB_OUTPUT
+              echo "should_build=true" >> $GITHUB_OUTPUT
+            else
+              echo "Failed to fetch upstream version - build only"
+              echo "has_new_version=false" >> $GITHUB_OUTPUT
+              echo "should_publish=false" >> $GITHUB_OUTPUT
+              echo "should_build=true" >> $GITHUB_OUTPUT
+            fi
+            exit 0
+          fi
+
+          # PR: build only (no publish)
+          echo "PR build verification - will build but not publish"
+          echo "has_new_version=false" >> $GITHUB_OUTPUT
+          echo "should_publish=false" >> $GITHUB_OUTPUT
+          echo "should_build=true" >> $GITHUB_OUTPUT
 
   # Job 2: Prepare - fetch version info
   prepare:
@@ -239,6 +249,24 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ needs.prepare.outputs.repo_owner }}/openclaw-devkit:${{ matrix.tag }}
             ${{ env.REGISTRY }}/${{ needs.prepare.outputs.repo_owner }}/openclaw-devkit:${{ needs.prepare.outputs.version }}${{ matrix.tag != 'latest' && format('-{0}', matrix.tag) || '' }}
+
+  # Job: Update version secret after successful publish
+  update-secret:
+    needs: [check-upstream, build-products, prepare]
+    if: |
+      always() &&
+      needs.check-upstream.result == 'success' &&
+      needs.build-products.result == 'success' &&
+      needs.check-upstream.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Update OPENCLAW_VERSION secret
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          echo "::notice::Successfully published ${VERSION} - remember to update OPENCLAW_VERSION secret manually if you want schedule triggers to work"
+          echo "Latest version: ${VERSION}"
 
   # Job: Notify on failure
   notify-failure:
