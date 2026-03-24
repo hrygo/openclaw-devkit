@@ -81,6 +81,7 @@ RUN chown node:node /home/node/.bashrc
 # ==============================================================================
 
 ARG CLI_VERSION=1
+ARG OPENCLAW_VERSION=latest
 
 # Install Python tools (notebooklm-py)
 RUN if command -v python3 >/dev/null 2>&1 && command -v uv >/dev/null 2>&1; then \
@@ -89,7 +90,7 @@ RUN if command -v python3 >/dev/null 2>&1 && command -v uv >/dev/null 2>&1; then
 
 # Install npm global tools (using cache mount)
 RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
-    npm install -g openclaw@latest && \
+    npm install -g openclaw@${OPENCLAW_VERSION} && \
     npm install -g @anthropic-ai/claude-code@latest && \
     npm install -g @mariozechner/pi-coding-agent && \
     npm install -g clawhub@latest && \

@@ -119,7 +119,10 @@ jobs:
         id: version
         run: |
           VERSION=$(curl -fsSL "https://api.github.com/repos/openclaw/openclaw/releases/latest" | jq -r '.tag_name')
-          echo "version=${VERSION:-latest}" >> $GITHUB_OUTPUT
+          # Remove 'v' prefix to match npm version format (e.g., v2026.3.23 -> 2026.3.23)
+          NPM_VERSION="${VERSION#v}"
+          echo "version=${NPM_VERSION:-latest}" >> $GITHUB_OUTPUT
+          echo "github_version=${VERSION:-latest}" >> $GITHUB_OUTPUT
       - name: Get repo owner
         id: repo
         run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
