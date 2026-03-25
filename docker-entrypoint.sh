@@ -107,38 +107,83 @@ if [[ "$(id -u)" = "0" ]]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 1b. Upgrade openclaw-lark Extension
-#    The extension ships a stale bundled openclaw/plugin-sdk (v2026.3.17) whose
-#    internal import hashes don't match the global SDK, causing
-#    "normalizeAccountId is not a function".  Newer versions (>=2026.3.18) no
-#    longer bundle the SDK and depend on the external openclaw package instead.
-#    Strategy: replace the stale extension files with the freshly-installed npm
-#    package content (node_modules/@larksuite/openclaw-lark/).
+# 1b. Sync Image-Managed Extensions into Bind-Mount Volume
+#
+# Architecture:
+#   - Image global:  /home/node/.global/lib/node_modules/@larksuite/openclaw-lark
+#                    (installed by Dockerfile RUN; version = OPENCLAW_VERSION)
+#   - Volume mount:  /home/node/.openclaw/extensions/openclaw-lark
+#                    (bind-mounted from host ~/.openclaw; persists across rebuilds)
+#
+# Since the bind mount completely shadows any content the image places at
+# /home/node/.openclaw, we must actively sync image-builtins into the volume
+# on every boot when versions drift.  The marker file encodes the synced
+# version so we skip re-sync on subsequent starts.
+#
+# This handles the "stale bundled SDK" problem: older openclaw-lark versions
+# bundled openclaw/plugin-sdk whose import-hashes didn't match the global SDK,
+# causing "normalizeAccountId is not a function".  Newer versions (>=2026.3.18)
+# dropped the bundle and depend on the external openclaw package instead.
 # ------------------------------------------------------------------------------
-_upgrade_lark_plugin() {
-    local ext_dir="/home/node/.openclaw/extensions/openclaw-lark"
-    local new_pkg="${ext_dir}/node_modules/@larksuite/openclaw-lark"
-    local marker="${ext_dir}/.upgraded_to_$(cat "${new_pkg}/package.json" 2>/dev/null | grep '"version"' | head -1 | sed 's/[^0-9.]//g')"
+_sync_image_extensions() {
+    local ext_base="/home/node/.openclaw/extensions"
+    local img_nm="/home/node/.global/lib/node_modules"
 
-    [[ -d "${ext_dir}" && -d "${new_pkg}" && ! -f "${marker}" ]] || return 0
+    # ── openclaw-lark ────────────────────────────────────────────────────────
+    local ext_name="openclaw-lark"
+    local img_pkg="${img_nm}/@larksuite/${ext_name}"
+    local vol_dir="${ext_base}/${ext_name}"
+    local marker_dir="${vol_dir}/.synced_from_image"
 
-    echo "--> Upgrading openclaw-lark extension..."
+    # Read versions (empty if not present)
+    local img_ver="$(cat "${img_pkg}/package.json" 2>/dev/null | grep '"version"' | head -1 | sed 's/[^0-9.].*//g')"
+    local vol_ver=""
+    if [[ -f "${vol_dir}/package.json" ]]; then
+        vol_ver="$(cat "${vol_dir}/package.json" 2>/dev/null | grep '"version"' | head -1 | sed 's/[^0-9.].*//g')"
+    fi
 
-    # Replace extension files with new package content (preserve node_modules and .upgraded_*)
-    for item in "${new_pkg}"/*; do
-        local basename="$(basename "${item}")"
-        [[ "${basename}" == "node_modules" ]] && continue
-        rm -rf "${ext_dir}/${basename}"
-        cp -r "${item}" "${ext_dir}/${basename}"
-    done
+    # Skip if image doesn't have this extension (not a build-time install)
+    [[ -n "${img_ver}" && -d "${img_pkg}" ]] || return 0
 
-    # Restore ownership to root (required by plugin loader)
-    chown -R 0:0 "${ext_dir}" 2>/dev/null || true
+    # If volume has no extension, or version differs from image, sync
+    if [[ ! -d "${vol_dir}" || ( -n "${vol_ver}" && "${vol_ver}" != "${img_ver}" ) ]]; then
+        echo "--> Syncing ${ext_name}: image=${img_ver}, volume=${vol_ver:-none}"
 
-    touch "${marker}"
-    echo "--> openclaw-lark upgraded to $(basename "${marker}" | sed 's/.upgraded_to_//')"
+        # Backup existing (user-modified) extension
+        if [[ -d "${vol_dir}" && "${vol_dir}" != "/" ]]; then
+            local bak_dir="${vol_dir}.backup_$(date +%Y%m%d_%H%M%S)"
+            echo "--> Backing up old ${ext_name} to ${bak_dir}"
+            cp -r "${vol_dir}" "${bak_dir}"
+        fi
+
+        # Remove old content (keep parent dir)
+        rm -rf "${vol_dir}"/* 2>/dev/null || true
+
+        # Copy from image global (preserving the nested node_modules/@larksuite)
+        cp -r "${img_pkg}"/* "${vol_dir}/" 2>/dev/null || true
+
+        # The npm package puts the extension at @larksuite/openclaw-lark, but
+        # OpenClaw's plugin loader looks for <name>/index.js.  Reorganise:
+        #   @larksuite/openclaw-lark/*  →  openclaw-lark/*
+        if [[ -d "${vol_dir}/@larksuite" ]]; then
+            for item in "${vol_dir}/@larksuite/${ext_name}"/*; do
+                [[ -e "${item}" ]] || continue
+                local bn="$(basename "${item}")"
+                rm -rf "${vol_dir}/${bn}"
+                mv "${item}" "${vol_dir}/"
+            done
+            rm -rf "${vol_dir}/@larksuite"
+        fi
+
+        # Restore ownership (plugin loader requires root-owned for non-bundled plugins)
+        chown -R 0:0 "${vol_dir}" 2>/dev/null || true
+
+        # Mark synced version
+        echo "${img_ver}" > "${marker_dir}"
+        echo "--> ${ext_name} synced to ${img_ver}"
+    fi
 }
-_upgrade_lark_plugin
+_sync_image_extensions
 
 # ------------------------------------------------------------------------------
 # 2. Configuration Health Check & Surgical Repair

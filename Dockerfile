@@ -89,8 +89,12 @@ RUN if command -v python3 >/dev/null 2>&1 && command -v uv >/dev/null 2>&1; then
     fi
 
 # Install npm global tools (using cache mount)
+# Note: --mount=type=cache uses npm's internal cache, so version changes install correctly
+# Extensions (openclaw-lark etc.) are installed globally here so the entrypoint can sync
+# them into the bind-mounted ~/.openclaw directory on first boot (or when versions drift).
 RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
     npm install -g openclaw@${OPENCLAW_VERSION} && \
+    npm install -g @larksuite/openclaw-lark@${OPENCLAW_VERSION} && \
     npm install -g @anthropic-ai/claude-code@latest && \
     npm install -g @mariozechner/pi-coding-agent && \
     npm install -g clawhub@latest && \
