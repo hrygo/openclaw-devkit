@@ -124,6 +124,10 @@ fi
 # bundled openclaw/plugin-sdk whose import-hashes didn't match the global SDK,
 # causing "normalizeAccountId is not a function".  Newer versions (>=2026.3.18)
 # dropped the bundle and depend on the external openclaw package instead.
+#
+# NOTE: @larksuite/openclaw-lark has its own independent version numbering
+# (YYYY.M.D format) that does NOT track openclaw's semver with -N suffixes.
+# The image always installs @latest; the entrypoint syncs that into the volume.
 # ------------------------------------------------------------------------------
 _sync_image_extensions() {
     local ext_base="/home/node/.openclaw/extensions"
