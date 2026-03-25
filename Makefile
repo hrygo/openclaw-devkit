@@ -647,12 +647,15 @@ else \
 	BASE_IMG=$(if $(filter go,$(1)),openclaw-runtime:go,$(if $(filter java,$(1)),openclaw-runtime:java,$(if $(filter office,$(1)),openclaw-runtime:office,openclaw-runtime:base))); \
 	CLI_VER_ARG=""; \
 	if [ -n "$(CLI_VERSION)" ]; then CLI_VER_ARG="--build-arg CLI_VERSION=$(CLI_VERSION)"; fi; \
+	AI_TOOLS_ARG="--build-arg INSTALL_AI_TOOLS=1"; \
+	if [ "$(1)" = "office" ]; then AI_TOOLS_ARG="--build-arg INSTALL_AI_TOOLS=0"; fi; \
 	docker build \
 		-t $(IMAGE_NAME) \
 		-f Dockerfile \
 		$(DOCKER_BUILD_ARGS) \
 		--build-arg BASE_IMAGE=$$BASE_IMG \
 		$$CLI_VER_ARG \
+		$$AI_TOOLS_ARG \
 		.; \
 fi
 endef

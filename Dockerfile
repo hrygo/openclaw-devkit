@@ -82,35 +82,36 @@ RUN chown node:node /home/node/.bashrc
 
 ARG CLI_VERSION=1
 ARG OPENCLAW_VERSION=latest
+ARG INSTALL_AI_TOOLS=1
 
-# Install Python tools (notebooklm-py)
+# Install Python tools (notebooklm-py) - only if python3 available
 RUN if command -v python3 >/dev/null 2>&1 && command -v uv >/dev/null 2>&1; then \
         uv pip install --system --break-system-packages --no-cache notebooklm-py; \
     fi
 
-# Install npm global tools (using cache mount)
-# Note: --mount=type=cache uses npm's internal cache, so version changes install correctly
-# Extensions (openclaw-lark etc.) are installed globally here so the entrypoint can sync
-# them into the bind-mounted ~/.openclaw directory on first boot (or when versions drift).
-#
-# IMPORTANT: @larksuite/openclaw-lark has its own independent version numbering
-# (YYYY.M.D format, no suffix like "-1/-2"). It does NOT track openclaw's versions.
-# Always use @latest to get the latest compatible version — it is independently released.
+# Layer 3a: Core CLI tools (always installed)
+# Essential: openclaw (gateway) + openclaw-lark (Lark integration) + clawhub (Hub)
 RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
     npm install -g openclaw@${OPENCLAW_VERSION} && \
     npm install -g @larksuite/openclaw-lark@latest && \
-    npm install -g @anthropic-ai/claude-code@latest && \
-    npm install -g @mariozechner/pi-coding-agent && \
     npm install -g clawhub@latest && \
-    # Fix ownership for node user
     chown -R node:node /home/node/.global
 
-# Install OpenCode CLI (shell script installer - installs to ~/.opencode/bin)
-RUN --mount=type=cache,target=/root/.cache,uid=1000,gid=1000 \
+# Layer 3b: AI Coding Tools (optional, ~500MB, skip for office variant)
+# Includes: claude-code, pi-coding-agent, opencode
+# Set INSTALL_AI_TOOLS=0 when building office variant
+RUN if [ "${INSTALL_AI_TOOLS}" = "1" ]; then \
+    npm install -g @anthropic-ai/claude-code@latest && \
+    npm install -g @mariozechner/pi-coding-agent && \
+    chown -R node:node /home/node/.global; \
+    fi
+
+# Install OpenCode CLI - AI coding tool, also controlled by INSTALL_AI_TOOLS
+RUN if [ "${INSTALL_AI_TOOLS}" = "1" ]; then \
     mkdir -p /home/node/.opencode/bin && \
     chown -R node:node /home/node/.opencode && \
-    # Run installer as node user to ensure correct installation path
-    runuser -u node -- sh -c 'curl -fsSL https://opencode.ai/install | INSTALL_DIR=/home/node/.opencode/bin bash'
+    runuser -u node -- sh -c 'curl -fsSL https://opencode.ai/install | INSTALL_DIR=/home/node/.opencode/bin bash'; \
+    fi
 
 # ==============================================================================
 # Layer 4: Optional Components

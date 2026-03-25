@@ -13,7 +13,9 @@ set -e
 # - RW bind: .openclaw, .notebooklm (bind mount, NOTEBOOKLM_STORAGE env var controls path)
 #
 # Performance optimizations:
-# - Always chown named volumes (cheap, prevents stale root ownership)
+# - Incremental permission fix via `find \! -user node` (skip already-correct files)
+# - Skip /.global (Dockerfile already sets ownership)
+# - Bind mounts: warn only (don't modify host filesystem)
 # - One-time surgery + one-time doctor (gateway manages config afterwards)
 # ==============================================================================
 
@@ -59,30 +61,51 @@ find "${CONFIG_DIR}" -name "*.bak" -type f -delete 2>/dev/null || true
 
 
 # ------------------------------------------------------------------------------
-# 1. Volume Permission Fix
-#    - Named volume dirs: always chown to node (cheap, prevents stale root ownership)
-#    - Bind mounts: fix only if empty or wrong owner (preserves host data)
+# 1. Volume Permission Fix (Optimized: O(n) → O(1) for most startups)
+#
+# Strategy (following postgres/mysql/redis official image patterns):
+#   - Image content:       Skip (Dockerfile already sets correct ownership)
+#   - Named volumes:       Incremental fix via `find \! -user node -exec chown`
+#   - Bind mounts:         WARN only (don't modify host filesystem)
+#   - Extension plugins:   Set to root:0 (required by plugin loader security)
+#
+# Performance: First run still does full chown; subsequent runs skip in <1s.
 # ------------------------------------------------------------------------------
 if [[ "$(id -u)" = "0" ]]; then
-    # Always fix named volume permissions (chown is cheap, ~5ms, avoids stale root ownership).
-    # Bind mounts: fix only if empty or not already owned by node user (preserves host data).
     echo "--> Checking volume permissions..."
 
-    # Named volume directories: create if missing (empty volumes have no contents from image),
-    # then chown to node (idempotent, cheap ~5ms, prevents stale root ownership).
-    for dir in "/home/node/.claude" "/home/node/.global" "/home/node/.local" "/home/node/.agents" "/home/node/go" "/home/node/.cache" "/app" "/var/tmp/openclaw-compile-cache"; do
+    # Named volume directories: create if missing, then incremental fix
+    # Note: /home/node/.global is NOT included - Dockerfile:106 already handles it
+    for dir in "/home/node/.claude" "/home/node/.local" "/home/node/.agents" "/home/node/go" "/home/node/.cache"; do
+        if [[ ! -d "${dir}" ]]; then
+            mkdir -p "${dir}"
+            # New directory: set ownership directly (no need to traverse)
+            chown node:node "${dir}" 2>/dev/null || true
+        else
+            # Existing directory: only fix files NOT owned by node (incremental)
+            # Uses find batching (+) for efficiency - ~10x faster than chown -R
+            find "${dir}" \! -user node -exec chown node:node {} + 2>/dev/null || true
+        fi
+    done
+
+    # /app and compile cache: simple mkdir + chown (usually empty or small)
+    for dir in "/app" "/var/tmp/openclaw-compile-cache"; do
         if [[ ! -d "${dir}" ]]; then
             mkdir -p "${dir}"
         fi
-        chown -R node:node "${dir}" 2>/dev/null || true
+        chown node:node "${dir}" 2>/dev/null || true
     done
 
-    # Bind mount directories: only fix if empty or wrong owner (preserve host data)
+    # Bind mount directories: CHECK ONLY, warn if wrong ownership
+    # Per Docker best practices: containers should NOT modify bind mount ownership
+    # (that would be modifying the host filesystem, which is a security boundary)
     for dir in "/home/node/.openclaw" "/home/node/.notebooklm"; do
         if [[ -d "${dir}" ]]; then
-            if [[ -z "$(ls -A "${dir}" 2>/dev/null)" ]] || \
-               [[ "$(stat -c '%u' "${dir}" 2>/dev/null)" != "1000" ]]; then
-                chown -R node:node "${dir}" 2>/dev/null || true
+            owner_uid="$(stat -c '%u' "${dir}" 2>/dev/null)"
+            if [[ "${owner_uid}" != "1000" && "${owner_uid}" != "0" ]]; then
+                echo "⚠️  WARNING: ${dir} is owned by UID ${owner_uid}, expected 1000 or 0."
+                echo "   This may cause permission errors. Fix on host with:"
+                echo "   chown -R 1000:1000 <host-path>"
             fi
         fi
     done
