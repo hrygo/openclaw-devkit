@@ -107,6 +107,40 @@ if [[ "$(id -u)" = "0" ]]; then
 fi
 
 # ------------------------------------------------------------------------------
+# 1b. Upgrade openclaw-lark Extension
+#    The extension ships a stale bundled openclaw/plugin-sdk (v2026.3.17) whose
+#    internal import hashes don't match the global SDK, causing
+#    "normalizeAccountId is not a function".  Newer versions (>=2026.3.18) no
+#    longer bundle the SDK and depend on the external openclaw package instead.
+#    Strategy: replace the stale extension files with the freshly-installed npm
+#    package content (node_modules/@larksuite/openclaw-lark/).
+# ------------------------------------------------------------------------------
+_upgrade_lark_plugin() {
+    local ext_dir="/home/node/.openclaw/extensions/openclaw-lark"
+    local new_pkg="${ext_dir}/node_modules/@larksuite/openclaw-lark"
+    local marker="${ext_dir}/.upgraded_to_$(cat "${new_pkg}/package.json" 2>/dev/null | grep '"version"' | head -1 | sed 's/[^0-9.]//g')"
+
+    [[ -d "${ext_dir}" && -d "${new_pkg}" && ! -f "${marker}" ]] || return 0
+
+    echo "--> Upgrading openclaw-lark extension..."
+
+    # Replace extension files with new package content (preserve node_modules and .upgraded_*)
+    for item in "${new_pkg}"/*; do
+        local basename="$(basename "${item}")"
+        [[ "${basename}" == "node_modules" ]] && continue
+        rm -rf "${ext_dir}/${basename}"
+        cp -r "${item}" "${ext_dir}/${basename}"
+    done
+
+    # Restore ownership to root (required by plugin loader)
+    chown -R 0:0 "${ext_dir}" 2>/dev/null || true
+
+    touch "${marker}"
+    echo "--> openclaw-lark upgraded to $(basename "${marker}" | sed 's/.upgraded_to_//')"
+}
+_upgrade_lark_plugin
+
+# ------------------------------------------------------------------------------
 # 2. Configuration Health Check & Surgical Repair
 #    - Surgery: runs once (path migration + Node.js cleanup)
 #    - Doctor: runs once after surgery, then skipped (gateway manages config afterwards)
