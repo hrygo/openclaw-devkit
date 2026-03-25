@@ -477,9 +477,9 @@ if ! run_as_node bash -c 'command -v openclaw' &>/dev/null; then
 fi
 
 if ! run_as_node bash -c 'command -v opencode' &>/dev/null; then
-    echo "ERROR: 'opencode' command not found in PATH." >&2
-    echo "Check if the opencode installation in Dockerfile succeeded." >&2
-    exit 1
+    echo "⚠️  WARNING: 'opencode' command not found in PATH." >&2
+    echo "   AI coding tools may not have been installed in this image variant." >&2
+    echo "   Continuing startup without opencode..." >&2
 fi
 
 if [[ "$(id -u)" = "0" ]]; then

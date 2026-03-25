@@ -219,12 +219,16 @@ jobs:
         include:
           - stack: base
             tag: 'latest'
+            install_ai_tools: 1
           - stack: go
             tag: 'go'
+            install_ai_tools: 1
           - stack: java
             tag: 'java'
+            install_ai_tools: 1
           - stack: office
             tag: 'office'
+            install_ai_tools: 0
     permissions:
       packages: write
       contents: read
