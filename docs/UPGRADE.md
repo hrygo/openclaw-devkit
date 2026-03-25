@@ -85,7 +85,7 @@ docker run --rm ghcr.io/hrygo/openclaw-devkit:go openclaw --version
 #### Step 1：拉取最新代码
 
 ```bash
-cd ~/openclaw       # 或你的 openclaw-devkit 目录
+cd ~/openclaw-devkit
 git fetch origin
 git checkout main
 git pull origin main
@@ -342,7 +342,7 @@ make exec CMD="openclaw feishu probe"
 ### 8.1 回滚到旧版 openclaw-devkit
 
 ```bash
-cd ~/openclaw
+cd ~/openclaw-devkit
 git checkout v1.10.7    # 替换为你要回滚的版本
 make down
 make restart
