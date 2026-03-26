@@ -189,7 +189,8 @@ def convert_paths(data, host_marketplaces_dir):
         for key, value in list(data.items()):
             if key == "installLocation" and isinstance(value, str):
                 # Extract marketplace name from any path format
-                match = re.search(r'marketplaces[/\\]([^/\\]+)(?:[/\\]|$)', value)
+                # Use raw string with proper escaping for backslash in character class
+                match = re.search(r'marketplaces[/\\\\]([^/\\\\]+)(?:[/\\\\]|$)', value)
                 if match:
                     marketplace_name = match.group(1)
                     data[key] = f"/home/node/.claude/plugins/marketplaces/{marketplace_name}"
