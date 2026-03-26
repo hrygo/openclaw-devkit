@@ -127,6 +127,54 @@ make install office
 
 ---
 
+## 🔄 升级指南
+
+### 存量用户升级（重要）
+
+如果您之前使用过 `openclaw` 项目（旧目录名），升级到 `openclaw-devkit` 后可能会看到以下警告：
+
+```
+WARN[0000] volume "openclaw-devkit-home" already exists but was created for project "openclaw"
+WARN[0000] volume "openclaw-claude-home" already exists but was created for project "openclaw"
+```
+
+**这是正常现象，不影响使用**。如需消除警告，执行一次性迁移：
+
+```bash
+# 自动备份 → 删除旧卷 → 重建新卷 → 恢复数据
+./migrate-volumes.sh
+```
+
+**迁移脚本特性：**
+- ✅ 自动检测是否需要迁移
+- ✅ 完整备份机制（数据安全）
+- ✅ 1-3 分钟完成（取决于数据量）
+- ✅ 迁移后警告永久消失
+
+<details>
+<summary><b>技术细节：为什么会有警告？</b></summary>
+
+Docker Compose 使用项目标签追踪卷的归属。旧项目名 `openclaw` 与新项目名 `openclaw-devkit` 不匹配触发警告。`migrate-volumes.sh` 会重新创建带正确标签的卷。
+
+**安全保证：**
+- 备份文件保留在 `/tmp/openclaw-volume-backup-*/`
+- 可随时手动恢复
+- 迁移失败会中止并提示
+
+</details>
+
+### 常规版本升级
+
+```bash
+# 检测并拉取最新镜像
+make upgrade
+
+# 重启服务以应用更新
+make restart
+```
+
+---
+
 ## ❓ 常见问题
 
 <details>

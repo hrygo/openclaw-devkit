@@ -236,6 +236,23 @@ install: ## 首次安装/初始化环境
 	@echo "$(SUCCESS) $(GREEN)环境安装完毕!$(NC)"
 	@echo "  $(INFO) 🚀 下一步:"
 	@echo "    执行 $(BOLD)make onboard$(NC) 配置核心模型并启动服务"
+	@echo ""
+	@# 检测存量用户卷标签，提示迁移选项
+	@if docker volume inspect openclaw-devkit-home >/dev/null 2>&1; then \
+		PROJECT=$$(docker volume inspect openclaw-devkit-home --format '{{index .Labels "com.docker.compose.project"}}' 2>/dev/null || echo ""); \
+		if [ "$$PROJECT" = "openclaw" ]; then \
+			echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"; \
+			echo "$(YELLOW)⚠️  检测到存量卷标签 (project=openclaw)$(NC)"; \
+			echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"; \
+			echo ""; \
+			echo "$(INFO) 升级后将看到 Docker Compose 警告 (不影响使用):"; \
+			echo "  WARN volume already exists but was created for project \"openclaw\""; \
+			echo ""; \
+			echo "$(INFO) 消除警告方法 (可选，执行一次即可):"; \
+			echo "  $(BOLD)./migrate-volumes.sh$(NC)"; \
+			echo ""; \
+		fi; \
+	fi
 
 # ============================================================
 # 服务启动辅助函数
