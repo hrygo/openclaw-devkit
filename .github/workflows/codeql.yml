@@ -17,7 +17,7 @@ on:
   pull_request:
     branches: [ "main" ]
   schedule:
-    - cron: '40 6 * * 2'
+    - cron: '0 22 * * 1'  # 北京时间周二凌晨 6:00 (UTC 周一 22:00)
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
