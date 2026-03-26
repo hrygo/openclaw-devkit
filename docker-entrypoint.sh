@@ -153,15 +153,15 @@ _fix_plugin_paths() {
     # Skip if file doesn't exist (new installation)
     [[ -f "${known_file}" ]] || return 0
 
-    # Check if paths already use container format
-    if grep -q '/home/node/\.claude/plugins/marketplaces/' "${known_file}" 2>/dev/null; then
-        # Already has at least one container path, assume all are correct
+    # Check if paths already use ~/ format (which works in both host and container)
+    if grep -qE '"installLocation".*:.*"~/' "${known_file}" 2>/dev/null; then
+        # Already using ~ which is perfect for shared files
         return 0
     fi
 
     # Detect if there are any host absolute paths that need fixing
-    if ! grep -qE '"(installLocation".*:.*"( /|/|[A-Z]:)' "${known_file}" 2>/dev/null; then
-        # No absolute paths found, probably using ~ which is fine
+    if ! grep -qE '"installLocation".*:.*"( /Users|/home/|[A-Z]:)' "${known_file}" 2>/dev/null; then
+        # No absolute paths found, nothing to fix
         return 0
     fi
 
@@ -172,7 +172,9 @@ _fix_plugin_paths() {
     cp "${known_file}" "${backup}"
     echo "    Backup: ${backup}"
 
-    # Use Python for robust JSON path fixing (handles all platforms)
+    # Use Python for robust JSON path fixing
+    # IMPORTANT: Must convert to ~ format (NOT /home/node) because this file
+    # is shared between host and container via bind mount
     if command -v python3 >/dev/null 2>&1; then
         python3 <<'PYTHON_EOF' "${known_file}"
 import sys
@@ -180,19 +182,28 @@ import json
 import re
 
 def fix_paths(data):
-    """Recursively fix installLocation paths from host to container format"""
+    """
+    Recursively convert absolute paths to ~ relative paths.
+
+    This file is bind-mounted from host, so paths must work in BOTH:
+    - Host: ~ expands to /Users/<user>, /home/<user>, C:/Users/<user>
+    - Container: ~ expands to /home/node
+
+    Examples:
+    - /Users/test/.claude/plugins/marketplaces/xxx -> ~/.claude/plugins/marketplaces/xxx
+    - /home/test/.claude/plugins/marketplaces/xxx -> ~/.claude/plugins/marketplaces/xxx
+    - C:/Users/test/.claude/plugins/marketplaces/xxx -> ~/.claude/plugins/marketplaces/xxx
+    """
     if isinstance(data, dict):
         for key, value in list(data.items()):
             if key == "installLocation" and isinstance(value, str):
-                # Extract marketplace name from various host path formats:
-                # - macOS:   /Users/<user>/.claude/plugins/marketplaces/<name>
-                # - Linux:   /home/<user>/.claude/plugins/marketplaces/<name>
-                # - Windows: C:/Users/<user>/.claude/plugins/marketplaces/<name>
-                # - Already correct: /home/node/.claude/plugins/marketplaces/<name>
-                match = re.search(r'[/\\]marketplaces[/\\]([^/\\]+)(?:[/\\]|$)', value)
+                # Extract marketplace name from any absolute path format
+                # Handles: /Users/..., /home/..., C:/Users/..., etc.
+                # Pattern: marketplaces/<name> or marketplaces\<name>
+                match = re.search(r'marketplaces[/\\]([^/\\]+)(?:[/\\]|$)', value)
                 if match:
                     marketplace_name = match.group(1)
-                    data[key] = f"/home/node/.claude/plugins/marketplaces/{marketplace_name}"
+                    data[key] = f"~/.claude/plugins/marketplaces/{marketplace_name}"
             elif isinstance(value, dict):
                 fix_paths(value)
     elif isinstance(data, list):
@@ -208,7 +219,7 @@ try:
     with open(sys.argv[1], 'w') as f:
         json.dump(data, f, indent=2)
 
-    print("    ✓ All marketplace paths normalized to container format")
+    print("    ✓ All marketplace paths converted to ~ format")
 except Exception as e:
     print(f"    ✗ Error fixing paths: {e}", file=sys.stderr)
     sys.exit(1)
@@ -230,7 +241,7 @@ PYTHON_EOF
         chown -R node:node "${marketplaces_dir}" 2>/dev/null || true
     fi
 
-    echo "    ✓ Plugin paths fixed"
+    echo "    ✓ Plugin paths fixed (using ~ for cross-platform compatibility)"
 }
 
 # Run path fix
