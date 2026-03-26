@@ -76,7 +76,7 @@ if [[ "$(id -u)" = "0" ]]; then
 
     # Named volume directories: create if missing, then incremental fix
     # Note: /home/node/.global is NOT included - Dockerfile:106 already handles it
-    for dir in "/home/node/.claude" "/home/node/.local" "/home/node/.agents" "/home/node/go" "/home/node/.cache"; do
+    for dir in "/home/node/.claude" "/home/node/.local" "/home/node/.agents" "/home/node/go" "/home/node/.cache" "/home/node/.config"; do
         if [[ ! -d "${dir}" ]]; then
             mkdir -p "${dir}"
             # New directory: set ownership directly (no need to traverse)
