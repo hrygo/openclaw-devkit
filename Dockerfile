@@ -89,20 +89,33 @@ RUN if command -v python3 >/dev/null 2>&1 && command -v uv >/dev/null 2>&1; then
         uv pip install --system --break-system-packages --no-cache notebooklm-py; \
     fi
 
+# Helper function for retry npm install
+RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
+    npm config set fetch-retries 3 && \
+    npm config set fetch-retry-mintimeout 30000 && \
+    npm config set fetch-retry-maxtimeout 120000
+
 # Layer 3a: Core CLI tools (always installed)
 # Essential: openclaw (gateway) + openclaw-lark (Lark integration) + clawhub (Hub)
+# Split into individual commands with retry to handle transient network failures
 RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
-    npm install -g openclaw@${OPENCLAW_VERSION} && \
-    npm install -g @larksuite/openclaw-lark@latest && \
-    npm install -g clawhub@latest && \
-    chown -R node:node /home/node/.global
+    npm install -g openclaw@${OPENCLAW_VERSION} || npm install -g openclaw@${OPENCLAW_VERSION}
+
+RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
+    npm install -g @larksuite/openclaw-lark@latest || npm install -g @larksuite/openclaw-lark@latest
+
+RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
+    npm install -g clawhub@latest || npm install -g clawhub@latest
+
+RUN chown -R node:node /home/node/.global
 
 # Layer 3b: AI Coding Tools (optional, ~500MB, skip for office variant)
 # Includes: claude-code, pi-coding-agent, opencode
 # Set INSTALL_AI_TOOLS=0 when building office variant
 RUN if [ "${INSTALL_AI_TOOLS}" = "1" ]; then \
-    npm install -g @anthropic-ai/claude-code@latest && \
-    npm install -g @mariozechner/pi-coding-agent && \
+    --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
+    (npm install -g @anthropic-ai/claude-code@latest || npm install -g @anthropic-ai/claude-code@latest) && \
+    (npm install -g @mariozechner/pi-coding-agent || npm install -g @mariozechner/pi-coding-agent) && \
     chown -R node:node /home/node/.global; \
     fi
 
