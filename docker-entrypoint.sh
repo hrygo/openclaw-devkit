@@ -170,7 +170,7 @@ _sync_marketplace_config() {
 
         # Use Python to convert paths
         if command -v python3 >/dev/null 2>&1; then
-            python3 <<'PYTHON_EOF' "${seed_file}" "${target_file}"
+            python3 "${seed_file}" "${target_file}" <<'PYTHON_EOF'
 import sys
 import json
 import re
