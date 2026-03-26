@@ -137,9 +137,10 @@ services:
       # Claude Code 只读配置 (覆盖 Layer 2 命名卷中的同名路径)
       - ${HOME:-${USERPROFILE:-/tmp}}/.claude/settings.json:/home/node/.claude/settings.json:ro
       - ${HOME:-${USERPROFILE:-/tmp}}/.claude/skills:/home/node/.claude/skills:ro
-      # Plugin marketplaces (覆盖 Layer 2 命名卷中的同名路径)
-      - ${HOME:-${USERPROFILE:-/tmp}}/.claude/plugins/known_marketplaces.json:/home/node/.claude/plugins/known_marketplaces.json:rw
-      - ${HOME:-${USERPROFILE:-/tmp}}/.claude/plugins/marketplaces:/home/node/.claude/plugins/marketplaces:rw
+      # Plugin marketplaces - 宿主机作为只读 seed 源，容器维护独立副本
+      # (entrypoint 自动同步并转换路径)
+      - ${HOME:-${USERPROFILE:-/tmp}}/.claude/plugins/known_marketplaces.json:/home/node/.claude/plugins/.host-marketplaces-seed.json:ro
+      - ${HOME:-${USERPROFILE:-/tmp}}/.claude/plugins/marketplaces:/home/node/.claude/plugins/marketplaces-host:ro
       # .agents/skills 只读共享
       - ${HOME:-${USERPROFILE:-/tmp}}/.agents/skills:/home/node/.agents/skills:ro
       # ClawHub CLI 凭据 (跨平台: macOS/Linux/Windows)

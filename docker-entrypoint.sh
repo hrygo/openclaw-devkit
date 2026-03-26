@@ -130,122 +130,132 @@ if [[ "$(id -u)" = "0" ]]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 1a. Fix Plugin Marketplace Paths (Cross-Platform Compatibility)
+# 1a. Sync Plugin Marketplace Config (Seed-based Architecture)
 #
-# Problem: known_marketplaces.json may contain host absolute paths:
-#   - macOS:   /Users/<user>/.claude/plugins/marketplaces/...
-#   - Linux:   /home/<user>/.claude/plugins/marketplaces/...
-#   - Windows: C:/Users/<user>/.claude/plugins/marketplaces/...
+# Architecture:
+#   - Host source:   ~/.claude/plugins/known_marketplaces.json (bind mount, RO)
+#                    → /home/node/.claude/plugins/.host-marketplaces-seed.json
+#   - Container use: /home/node/.claude/plugins/known_marketplaces.json (writable)
+#                    Uses container paths: /home/node/.claude/plugins/marketplaces/...
 #
-# Container needs: /home/node/.claude/plugins/marketplaces/...
+# Why not direct bind mount?
+#   - Host paths are absolute (/Users/xxx, /home/xxx, C:/Users/xxx)
+#   - Container needs /home/node paths
+#   - Direct sharing causes path conflicts
 #
-# Solution: Dynamically convert all host paths to container paths at startup.
-# This handles all scenarios:
-#   - New users: may use ~ or already have correct paths
-#   - Existing users: may have absolute paths from host
-#   - Cross-platform: works on macOS/Linux/Windows
+# Solution:
+#   1. Mount host config as READ-ONLY seed file
+#   2. Convert paths and write to container's own file
+#   3. Auto-sync when host file is updated
 # ------------------------------------------------------------------------------
-_fix_plugin_paths() {
+_sync_marketplace_config() {
     local plugins_dir="/home/node/.claude/plugins"
-    local known_file="${plugins_dir}/known_marketplaces.json"
-    local marketplaces_dir="${plugins_dir}/marketplaces"
+    local seed_file="${plugins_dir}/.host-marketplaces-seed.json"
+    local target_file="${plugins_dir}/known_marketplaces.json"
+    local marker_file="${plugins_dir}/.seed-synced"
 
-    # Skip if file doesn't exist (new installation)
-    [[ -f "${known_file}" ]] || return 0
+    # Skip if no seed file (host doesn't have plugins configured yet)
+    [[ -f "${seed_file}" ]] || return 0
 
-    # Check if paths already use ~/ format (which works in both host and container)
-    if grep -qE '"installLocation".*:.*"~/' "${known_file}" 2>/dev/null; then
-        # Already using ~ which is perfect for shared files
-        return 0
+    # Check if sync is needed
+    local seed_mtime=$(stat -c %Y "${seed_file}" 2>/dev/null || stat -f %m "${seed_file}" 2>/dev/null || echo 0)
+    local last_sync=0
+    if [[ -f "${marker_file}" ]]; then
+        last_sync=$(cat "${marker_file}" 2>/dev/null || echo 0)
     fi
 
-    # Detect if there are any host absolute paths that need fixing
-    if ! grep -qE '"installLocation".*:.*"( /Users|/home/|[A-Z]:)' "${known_file}" 2>/dev/null; then
-        # No absolute paths found, nothing to fix
-        return 0
-    fi
+    # Sync if: first time, or seed file updated
+    if [[ ! -f "${target_file}" ]] || [[ "${seed_mtime}" -gt "${last_sync}" ]]; then
+        echo "--> Syncing plugin marketplace config from host seed..."
 
-    echo "--> Fixing plugin marketplace paths..."
-
-    # Create backup
-    local backup="${known_file}.backup_$(date +%Y%m%d_%H%M%S)"
-    cp "${known_file}" "${backup}"
-    echo "    Backup: ${backup}"
-
-    # Use Python for robust JSON path fixing
-    # IMPORTANT: Must convert to ~ format (NOT /home/node) because this file
-    # is shared between host and container via bind mount
-    if command -v python3 >/dev/null 2>&1; then
-        python3 <<'PYTHON_EOF' "${known_file}"
+        # Use Python to convert paths
+        if command -v python3 >/dev/null 2>&1; then
+            python3 <<'PYTHON_EOF' "${seed_file}" "${target_file}"
 import sys
 import json
 import re
+import os
 
-def fix_paths(data):
+def convert_paths(data, host_marketplaces_dir):
     """
-    Recursively convert absolute paths to ~ relative paths.
-
-    This file is bind-mounted from host, so paths must work in BOTH:
-    - Host: ~ expands to /Users/<user>, /home/<user>, C:/Users/<user>
-    - Container: ~ expands to /home/node
+    Convert host absolute paths to container paths.
 
     Examples:
-    - /Users/test/.claude/plugins/marketplaces/xxx -> ~/.claude/plugins/marketplaces/xxx
-    - /home/test/.claude/plugins/marketplaces/xxx -> ~/.claude/plugins/marketplaces/xxx
-    - C:/Users/test/.claude/plugins/marketplaces/xxx -> ~/.claude/plugins/marketplaces/xxx
+    - /Users/xxx/.claude/plugins/marketplaces/name -> /home/node/.claude/plugins/marketplaces/name
+    - /home/xxx/.claude/plugins/marketplaces/name -> /home/node/.claude/plugins/marketplaces/name
+    - C:/Users/xxx/.claude/plugins/marketplaces/name -> /home/node/.claude/plugins/marketplaces/name
     """
     if isinstance(data, dict):
         for key, value in list(data.items()):
             if key == "installLocation" and isinstance(value, str):
-                # Extract marketplace name from any absolute path format
-                # Handles: /Users/..., /home/..., C:/Users/..., etc.
-                # Pattern: marketplaces/<name> or marketplaces\<name>
+                # Extract marketplace name from any path format
                 match = re.search(r'marketplaces[/\\]([^/\\]+)(?:[/\\]|$)', value)
                 if match:
                     marketplace_name = match.group(1)
-                    data[key] = f"~/.claude/plugins/marketplaces/{marketplace_name}"
+                    data[key] = f"/home/node/.claude/plugins/marketplaces/{marketplace_name}"
+
+                    # Verify marketplace exists in container (may need to copy from host)
+                    container_path = f"/home/node/.claude/plugins/marketplaces/{marketplace_name}"
+                    host_path = os.path.join(host_marketplaces_dir, marketplace_name)
+
+                    if not os.path.exists(container_path) and os.path.exists(host_path):
+                        # Marketplace directory not in container, copy from host mount
+                        print(f"    Copying marketplace: {marketplace_name}")
+                        os.makedirs(os.path.dirname(container_path), exist_ok=True)
+                        import shutil
+                        shutil.copytree(host_path, container_path)
+
             elif isinstance(value, dict):
-                fix_paths(value)
+                convert_paths(value, host_marketplaces_dir)
     elif isinstance(data, list):
         for item in data:
-            fix_paths(item)
+            convert_paths(item, host_marketplaces_dir)
 
 try:
-    with open(sys.argv[1], 'r') as f:
+    seed_file = sys.argv[1]
+    target_file = sys.argv[2]
+
+    # Host marketplaces are mounted at /home/node/.claude/plugins/marketplaces-host
+    host_marketplaces_dir = "/home/node/.claude/plugins/marketplaces-host"
+
+    with open(seed_file, 'r') as f:
         data = json.load(f)
 
-    fix_paths(data)
+    convert_paths(data, host_marketplaces_dir)
 
-    with open(sys.argv[1], 'w') as f:
+    # Ensure target directory exists
+    os.makedirs(os.path.dirname(target_file), exist_ok=True)
+
+    with open(target_file, 'w') as f:
         json.dump(data, f, indent=2)
 
-    print("    ✓ All marketplace paths converted to ~ format")
+    print(f"    ✓ Synced {len(data)} marketplace(s)")
 except Exception as e:
-    print(f"    ✗ Error fixing paths: {e}", file=sys.stderr)
+    print(f"    ✗ Error syncing marketplace config: {e}", file=sys.stderr)
     sys.exit(1)
 PYTHON_EOF
-        local result=$?
-        if [[ ${result} -ne 0 ]]; then
-            echo "    ✗ Failed to fix paths, restoring backup"
-            mv "${backup}" "${known_file}"
+            local result=$?
+            if [[ ${result} -ne 0 ]]; then
+                echo "    ✗ Failed to sync marketplace config"
+                return 1
+            fi
+
+            # Record sync time
+            echo "${seed_mtime}" > "${marker_file}"
+        else
+            echo "    ✗ Python3 not available, cannot sync"
             return 1
         fi
-    else
-        echo "    ✗ Python3 not available, cannot fix paths"
-        mv "${backup}" "${known_file}"
-        return 1
     fi
 
-    # Fix marketplace directory ownership (may be root from bind mount)
-    if [[ -d "${marketplaces_dir}" && "$(id -u)" = "0" ]]; then
-        chown -R node:node "${marketplaces_dir}" 2>/dev/null || true
+    # Ensure correct ownership
+    if [[ "$(id -u)" = "0" ]]; then
+        chown -R node:node "${plugins_dir}" 2>/dev/null || true
     fi
-
-    echo "    ✓ Plugin paths fixed (using ~ for cross-platform compatibility)"
 }
 
-# Run path fix
-_fix_plugin_paths
+# Run sync
+_sync_marketplace_config
 
 # ------------------------------------------------------------------------------
 # 1b. Sync Image-Managed Extensions into Bind-Mount Volume
