@@ -94,7 +94,7 @@ RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
     npm config set fetch-retries 5 && \
     npm config set fetch-retry-mintimeout 60000 && \
     npm config set fetch-retry-maxtimeout 300000 && \
-    npm config set socket-timeout 120000
+    npm config set fetch-timeout 300000
 
 # Layer 3a: Core CLI tools (always installed)
 # Essential: openclaw (gateway) + openclaw-lark (Lark integration) + clawhub (Hub)
