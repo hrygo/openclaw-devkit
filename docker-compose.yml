@@ -41,10 +41,6 @@ x-openclaw-common: &openclaw-common
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
     CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"
     # ─────────────────────────────────────────────────────────────────
-    # GitHub Configuration
-    # ─────────────────────────────────────────────────────────────────
-    GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_PERSONAL_ACCESS_TOKEN:-}
-    # ─────────────────────────────────────────────────────────────────
     # Runtime Configuration
     # ─────────────────────────────────────────────────────────────────
     TZ: ${TZ:-Asia/Shanghai}
