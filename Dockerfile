@@ -89,33 +89,69 @@ RUN if command -v python3 >/dev/null 2>&1 && command -v uv >/dev/null 2>&1; then
         uv pip install --system --break-system-packages --no-cache notebooklm-py; \
     fi
 
-# Helper function for retry npm install
+# Helper function for retry npm install with exponential backoff
 RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
-    npm config set fetch-retries 3 && \
-    npm config set fetch-retry-mintimeout 30000 && \
-    npm config set fetch-retry-maxtimeout 120000
+    npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 60000 && \
+    npm config set fetch-retry-maxtimeout 300000 && \
+    npm config set socket-timeout 120000
 
 # Layer 3a: Core CLI tools (always installed)
 # Essential: openclaw (gateway) + openclaw-lark (Lark integration) + clawhub (Hub)
-# Split into individual commands with retry to handle transient network failures
+# Retry wrapper handles ETIMEDOUT/network errors with exponential backoff
 RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
-    npm install -g openclaw@${OPENCLAW_VERSION} || npm install -g openclaw@${OPENCLAW_VERSION}
-
-RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
-    npm install -g @larksuite/openclaw-lark@latest || npm install -g @larksuite/openclaw-lark@latest
-
-RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
-    npm install -g clawhub@latest || npm install -g clawhub@latest
-
-RUN chown -R node:node /home/node/.global
+    sh -c ' \
+    npm_retry() { \
+        local max_attempts=3 delay=30 attempt=1; \
+        while [ $attempt -le $max_attempts ]; do \
+            echo "[npm-retry attempt $attempt/$max_attempts] $*"; \
+            if "$@"; then \
+                echo "[npm-retry] SUCCESS"; return 0; \
+            else \
+                local ec=$?; \
+                if [ $ec -eq 146 ] || [ $ec -eq 143 ] || [ $ec -eq 137 ]; then \
+                    echo "[npm-retry] Process killed (signal $ec), retrying..."; \
+                else \
+                    echo "[npm-retry] Exit $ec, retrying..."; \
+                fi; \
+                [ $attempt -lt $max_attempts ] && echo "[npm-retry] Waiting ${delay}s..." && sleep $delay; \
+                delay=$((delay * 2)); attempt=$((attempt + 1)); \
+            fi; \
+        done; \
+        echo "[npm-retry] FAILED after $max_attempts attempts"; return 1; \
+    }; \
+    npm_retry npm install -g openclaw@${OPENCLAW_VERSION} && \
+    npm_retry npm install -g @larksuite/openclaw-lark@latest && \
+    npm_retry npm install -g clawhub@latest && \
+    chown -R node:node /home/node/.global'
 
 # Layer 3b: AI Coding Tools (optional, ~500MB, skip for office variant)
 # Includes: claude-code, pi-coding-agent, opencode
 # Set INSTALL_AI_TOOLS=0 when building office variant
-RUN if [ "${INSTALL_AI_TOOLS}" = "1" ]; then \
-    --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
-    (npm install -g @anthropic-ai/claude-code@latest || npm install -g @anthropic-ai/claude-code@latest) && \
-    (npm install -g @mariozechner/pi-coding-agent || npm install -g @mariozechner/pi-coding-agent) && \
+RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
+    if [ "${INSTALL_AI_TOOLS}" = "1" ]; then \
+    sh -c ' \
+    npm_retry() { \
+        local max_attempts=3 delay=30 attempt=1; \
+        while [ $attempt -le $max_attempts ]; do \
+            echo "[npm-retry attempt $attempt/$max_attempts] $*"; \
+            if "$@"; then \
+                echo "[npm-retry] SUCCESS"; return 0; \
+            else \
+                local ec=$?; \
+                if [ $ec -eq 146 ] || [ $ec -eq 143 ] || [ $ec -eq 137 ]; then \
+                    echo "[npm-retry] Process killed (signal $ec), retrying..."; \
+                else \
+                    echo "[npm-retry] Exit $ec, retrying..."; \
+                fi; \
+                [ $attempt -lt $max_attempts ] && echo "[npm-retry] Waiting ${delay}s..." && sleep $delay; \
+                delay=$((delay * 2)); attempt=$((attempt + 1)); \
+            fi; \
+        done; \
+        echo "[npm-retry] FAILED after $max_attempts attempts"; return 1; \
+    }; \
+    npm_retry npm install -g @anthropic-ai/claude-code@latest && \
+    npm_retry npm install -g @mariozechner/pi-coding-agent && \
     chown -R node:node /home/node/.global; \
     fi
 
