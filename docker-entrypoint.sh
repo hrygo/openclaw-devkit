@@ -493,6 +493,43 @@ if [[ ! -f "${CLAUDE_JSON}" ]]; then
     fi
 fi
 
+# Create statusline.sh for Claude Code if configured but missing
+# This script displays current directory and git branch in the status line
+STATUSLINE_SH="/home/node/.claude/statusline.sh"
+if [[ ! -f "${STATUSLINE_SH}" ]]; then
+    echo "--> Creating statusline.sh for Claude Code..."
+    cat > "${STATUSLINE_SH}" << 'EOF'
+#!/bin/bash
+# Status line script for Claude Code
+
+# Get current directory name
+current_dir=$(basename "$PWD")
+
+# Check if in git repo
+if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    branch=$(git branch --show-current 2>/dev/null || echo "detached")
+    status="[$branch]"
+else
+    status=""
+fi
+
+# Output status line
+echo "$current_dir $status"
+EOF
+    chmod +x "${STATUSLINE_SH}"
+    if [[ "$(id -u)" = "0" ]]; then
+        chown node:node "${STATUSLINE_SH}" 2>/dev/null || true
+    fi
+fi
+
+# Fix plugin hook scripts execution permissions
+# Some plugins (like ralph-loop) have hooks that require execute permission
+PLUGINS_DIR="/home/node/.claude/plugins"
+if [[ -d "${PLUGINS_DIR}" ]]; then
+    echo "--> Fixing plugin hook permissions..."
+    find "${PLUGINS_DIR}" -type f -name "*-hook.sh" -exec chmod +x {} + 2>/dev/null || true
+fi
+
 echo "--> Optimizing Claude Code runtime configuration..."
 run_as_node node -e '
     const fs = require("fs");
