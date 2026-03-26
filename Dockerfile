@@ -130,29 +130,13 @@ RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
 # Set INSTALL_AI_TOOLS=0 when building office variant
 RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
     if [ "${INSTALL_AI_TOOLS}" = "1" ]; then \
-    sh -c ' \
-    npm_retry() { \
-        local max_attempts=3 delay=30 attempt=1; \
-        while [ $attempt -le $max_attempts ]; do \
-            echo "[npm-retry attempt $attempt/$max_attempts] $*"; \
-            if "$@"; then \
-                echo "[npm-retry] SUCCESS"; return 0; \
-            else \
-                local ec=$?; \
-                if [ $ec -eq 146 ] || [ $ec -eq 143 ] || [ $ec -eq 137 ]; then \
-                    echo "[npm-retry] Process killed (signal $ec), retrying..."; \
-                else \
-                    echo "[npm-retry] Exit $ec, retrying..."; \
-                fi; \
-                [ $attempt -lt $max_attempts ] && echo "[npm-retry] Waiting ${delay}s..." && sleep $delay; \
-                delay=$((delay * 2)); attempt=$((attempt + 1)); \
-            fi; \
-        done; \
-        echo "[npm-retry] FAILED after $max_attempts attempts"; return 1; \
-    }; \
-    npm_retry npm install -g @anthropic-ai/claude-code@latest && \
-    npm_retry npm install -g @mariozechner/pi-coding-agent && \
-    chown -R node:node /home/node/.global; \
+        npm install -g @anthropic-ai/claude-code@latest || \
+        (echo "[retry 1] Waiting 30s..." && sleep 30 && npm install -g @anthropic-ai/claude-code@latest) || \
+        (echo "[retry 2] Waiting 60s..." && sleep 60 && npm install -g @anthropic-ai/claude-code@latest) && \
+        npm install -g @mariozechner/pi-coding-agent || \
+        (echo "[retry 1] Waiting 30s..." && sleep 30 && npm install -g @mariozechner/pi-coding-agent) || \
+        (echo "[retry 2] Waiting 60s..." && sleep 60 && npm install -g @mariozechner/pi-coding-agent) && \
+        chown -R node:node /home/node/.global; \
     fi
 
 # Install OpenCode CLI - AI coding tool, also controlled by INSTALL_AI_TOOLS
