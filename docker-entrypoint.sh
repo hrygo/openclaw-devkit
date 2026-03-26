@@ -612,10 +612,11 @@ if ! run_as_node bash -c 'command -v opencode' &>/dev/null; then
 fi
 
 if [[ "$(id -u)" = "0" ]]; then
-    export HOME="/home/node"
-    # Use runuser -m to preserve container environment (NODE_COMPILE_CACHE, etc.)
-    # Only override PATH and HOME to ensure correct values for the node user.
-    exec runuser -u node -m -- env PATH="${NODE_GLOBAL_PATH}:$PATH" "$@"
+    # Use runuser -m to preserve all container environment variables
+    # (NODE_COMPILE_CACHE, GITHUB_TOKEN, ANTHROPIC_AUTH_TOKEN, etc.)
+    # The -m flag makes runuser preserve the environment, similar to sudo -E
+    # PATH is set correctly by Docker already (from Dockerfile ENV + compose env_file)
+    exec runuser -u node -m -- "$@"
 else
     exec "$@"
 fi
