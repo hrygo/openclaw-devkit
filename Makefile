@@ -328,8 +328,24 @@ endef
 up: ## 启动服务
 	@mkdir -p "$(HOME)/.agents/skills"
 	@echo "$(INFO) 启动 OpenClaw 服务..."
-	@docker compose up -d
+	@# 捕获 Docker Compose 输出并检测卷警告
+	@docker compose up -d 2>&1 | tee /tmp/openclaw-up.log || true
 	@echo ""
+	@# 检测是否出现卷标签警告
+	@if grep -q "volume.*already exists but was created for project.*openclaw" /tmp/openclaw-up.log 2>/dev/null; then \
+		echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"; \
+		echo "$(YELLOW)⚠️  检测到 Docker Compose 卷标签警告$(NC)"; \
+		echo "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"; \
+		echo ""; \
+		echo "$(INFO) 这是因为您之前使用过 openclaw 项目，卷标签仍为旧项目名。"; \
+		echo "$(INFO) 不影响使用，但可通过迁移脚本消除警告（执行一次即可）:"; \
+		echo ""; \
+		echo "  $(BOLD)$(GREEN)./migrate-volumes.sh$(NC)"; \
+		echo ""; \
+		echo "$(INFO) 迁移脚本会自动备份并重建卷，1-3 分钟完成。"; \
+		echo ""; \
+	fi
+	@rm -f /tmp/openclaw-up.log
 	$(call wait-for-healthy,90)
 	@echo ""
 	@echo "$(SUCCESS) 访问地址: $(BOLD)http://127.0.0.1:$(GATEWAY_PORT)/$(NC)"

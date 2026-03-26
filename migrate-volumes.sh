@@ -14,7 +14,34 @@ BACKUP_DIR="/tmp/openclaw-volume-backup-$(date +%Y%m%d_%H%M%S)"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+BOLD='\033[1m'
 NC='\033[0m' # No Color
+
+# 解析命令行参数
+AUTO_CONFIRM=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -y|--yes)
+            AUTO_CONFIRM=true
+            shift
+            ;;
+        -h|--help)
+            echo "用法: $0 [选项]"
+            echo ""
+            echo "选项:"
+            echo "  -y, --yes    自动确认，无需交互"
+            echo "  -h, --help   显示帮助信息"
+            echo ""
+            echo "功能: 将 Docker Compose 卷的项目标签从 openclaw 迁移到 openclaw-devkit"
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}错误: 未知参数 $1${NC}"
+            exit 1
+            ;;
+    esac
+done
 
 echo -e "${GREEN}=========================================="
 echo "OpenClaw DevKit 卷迁移工具"
@@ -32,16 +59,22 @@ for vol in "${VOLUMES[@]}"; do
         else
             echo -e "${GREEN}✓ $vol 标签正常 (project=$PROJECT)${NC}"
         fi
+    else
+        echo -e "${BLUE}ℹ $vol 不存在，将跳过${NC}"
     fi
 done
 
 if [[ "$NEED_MIGRATION" == "false" ]]; then
+    echo ""
     echo -e "${GREEN}✅ 所有卷标签正常，无需迁移${NC}"
     exit 0
 fi
 
 echo ""
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${YELLOW}⚠️  警告：此操作将：${NC}"
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
 echo "  1. 备份现有卷数据到 ${BACKUP_DIR}"
 echo "  2. 删除旧卷（project=openclaw）"
 echo "  3. 重新创建新卷（project=openclaw-devkit）"
@@ -49,11 +82,16 @@ echo "  4. 恢复数据"
 echo ""
 echo "预计耗时：1-3 分钟（取决于数据量）"
 echo ""
-read -p "是否继续？(yes/no): " confirm
 
-if [[ "$confirm" != "yes" ]]; then
-    echo "已取消操作"
-    exit 0
+# 自动确认或交互确认
+if [[ "$AUTO_CONFIRM" == "true" ]]; then
+    echo -e "${BLUE}自动确认模式，继续执行...${NC}"
+else
+    read -p "是否继续？(yes/no): " confirm
+    if [[ "$confirm" != "yes" ]]; then
+        echo "已取消操作"
+        exit 0
+    fi
 fi
 
 # 停止服务
