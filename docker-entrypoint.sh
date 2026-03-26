@@ -602,7 +602,7 @@ mkdir -p /home/node/.local
 #    Ensures environment variables are available in interactive shell sessions
 # ------------------------------------------------------------------------------
 _write_env_to_profile() {
-    local profile_file="/home/node/.zshrc"
+    local profile_file="/home/node/.bashrc"
     local env_marker="# === OpenClaw DevKit Environment Variables ==="
 
     echo "--> Writing environment variables to node user's shell profile..."
