@@ -796,7 +796,8 @@ if [[ "$(id -u)" = "0" ]]; then
     # (NODE_COMPILE_CACHE, GITHUB_TOKEN, ANTHROPIC_AUTH_TOKEN, etc.)
     # The -m flag makes runuser preserve the environment, similar to sudo -E
     # PATH is set correctly by Docker already (from Dockerfile ENV + compose env_file)
-    exec runuser -u node -m -- "$@"
+    # IMPORTANT: Set HOME=/home/node to ensure npm uses correct cache directory
+    exec env HOME=/home/node runuser -u node -m -- "$@"
 else
     exec "$@"
 fi
