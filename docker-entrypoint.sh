@@ -738,8 +738,38 @@ _disable_builtin_feishu() {
     echo "    ✓ Built-in feishu extensions disabled"
 }
 
+# ------------------------------------------------------------------------------
+# 6. Configure npm to use node user's cache directory
+# ------------------------------------------------------------------------------
+# When running as root but executing npm as node user (via runuser), npm may try to use
+# /root/.npm cache which causes EACCES errors. We configure npm to use a cache directory
+# owned by the node user instead.
+# ------------------------------------------------------------------------------
+_configure_npm_cache() {
+    local npmrc="/home/node/.npmrc"
+    local cache_dir="/home/node/.npm-cache"
+
+    echo "--> Configuring npm cache for node user..."
+
+    # Create cache directory if it doesn't exist
+    mkdir -p "${cache_dir}" 2>/dev/null || true
+    chown -R node:node "${cache_dir}" 2>/dev/null || true
+
+    # Configure npm to use the custom cache directory
+    if [[ ! -f "${npmrc}" ]] || ! grep -q "cache\s*=" "${npmrc}" 2>/dev/null; then
+        echo "cache=${cache_dir}" > "${npmrc}"
+        chown node:node "${npmrc}" 2>/dev/null || true
+        echo "--> npm cache configured: ${cache_dir}"
+    else
+        echo "--> npm cache already configured"
+    fi
+}
+
 # Disable built-in feishu extensions
 _disable_builtin_feishu
+
+# Configure npm cache
+_configure_npm_cache
 
 # Write environment variables to profile
 _write_env_to_profile
