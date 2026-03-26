@@ -137,6 +137,7 @@ services:
       # Claude Code 只读配置 (覆盖 Layer 2 命名卷中的同名路径)
       - ${HOME:-${USERPROFILE:-/tmp}}/.claude/settings.json:/home/node/.claude/settings.json:ro
       - ${HOME:-${USERPROFILE:-/tmp}}/.claude/skills:/home/node/.claude/skills:ro
+      - ${HOME:-${USERPROFILE:-/tmp}}/.claude/statusline.sh:/home/node/.claude/statusline.sh.seed:ro
       # Plugin marketplaces - 宿主机作为只读 seed 源，容器维护独立副本
       # (entrypoint 自动同步并转换路径)
       - ${HOME:-${USERPROFILE:-/tmp}}/.claude/plugins/known_marketplaces.json:/home/node/.claude/plugins/.host-marketplaces-seed.json:ro

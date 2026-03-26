@@ -493,12 +493,23 @@ if [[ ! -f "${CLAUDE_JSON}" ]]; then
     fi
 fi
 
-# Create statusline.sh for Claude Code if configured but missing
-# This script displays current directory and git branch in the status line
-STATUSLINE_SH="/home/node/.claude/statusline.sh"
-if [[ ! -f "${STATUSLINE_SH}" ]]; then
-    echo "--> Creating statusline.sh for Claude Code..."
-    cat > "${STATUSLINE_SH}" << 'EOF'
+# Create statusline.sh for Claude Code from seed file
+# Seed file is bind-mounted from host (read-only), container maintains its own writable copy
+STATUSLINE_SEED="/home/node/.claude/statusline.sh.seed"
+STATUSLINE_TARGET="/home/node/.claude/statusline.sh"
+if [[ -f "${STATUSLINE_SEED}" ]]; then
+    if [[ ! -f "${STATUSLINE_TARGET}" ]] || [[ "${STATUSLINE_SEED}" -nt "${STATUSLINE_TARGET}" ]]; then
+        echo "--> Syncing statusline.sh from host seed..."
+        cp "${STATUSLINE_SEED}" "${STATUSLINE_TARGET}"
+        chmod +x "${STATUSLINE_TARGET}"
+        if [[ "$(id -u)" = "0" ]]; then
+            chown node:node "${STATUSLINE_TARGET}" 2>/dev/null || true
+        fi
+    fi
+elif [[ ! -f "${STATUSLINE_TARGET}" ]]; then
+    # Fallback: create basic statusline.sh if seed file doesn't exist
+    echo "--> Creating basic statusline.sh (no seed file found)..."
+    cat > "${STATUSLINE_TARGET}" << 'EOF'
 #!/bin/bash
 # Status line script for Claude Code
 
@@ -516,9 +527,9 @@ fi
 # Output status line
 echo "$current_dir $status"
 EOF
-    chmod +x "${STATUSLINE_SH}"
+    chmod +x "${STATUSLINE_TARGET}"
     if [[ "$(id -u)" = "0" ]]; then
-        chown node:node "${STATUSLINE_SH}" 2>/dev/null || true
+        chown node:node "${STATUSLINE_TARGET}" 2>/dev/null || true
     fi
 fi
 
