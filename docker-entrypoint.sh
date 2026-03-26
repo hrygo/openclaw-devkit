@@ -617,6 +617,14 @@ cfg.skills = cfg.skills || {};
 cfg.skills.load = cfg.skills.load || {};
 cfg.skills.load.extraDirs = ['/home/node/.agents/skills'];
 
+// Clean up stale plugin entries (feishu is now handled by openclaw-lark)
+if (cfg.plugins && cfg.plugins.allow) {
+    cfg.plugins.allow = cfg.plugins.allow.filter(p => p !== 'feishu');
+}
+if (cfg.plugins && cfg.plugins.entries && cfg.plugins.entries.feishu) {
+    delete cfg.plugins.entries.feishu;
+}
+
 fs.writeFileSync(path, JSON.stringify(cfg, null, 2));
 console.log('--> Config batch update done.');
 "
