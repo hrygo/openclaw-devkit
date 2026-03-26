@@ -5,10 +5,25 @@ set -euo pipefail
 # OpenClaw DevKit 卷迁移脚本
 # 功能：将 Docker Compose 卷的项目标签从 openclaw 改为 openclaw-devkit
 # 场景：存量用户升级后出现卷警告时执行
+#
+# 平台支持:
+#   - macOS/Linux: 原生支持
+#   - Windows:   需要 Git Bash (https://git-scm.com/download/win)
 # ==============================================================================
 
+# 平台检测
+PLATFORM="$(uname -s 2>/dev/null || echo 'Unknown')"
+if [[ "$PLATFORM" == "MINGW"* ]] || [[ "$PLATFORM" == "MSYS"* ]] || [[ "$PLATFORM" == "CYGWIN"* ]]; then
+    IS_WINDOWS=true
+    # Windows (Git Bash): 使用用户临时目录
+    BACKUP_DIR="${TEMP:-${TMP:-C:/Windows/Temp}}/openclaw-volume-backup-$(date +%Y%m%d_%H%M%S)"
+else
+    IS_WINDOWS=false
+    # Unix/macOS: 使用标准临时目录
+    BACKUP_DIR="/tmp/openclaw-volume-backup-$(date +%Y%m%d_%H%M%S)"
+fi
+
 VOLUMES=("openclaw-devkit-home" "openclaw-claude-home")
-BACKUP_DIR="/tmp/openclaw-volume-backup-$(date +%Y%m%d_%H%M%S)"
 
 # 颜色定义
 RED='\033[0;31m'
@@ -34,19 +49,43 @@ while [[ $# -gt 0 ]]; do
             echo "  -h, --help   显示帮助信息"
             echo ""
             echo "功能: 将 Docker Compose 卷的项目标签从 openclaw 迁移到 openclaw-devkit"
+            echo ""
+            echo "平台支持:"
+            echo "  - macOS/Linux: 原生支持"
+            echo "  - Windows:     需在 Git Bash 中运行"
+            if [[ "$IS_WINDOWS" == "true" ]]; then
+                echo ""
+                echo "检测到 Windows 环境，请确保在 Git Bash 中运行此脚本。"
+                echo "Git Bash 下载: https://git-scm.com/download/win"
+            fi
             exit 0
             ;;
         *)
             echo -e "${RED}错误: 未知参数 $1${NC}"
+            echo "使用 $0 --help 查看帮助信息"
             exit 1
             ;;
     esac
 done
 
+# Windows 用户友好提示
+if [[ "$IS_WINDOWS" == "true" ]] && [[ "$AUTO_CONFIRM" == "false" ]]; then
+    echo -e "${BLUE}ℹ️  检测到 Windows 环境 (Git Bash)${NC}"
+    echo -e "${BLUE}   备份目录将使用 Windows 临时目录${NC}"
+    echo ""
+fi
+
 echo -e "${GREEN}=========================================="
 echo "OpenClaw DevKit 卷迁移工具"
 echo -e "==========================================${NC}"
 echo ""
+
+# Windows 用户提示
+if [[ "$IS_WINDOWS" == "true" ]]; then
+    echo -e "${CYAN}ℹ️  检测到 Windows 环境 (Git Bash)${NC}"
+    echo -e "  备份目录: ${BACKUP_DIR}"
+    echo ""
+fi
 
 # 检查是否需要迁移
 NEED_MIGRATION=false

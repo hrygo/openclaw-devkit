@@ -499,6 +499,21 @@ clean-volumes: ## 清理所有数据卷
 		openclaw-playwright-cache openclaw-playwright-bin \
 		openclaw-state 2>/dev/null || true'
 
+migrate-volumes: ## 迁移卷标签 (存量用户消除警告)
+	@# 检测平台并执行对应的迁移脚本
+	@if [ "$(PLATFORM)" = "Windows" ]; then \
+		if [ -f "./migrate-volumes.ps1" ]; then \
+			echo "$(INFO) Windows 环境: 使用 PowerShell 脚本"; \
+			powershell -ExecutionPolicy Bypass -File ./migrate-volumes.ps1; \
+		else \
+			echo "$(INFO) Windows 环境: 使用 Git Bash"; \
+			bash ./migrate-volumes.sh; \
+		fi; \
+	else \
+		echo "$(INFO) Unix/macOS 环境: 使用 Bash 脚本"; \
+		bash ./migrate-volumes.sh; \
+	fi
+
 # ============================================================
 # 调试与诊断
 # ============================================================

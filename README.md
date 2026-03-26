@@ -140,10 +140,35 @@ WARN[0000] volume "openclaw-claude-home" already exists but was created for proj
 
 **这是正常现象，不影响使用**。如需消除警告，执行一次性迁移：
 
+### 跨平台迁移命令
+
+<Tabs>
+<TabItem value="bash" label="macOS/Linux/Git Bash">
+
 ```bash
 # 自动备份 → 删除旧卷 → 重建新卷 → 恢复数据
 ./migrate-volumes.sh
+
+# 或自动确认模式
+./migrate-volumes.sh -y
+
+# 或使用 Make 命令（自动检测平台）
+make migrate-volumes
 ```
+
+</TabItem>
+<TabItem value="powershell" label="Windows PowerShell">
+
+```powershell
+# PowerShell 版本
+.\migrate-volumes.ps1
+
+# 或自动确认模式
+.\migrate-volumes.ps1 -AutoConfirm
+```
+
+</TabItem>
+</Tabs>
 
 **迁移脚本特性：**
 - ✅ 自动检测是否需要迁移
