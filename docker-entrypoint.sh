@@ -127,6 +127,14 @@ if [[ "$(id -u)" = "0" ]]; then
     fi
 
     echo "--> Volume permissions OK."
+
+    # Fix npm cache permissions for plugin-local installs (runs as root but npm expects node ownership)
+    # This prevents EACCES errors when acpx or other plugins try to install dependencies
+    if [[ -d "/root/.npm" ]]; then
+        echo "--> Fixing npm cache permissions..."
+        chown -R 1000:1000 /root/.npm 2>/dev/null || true
+        echo "--> npm cache permissions OK."
+    fi
 fi
 
 # ------------------------------------------------------------------------------
@@ -698,6 +706,40 @@ _write_env_to_profile() {
         chown node:node "${profile_file}" 2>/dev/null || true
     fi
 }
+
+# ------------------------------------------------------------------------------
+# 6b. Disable Built-in Feishu Extensions
+# ------------------------------------------------------------------------------
+# To avoid conflicts with openclaw-lark plugin, we need to disable the built-in
+# feishu extensions that ship with OpenClaw. These extensions are re-created
+# from the image on every container restart, so we must remove them on each boot.
+#
+# Affected paths:
+#   - /home/node/.global/lib/node_modules/openclaw/dist/extensions/feishu
+#   - /home/node/.global/lib/node_modules/@larksuite/openclaw-lark/node_modules/openclaw/dist/extensions/feishu
+#   - /home/node/.openclaw/extensions/openclaw-lark/node_modules/openclaw/dist/extensions/feishu
+# ------------------------------------------------------------------------------
+_disable_builtin_feishu() {
+    echo "--> Disabling built-in feishu extensions to avoid conflicts..."
+
+    local feishu_dirs=(
+        "/home/node/.global/lib/node_modules/openclaw/dist/extensions/feishu"
+        "/home/node/.global/lib/node_modules/@larksuite/openclaw-lark/node_modules/openclaw/dist/extensions/feishu"
+        "/home/node/.openclaw/extensions/openclaw-lark/node_modules/openclaw/dist/extensions/feishu"
+    )
+
+    for dir in "${feishu_dirs[@]}"; do
+        if [[ -d "${dir}" ]]; then
+            echo "    Removing: ${dir}"
+            rm -rf "${dir}"
+        fi
+    done
+
+    echo "    ✓ Built-in feishu extensions disabled"
+}
+
+# Disable built-in feishu extensions
+_disable_builtin_feishu
 
 # Write environment variables to profile
 _write_env_to_profile
