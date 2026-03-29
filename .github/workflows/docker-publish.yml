@@ -56,15 +56,6 @@ jobs:
           LATEST=$(curl -fsSL "https://api.github.com/repos/openclaw/openclaw/releases/latest" | jq -r '.tag_name')
           echo "latest_version=${LATEST}" >> $GITHUB_OUTPUT
 
-          # Skip version check if requested (manual override)
-          if [[ "${{ inputs.skip_version_check }}" == "true" ]]; then
-            echo "::notice::skip_version_check=true - will build and publish"
-            echo "has_new_version=true" >> $GITHUB_OUTPUT
-            echo "should_publish=true" >> $GITHUB_OUTPUT
-            echo "should_build=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
           # Always publish on tag push (manual release)
           if [[ "${{ github.ref }}" == "refs/tags/"* ]]; then
             echo "Tag push detected - will build and publish"
@@ -95,15 +86,25 @@ jobs:
           # Schedule or push to main: publish if new version detected
           if [[ "${{ github.event_name }}" == "schedule" ]] || \
              [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
-            if [[ "$LATEST" != "" ]]; then
-              echo "New version detected: ${LATEST} - will build and publish"
-              echo "has_new_version=true" >> $GITHUB_OUTPUT
-              echo "should_publish=true" >> $GITHUB_OUTPUT
-              echo "should_build=true" >> $GITHUB_OUTPUT
-            else
-              echo "Failed to fetch upstream version - build only"
+            if [[ -z "$LATEST" || "$LATEST" == "null" ]]; then
+              echo "Failed to fetch upstream version - skipping build"
               echo "has_new_version=false" >> $GITHUB_OUTPUT
               echo "should_publish=false" >> $GITHUB_OUTPUT
+              echo "should_build=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            CURRENT="${{ secrets.OPENCLAW_VERSION }}"
+            LATEST_NORM="${LATEST#v}"
+            CURRENT_NORM="${CURRENT#v}"
+            if [[ -n "$CURRENT_NORM" && "$LATEST_NORM" == "$CURRENT_NORM" ]]; then
+              echo "::notice::No version change: ${LATEST} == ${CURRENT} - skipping"
+              echo "has_new_version=false" >> $GITHUB_OUTPUT
+              echo "should_publish=false" >> $GITHUB_OUTPUT
+              echo "should_build=false" >> $GITHUB_OUTPUT
+            else
+              echo "New version detected: ${LATEST} (was: ${CURRENT:-none}) - will build and publish"
+              echo "has_new_version=true" >> $GITHUB_OUTPUT
+              echo "should_publish=true" >> $GITHUB_OUTPUT
               echo "should_build=true" >> $GITHUB_OUTPUT
             fi
             exit 0
@@ -115,7 +116,7 @@ jobs:
           echo "should_publish=false" >> $GITHUB_OUTPUT
           echo "should_build=true" >> $GITHUB_OUTPUT
 
-  # Job 2: Prepare - fetch version info
+  # Job 2: Prepare - reuse version from check-upstream
   prepare:
     needs: check-upstream
     runs-on: ubuntu-latest
@@ -125,19 +126,16 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       repo_owner: ${{ steps.repo.outputs.owner }}
     steps:
-      - name: Fetch version
+      - name: Set version
         id: version
         run: |
-          VERSION=$(curl -fsSL "https://api.github.com/repos/openclaw/openclaw/releases/latest" | jq -r '.tag_name')
-          # Remove 'v' prefix to match npm version format (e.g., v2026.3.23 -> 2026.3.23)
-          NPM_VERSION="${VERSION#v}"
-          # Ensure version is never empty - use fallback if curl/jq fails
+          TAG="${{ needs.check-upstream.outputs.latest_version }}"
+          NPM_VERSION="${TAG#v}"
           if [[ -z "$NPM_VERSION" || "$NPM_VERSION" == "null" ]]; then
-            echo "ERROR: Failed to fetch upstream version, using latest"
+            echo "ERROR: No version from check-upstream, using latest"
             NPM_VERSION="latest"
           fi
           echo "version=${NPM_VERSION}" >> $GITHUB_OUTPUT
-          echo "github_version=${VERSION}" >> $GITHUB_OUTPUT
           echo "::notice::Building with OpenClaw version ${NPM_VERSION}"
       - name: Get repo owner
         id: repo
@@ -271,13 +269,16 @@ jobs:
       needs.check-upstream.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     steps:
       - name: Update OPENCLAW_VERSION secret
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
-          echo "::notice::Successfully published ${VERSION} - remember to update OPENCLAW_VERSION secret manually if you want schedule triggers to work"
-          echo "Latest version: ${VERSION}"
+          TAG="${{ needs.check-upstream.outputs.latest_version }}"
+          echo "Updating OPENCLAW_VERSION secret to ${TAG}"
+          gh secret set OPENCLAW_VERSION --body "${TAG}"
+          echo "::notice::OPENCLAW_VERSION updated to ${TAG}"
 
   # Job: Notify on failure
   notify-failure:
