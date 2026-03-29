@@ -277,7 +277,7 @@ jobs:
         run: |
           TAG="${{ needs.check-upstream.outputs.latest_version }}"
           echo "Updating OPENCLAW_VERSION secret to ${TAG}"
-          gh secret set OPENCLAW_VERSION --body "${TAG}"
+          gh secret set OPENCLAW_VERSION --body "${TAG}" --repo "${GITHUB_REPOSITORY}"
           echo "::notice::OPENCLAW_VERSION updated to ${TAG}"
 
   # Job: Notify on failure
