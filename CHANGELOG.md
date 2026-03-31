@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.11.3] - 2026-03-31
+
+### Fixed
+- **CI: npm Network Resilience**: Added npm install retry logic with exponential backoff for transient network failures during arm64 QEMU builds.
+- **CI: npm Cache Fix**: Corrected npm config option `socket-timeout` → `fetch-timeout` to prevent build failures.
+- **Docker: npm Cache Permissions**: Auto-fix npm cache EACCES errors during plugin-local installs by configuring `cache` and `prefix` in `npm config`.
+- **Docker: HOME Path**: Set `HOME=/home/node` when switching to node user to prevent permission issues.
+- **Entrypoint: Env Persistence**: Persist environment variables to node user's shell profile (`.bashrc`), preserving across user switches.
+- **Entrypoint: Statusline Sync**: Seed-based `statusline.sh` sync from host to container.
+
+### Refactored
+- **Root Directory Reorganization**: Moved scripts to `scripts/`, documentation to `docs/`, removed `roles/` symlink directory. Updated Dockerfile, Makefile, README.md references.
+- **CI: Node.js 24 Compatibility**: Upgraded GitHub Pages workflow actions to Node.js 24 compatible versions.
+
 ## [v1.10.7] - 2026-03-22
 
 ### Fixed
