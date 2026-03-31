@@ -249,7 +249,7 @@ install: ## 首次安装/初始化环境
 			echo "  WARN volume already exists but was created for project \"openclaw\""; \
 			echo ""; \
 			echo "$(INFO) 消除警告方法 (可选，执行一次即可):"; \
-			echo "  $(BOLD)./migrate-volumes.sh$(NC)"; \
+			echo "  $(BOLD)./scripts/migrate-volumes.sh$(NC)"; \
 			echo ""; \
 		fi; \
 	fi
@@ -502,16 +502,16 @@ clean-volumes: ## 清理所有数据卷
 migrate-volumes: ## 迁移卷标签 (存量用户消除警告)
 	@# 检测平台并执行对应的迁移脚本
 	@if [ "$(PLATFORM)" = "Windows" ]; then \
-		if [ -f "./migrate-volumes.ps1" ]; then \
+		if [ -f "./scripts/migrate-volumes.ps1" ]; then \
 			echo "$(INFO) Windows 环境: 使用 PowerShell 脚本"; \
-			powershell -ExecutionPolicy Bypass -File ./migrate-volumes.ps1; \
+			powershell -ExecutionPolicy Bypass -File ./scripts/migrate-volumes.ps1; \
 		else \
 			echo "$(INFO) Windows 环境: 使用 Git Bash"; \
-			bash ./migrate-volumes.sh; \
+			bash ./scripts/migrate-volumes.sh; \
 		fi; \
 	else \
 		echo "$(INFO) Unix/macOS 环境: 使用 Bash 脚本"; \
-		bash ./migrate-volumes.sh; \
+		bash ./scripts/migrate-volumes.sh; \
 	fi
 
 # ============================================================

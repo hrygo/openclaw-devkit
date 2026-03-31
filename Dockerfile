@@ -70,7 +70,7 @@ COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Bake best-practice shell environment
-COPY .bashrc.devkit /home/node/.bashrc
+COPY scripts/.bashrc.devkit /home/node/.bashrc
 RUN chown node:node /home/node/.bashrc
 
 # ==============================================================================

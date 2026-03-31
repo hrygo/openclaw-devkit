@@ -147,10 +147,10 @@ WARN[0000] volume "openclaw-claude-home" already exists but was created for proj
 
 ```bash
 # 自动备份 → 删除旧卷 → 重建新卷 → 恢复数据
-./migrate-volumes.sh
+./scripts/migrate-volumes.sh
 
 # 或自动确认模式
-./migrate-volumes.sh -y
+./scripts/migrate-volumes.sh -y
 
 # 或使用 Make 命令（自动检测平台）
 make migrate-volumes
@@ -161,10 +161,10 @@ make migrate-volumes
 
 ```powershell
 # PowerShell 版本
-.\migrate-volumes.ps1
+.\scripts\migrate-volumes.ps1
 
 # 或自动确认模式
-.\migrate-volumes.ps1 -AutoConfirm
+.\scripts\migrate-volumes.ps1 -AutoConfirm
 ```
 
 </TabItem>

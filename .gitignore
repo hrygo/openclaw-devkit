@@ -42,7 +42,3 @@ openclaw*.json*
 
 # loki
 .loki/
-
-# Roles
-roles/*
-!roles/.gitkeep
