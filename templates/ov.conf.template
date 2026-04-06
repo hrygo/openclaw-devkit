@@ -1,0 +1,49 @@
+{
+  "server": {
+    "host": "127.0.0.1",
+    "port": 1933,
+    "root_api_key": null,
+    "cors_origins": ["*"]
+  },
+  "storage": {
+    "workspace": "/home/node/.openclaw/openviking/data",
+    "vectordb": {
+      "name": "context",
+      "backend": "local",
+      "project": "default"
+    },
+    "agfs": {
+      "port": 1833,
+      "log_level": "warn",
+      "backend": "local",
+      "timeout": 10,
+      "retry_times": 3
+    }
+  },
+  "log": {
+    "level": "WARNING",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "output": "file",
+    "rotation": true,
+    "rotation_days": 3,
+    "rotation_interval": "midnight"
+  },
+  "embedding": {
+    "dense": {
+      "provider": "${OPENVIKING_EMBEDDING_PROVIDER}",
+      "api_key": "${OPENVIKING_EMBEDDING_API_KEY}",
+      "model": "${OPENVIKING_EMBEDDING_MODEL}",
+      "api_base": "${OPENVIKING_EMBEDDING_API_BASE}",
+      "dimension": ${OPENVIKING_EMBEDDING_DIMENSION},
+      "input": "${OPENVIKING_EMBEDDING_INPUT}"
+    }
+  },
+  "vlm": {
+    "provider": "${OPENVIKING_VLM_PROVIDER}",
+    "api_key": "${OPENVIKING_VLM_API_KEY}",
+    "model": "${OPENVIKING_VLM_MODEL}",
+    "api_base": "${OPENVIKING_VLM_API_BASE}",
+    "temperature": 0.1,
+    "max_retries": 3
+  }
+}
