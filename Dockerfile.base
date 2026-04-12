@@ -32,7 +32,7 @@ deb http://$APT_MIRROR/debian bookworm-updates main contrib non-free\n" > /etc/a
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl ca-certificates gnupg git jq ripgrep fd-find build-essential pkg-config \
     unzip file sqlite3 zip wget procps openssl less vim tree \
-    fzf zoxide tldr locales && \
+    fzf zoxide tldr locales python3-venv && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Generate Chinese locale (UTF-8)

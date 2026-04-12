@@ -69,6 +69,9 @@ RUN echo '' >> /etc/profile && \
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# OpenViking configuration template
+COPY templates/ov.conf.template /tmp/ov.conf.template
+
 # Bake best-practice shell environment
 COPY scripts/.bashrc.devkit /home/node/.bashrc
 RUN chown node:node /home/node/.bashrc
@@ -121,12 +124,14 @@ RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
         echo "[npm-retry] FAILED after $max_attempts attempts"; return 1; \
     }; \
     npm_retry npm install -g openclaw@${OPENCLAW_VERSION} && \
+    npm_retry npm install -g @buape/carbon@latest && \
     npm_retry npm install -g @larksuite/openclaw-lark@latest && \
     npm_retry npm install -g clawhub@latest && \
+    npm_retry npm install -g openclaw-openviking-setup-helper && \
     chown -R node:node /home/node/.global'
 
 # Layer 3b: AI Coding Tools (optional, ~500MB, skip for office variant)
-# Includes: claude-code, pi-coding-agent, opencode
+# Includes: claude-code, pi-coding-agent, opencode, openviking
 # Set INSTALL_AI_TOOLS=0 when building office variant
 RUN --mount=type=cache,target=/root/.npm,uid=1000,gid=1000 \
     if [ "${INSTALL_AI_TOOLS}" = "1" ]; then \
@@ -146,6 +151,24 @@ RUN if [ "${INSTALL_AI_TOOLS}" = "1" ]; then \
     runuser -u node -- sh -c 'curl -fsSL https://opencode.ai/install | INSTALL_DIR=/home/node/.opencode/bin bash'; \
     fi
 
+# Initialize OpenViking (run as node user)
+# Note: ov-install requires network access to download the plugin
+# Skip in build if no proxy available to avoid build failures
+# OpenViking is now installed in Layer 3 (core layer), not conditional on INSTALL_AI_TOOLS
+RUN if command -v ov-install >/dev/null 2>&1; then \
+    su - node -c 'ov-install -y' || echo "WARNING: ov-install failed, will retry on container start"; \
+    fi
+
+# Stage OpenViking artifacts to non-mounted path (/app survives bind mount shadowing)
+# At runtime, entrypoint copies from staging into the bind-mounted ~/.openclaw/
+RUN if [ -d /home/node/.openclaw/extensions/openviking ]; then \
+        mkdir -p /app/openviking-staging/extensions && \
+        cp -r /home/node/.openclaw/extensions/openviking /app/openviking-staging/extensions/ && \
+        if [ -f /home/node/.openclaw/openviking.env ]; then \
+            cp /home/node/.openclaw/openviking.env /app/openviking-staging/; \
+        fi; \
+    fi
+
 # ==============================================================================
 # Layer 4: Optional Components
 # ==============================================================================
@@ -157,6 +180,9 @@ RUN if [ "${INSTALL_BROWSER}" = "1" ]; then \
     fi
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
+
+## new openclaw version needed
+RUN npm install -g grammy @slack/web-api
 
 # Healthcheck
 HEALTHCHECK --interval=3m --timeout=10s --start-period=15s --retries=3 \
