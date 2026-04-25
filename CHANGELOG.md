@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.12.0] - 2026-04-25
+
+### Added
+- **OpenViking Integration**: Adapt OpenViking integration with dedicated directory structure, initialization config template (`templates/ov.conf.template`), and entrypoint auto-setup logic.
+- **Dockerfile: OpenViking Support**: Added build-time and runtime support for OpenViking CLI tool.
+- **Entrypoint: OpenViking Init**: Auto-initialize OpenViking configuration on first startup.
+- **Environment: OpenViking Config**: Added OpenViking-related environment variables to `.env.example`.
+
+### Changed
+- **Dockerfile.base**: Updated base image version.
+
 ## [v1.11.3] - 2026-03-31
 
 ### Fixed
