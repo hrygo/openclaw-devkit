@@ -148,9 +148,10 @@ services:
       - ${HOST_CLAWHUB_DIR:-${HOME}/.config/clawhub}:/home/node/.config/clawhub:rw
 
       # ─────────────────────────────────────────────────────────────────
-      # Layer 4: 脚本 (只读)
+      # Layer 4: 脚本和模板 (只读)
       # ─────────────────────────────────────────────────────────────────
       - ./docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
+      - ./templates:/app/templates:ro
     # Run as root so the entrypoint can fix volume permissions before switching to node.
     # The entrypoint uses `exec runuser -u node` to switch to node after setup.
     user: root

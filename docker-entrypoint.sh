@@ -349,6 +349,37 @@ _sync_image_extensions() {
 }
 _sync_image_extensions
 
+# ── OpenViking ────────────────────────────────────────────────────────────────
+# ov-install runs during image build, but /home/node/.openclaw is bind-mounted
+# from host at runtime, shadowing everything the image placed there.
+# We stage the artifacts to /app/openviking-staging (not mounted) during build,
+# then restore them into the mounted volume on first start.
+# ------------------------------------------------------------------------------
+_sync_openviking() {
+    local staging="/app/openviking-staging"
+    local ext_target="/home/node/.openclaw/extensions/openviking"
+    local env_target="/home/node/.openclaw/openviking.env"
+
+    # No staging dir means image was built without OpenViking
+    [[ -d "${staging}" ]] || return 0
+
+    # Extension already present in volume — skip
+    [[ -d "${ext_target}" ]] && return 0
+
+    echo "--> Syncing openviking from image staging..."
+    mkdir -p "${ext_target}"
+    cp -r "${staging}/extensions/openviking/"* "${ext_target}/" 2>/dev/null || true
+    chown -R 0:0 "${ext_target}" 2>/dev/null || true
+
+    # Restore openviking.env if missing
+    if [[ ! -f "${env_target}" && -f "${staging}/openviking.env" ]]; then
+        cp "${staging}/openviking.env" "${env_target}"
+    fi
+
+    echo "--> OpenViking extension synced."
+}
+_sync_openviking
+
 # ------------------------------------------------------------------------------
 # 2. Configuration Health Check & Surgical Repair
 #    - Surgery: runs once (path migration + Node.js cleanup)
@@ -625,6 +656,29 @@ if (cfg.plugins && cfg.plugins.entries && cfg.plugins.entries.feishu) {
     delete cfg.plugins.entries.feishu;
 }
 
+// Configure OpenViking plugin based on OPENVIKING_ENABLED environment variable
+const openvikingEnabled = '${OPENVIKING_ENABLED:-false}'.toLowerCase() === 'true';
+cfg.plugins = cfg.plugins || {};
+cfg.plugins.entries = cfg.plugins.entries || {};
+cfg.plugins.entries.openviking = cfg.plugins.entries.openviking || {};
+
+// enabled: 每次启动都设置
+cfg.plugins.entries.openviking.enabled = openvikingEnabled;
+
+// 首次初始化时设置 config 和 contextEngine
+const surgeryFlag = '${SURGERY_FLAG}';
+if (!fs.existsSync(surgeryFlag)) {
+    cfg.plugins.entries.openviking.config = {
+        mode: 'local',
+        configPath: '/home/node/.openclaw/openviking/ov.conf',
+        port: 1933
+    };
+    cfg.plugins.slots = cfg.plugins.slots || {};
+    cfg.plugins.slots.contextEngine = 'openviking';
+    console.log('--> OpenViking config and slots initialized.');
+}
+console.log('--> OpenViking plugin', openvikingEnabled ? 'enabled' : 'disabled');
+
 fs.writeFileSync(path, JSON.stringify(cfg, null, 2));
 console.log('--> Config batch update done.');
 "
@@ -662,7 +716,90 @@ mkdir -p /home/node/.local
 #    Ensures all files created by the app belong to 'node' user
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
-# 6. Write Environment Variables to Node User's Shell Profile
+# 6a. Generate OpenViking Configuration File from Template
+#    Replaces template variables with actual environment variable values
+# ------------------------------------------------------------------------------
+_generate_openviking_config() {
+    local template_file="/app/templates/ov.conf.template"
+    local config_dir="/home/node/.openclaw/openviking"
+    local config_file="${config_dir}/ov.conf"
+
+    # Skip if template file doesn't exist (not all image variants have OpenViking)
+    if [[ ! -f "${template_file}" ]]; then
+        echo "--> OpenViking template not found, skipping config generation."
+        return 0
+    fi
+
+    # Skip if OpenViking is disabled
+    if [[ "${OPENVIKING_ENABLED}" != "true" ]]; then
+        echo "--> OpenViking is disabled, skipping config generation."
+        return 0
+    fi
+
+    echo "--> Generating OpenViking configuration file..."
+
+    # Create config directory if it doesn't exist
+    if [[ "$(id -u)" = "0" ]]; then
+        run_as_node mkdir -p "${config_dir}" 2>/dev/null || true
+    else
+        mkdir -p "${config_dir}" 2>/dev/null || true
+    fi
+
+    # Use Node.js to replace template variables (handles JSON safely)
+    # Optimized: only process known template variables, don't scan all environment variables
+    run_as_node node <<NODE_EOF
+const fs = require('fs');
+const configPath = '${config_file}';
+const templateFile = '${template_file}';
+
+// Read template file
+const template = fs.readFileSync(templateFile, 'utf8');
+
+// Directly use known template variables (much faster than scanning process.env)
+const vars = {
+    'OPENVIKING_EMBEDDING_PROVIDER': process.env.OPENVIKING_EMBEDDING_PROVIDER || '',
+    'OPENVIKING_EMBEDDING_API_KEY': process.env.OPENVIKING_EMBEDDING_API_KEY || '',
+    'OPENVIKING_EMBEDDING_MODEL': process.env.OPENVIKING_EMBEDDING_MODEL || '',
+    'OPENVIKING_EMBEDDING_API_BASE': process.env.OPENVIKING_EMBEDDING_API_BASE || '',
+    'OPENVIKING_EMBEDDING_DIMENSION': process.env.OPENVIKING_EMBEDDING_DIMENSION || '1024',
+    'OPENVIKING_EMBEDDING_INPUT': process.env.OPENVIKING_EMBEDDING_INPUT || 'multimodal',
+    'OPENVIKING_VLM_PROVIDER': process.env.OPENVIKING_VLM_PROVIDER || '',
+    'OPENVIKING_VLM_API_KEY': process.env.OPENVIKING_VLM_API_KEY || '',
+    'OPENVIKING_VLM_MODEL': process.env.OPENVIKING_VLM_MODEL || '',
+    'OPENVIKING_VLM_API_BASE': process.env.OPENVIKING_VLM_API_BASE || ''
+};
+
+// Replace template variables using simple string replacement (faster than regex)
+let config = template;
+for (const [key, value] of Object.entries(vars)) {
+    config = config.split('\${' + key + '}').join(value);
+}
+
+// Ensure output directory exists
+const dir = require('path').dirname(configPath);
+if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true, mode: 0o755 });
+}
+
+// Write configuration file
+fs.writeFileSync(configPath, config, { mode: 0o600 });
+console.log('    ✓ OpenViking configuration written to:', configPath);
+NODE_EOF
+    if [[ $? -ne 0 ]]; then
+        echo "    ✗ Failed to generate OpenViking configuration"
+        return 1
+    fi
+
+    # Ensure correct ownership
+    if [[ "$(id -u)" = "0" ]]; then
+        chown -R node:node "${config_dir}" 2>/dev/null || true
+    fi
+
+    echo "--> OpenViking configuration generation completed."
+}
+
+# ------------------------------------------------------------------------------
+# 6b. Write Environment Variables to Node User's Shell Profile
 #    Ensures environment variables are available in interactive shell sessions
 # ------------------------------------------------------------------------------
 _write_env_to_profile() {
@@ -694,6 +831,18 @@ _write_env_to_profile() {
             "HTTPS_PROXY"
             "NO_PROXY"
             "TZ"
+            # OpenViking configuration
+            "OPENVIKING_ENABLED"
+            "OPENVIKING_EMBEDDING_PROVIDER"
+            "OPENVIKING_EMBEDDING_API_KEY"
+            "OPENVIKING_EMBEDDING_MODEL"
+            "OPENVIKING_EMBEDDING_API_BASE"
+            "OPENVIKING_EMBEDDING_DIMENSION"
+            "OPENVIKING_EMBEDDING_INPUT"
+            "OPENVIKING_VLM_PROVIDER"
+            "OPENVIKING_VLM_API_KEY"
+            "OPENVIKING_VLM_MODEL"
+            "OPENVIKING_VLM_API_BASE"
         )
 
         for var in "${env_vars[@]}"; do
@@ -778,6 +927,9 @@ _disable_builtin_feishu
 
 # Configure npm cache
 _configure_npm_cache
+
+# Generate OpenViking configuration file
+_generate_openviking_config
 
 # Write environment variables to profile
 _write_env_to_profile
